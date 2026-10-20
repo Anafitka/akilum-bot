@@ -338,8 +338,90 @@ async function generateLumResponse({
   return null;
 }
 
+/**
+ * Сверхбыстрая транскрибация аудио через Groq Whisper (~200мс)
+ */
+async function transcribeAudioGroq(audioBuffer, filename = "voice.ogg") {
+  const keyItem = groqPool.getAvailable();
+  if (!keyItem) return null;
+
+  try {
+    const formData = new FormData();
+    const blob = new Blob([audioBuffer], { type: "audio/ogg" });
+    formData.append("file", blob, filename);
+    formData.append("model", "whisper-large-v3-turbo");
+    formData.append("response_format", "json");
+
+    const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${keyItem.key}`,
+      },
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      groqPool.markSuccess(keyItem);
+      return data.text?.trim() || null;
+    }
+  } catch (err) {
+    console.warn("Groq Whisper error:", err.message);
+  }
+  return null;
+}
+
+/**
+ * Генерация интерактивного Telegram Quiz Poll для подготовки к урокам
+ */
+async function generateQuizPoll(topic) {
+  const prompt = `Сгенерируй один интересный проверочный вопрос-тест по теме: "${topic}".
+Ответь ТОЛЬКО валидным JSON без markdown оформления, строго в формате:
+{
+  "question": "Текст вопроса (до 280 символов)",
+  "options": ["Вариант 1", "Вариант 2", "Вариант 3", "Вариант 4"],
+  "correct_id": 0,
+  "explanation": "Короткое милое объяснение правильного ответа от Лам (до 190 символов)"
+}`;
+
+  const messages = [{ role: "user", content: prompt }];
+  let reply = await callGroq(messages, 350, 6000);
+  if (!reply) {
+    // Резервная генерация через Gemini, если Groq недоступен
+    reply = await callGemini(
+      [{ role: "user", parts: [{ text: prompt }] }],
+      "Ты генератор JSON тестов. Отвечай только сырым JSON.",
+      350,
+      10000
+    );
+  }
+  if (!reply) return null;
+
+  try {
+    const cleanJson = reply.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
+    const data = JSON.parse(cleanJson);
+    if (
+      data.question &&
+      Array.isArray(data.options) &&
+      data.options.length >= 2 &&
+      typeof data.correct_id === "number"
+    ) {
+      // Telegram quiz poll limits: question <= 300 chars, options <= 100 chars, explanation <= 200 chars
+      data.question = data.question.slice(0, 300);
+      data.options = data.options.slice(0, 10).map((opt) => String(opt).slice(0, 100));
+      if (data.explanation) data.explanation = data.explanation.slice(0, 200);
+      return data;
+    }
+  } catch (e) {
+    console.warn("Failed to parse quiz JSON:", e.message);
+  }
+  return null;
+}
+
 module.exports = {
   geminiPool,
   groqPool,
   generateLumResponse,
+  transcribeAudioGroq,
+  generateQuizPoll,
 };

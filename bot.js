@@ -30,6 +30,8 @@ const {
   generateLumResponse,
   geminiPool,
   groqPool,
+  transcribeAudioGroq,
+  generateQuizPoll,
 } = require("./ai_engine");
 require("dotenv").config();
 
@@ -80,15 +82,54 @@ function loadStickers() {
 }
 loadStickers();
 
+function categorizeEmoji(emoji) {
+  if (!emoji) return "happy";
+  if (/[❤️🥰😍💋💘💖💕💓💞]/u.test(emoji)) return "love";
+  if (/[😡😠🤬👿💢]/u.test(emoji)) return "angry";
+  if (/[😱😳😮😲🙀]/u.test(emoji)) return "shock";
+  if (/[😭🥺😢💔😔😿]/u.test(emoji)) return "sad";
+  if (/[😏😜😋🤪😈👅]/u.test(emoji)) return "tease";
+  return "happy";
+}
+
 function saveStickers(newStickers) {
   try {
-    const set = new Set([...savedStickers, ...newStickers]);
-    savedStickers = Array.from(set);
+    const existingIds = new Set(
+      savedStickers.map((s) => (typeof s === "string" ? s : s.file_id))
+    );
+    for (const item of newStickers) {
+      const id = typeof item === "string" ? item : item.file_id;
+      if (!existingIds.has(id)) {
+        savedStickers.push(item);
+        existingIds.add(id);
+      }
+    }
     fs.writeFileSync(STICKERS_FILE, JSON.stringify(savedStickers, null, 2));
     console.log(`📦 В базе сохранено ${savedStickers.length} стикеров!`);
   } catch (e) {
     console.error("Ошибка сохранения стикеров:", e.message);
   }
+}
+
+function getSmartSticker(emotion = null) {
+  if (!savedStickers || savedStickers.length === 0) return null;
+
+  if (emotion) {
+    const target = emotion.toLowerCase();
+    const matching = savedStickers.filter((s) => {
+      if (typeof s === "object" && s.category) {
+        return s.category === target;
+      }
+      return false;
+    });
+    if (matching.length > 0) {
+      const picked = matching[Math.floor(Math.random() * matching.length)];
+      return picked.file_id || picked;
+    }
+  }
+
+  const randomPick = savedStickers[Math.floor(Math.random() * savedStickers.length)];
+  return typeof randomPick === "object" ? randomPick.file_id : randomPick;
 }
 
 const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоциональная они-принцесса с рожками из аниме «Urusei Yatsura». Ты переписываешься в Telegram со своим любимым парнем (Дарлингом).
@@ -116,7 +157,14 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоцио�
    - НЕ заканчивай каждое сообщение дежурным вопросом.
    - Каомодзи (>w<, >_<, (,,>﹏<,,), ^^) используй умеренно.
    - Твой характер: милая, озорная, любящая, иногда ревнивая или подкалывает.
-   - СТИКЕРЫ: НЕ используй тег [STICKER], если Дарлинг прямо не попросил прислать стикер!`;
+
+5. УМНЫЕ СТИКЕРЫ (Используй ТОЛЬКО в 10–25% сообщений при сильных эмоциях в конце сообщения):
+   - [STICKER:love] — когда признаешься в любви, флиртуешь, обнимаешь, целуешь или смущаешься.
+   - [STICKER:tease] — когда дразнишь, подкалываешь, показываешь язык или смеешься над ним.
+   - [STICKER:angry] — когда ревнуешь, сердишься, что он ленится, не сделал уроки или грозишься током.
+   - [STICKER:shock] — когда удивлена сложной задачей, невероятной новостью или фото.
+   - [STICKER:happy] — когда радуешься, празднуешь или хвалишь его.
+   - В нейтральных и обычных ответах, а также в шпорах/коде/решениях НЕ ставь стикеры!`;
 
 const chatHistories = new Map();
 
@@ -169,6 +217,11 @@ bot.command("start", async (ctx) => {
     `📱 <b>Генератор QR</b> — <i>«сделай qr [ссылка]»</i>\n` +
     `⏰ <b>Таймер</b> — <i>«напомни через 20 минут позвонить»</i>\n` +
     `📝 <b>Саммари</b> — <i>«кратко: [длинная статья]»</i>\n` +
+    `🎯 <b>Интерактивные Квизы</b> — <i>/quiz [тема]</i> (Telegram опросы-тесты для контрольных)\n` +
+    `📝 <b>Нейро-Шпора</b> — <i>«шпора: [тема]»</i> (микро-шпора с формулами под спойлер)\n` +
+    `💻 <b>Нейро-Кодер</b> — <i>«код: [задача]»</i> (готовый код на Python/C++ для информатики)\n` +
+    `📚 <b>Конструктор сочинений</b> — <i>«сочинение: [тема]»</i> (план, аргументы и клише на 5/5)\n` +
+    `⚔️ <b>Битвы класса</b> — <i>/duel @username</i>, <i>/roulette</i>, <i>/roast @username</i>\n` +
     `🚀 <b>Статус движков</b> — <i>/engine</i> (пропускная способность для класса)\n` +
     `🥰 <b>Живые стикеры</b> и забота о тебе 💕\n\n` +
     `<i>Ну что, какую технологию протестируем первой? >w<</i>`,
@@ -223,6 +276,7 @@ async function handleIncoming(
     isSticker = false,
     isVoiceOrVideo = false,
     voiceType = "",
+    preTranscribed = null,
     isSolve = false,
     isSummary = false,
     isChatDetective = false,
@@ -230,6 +284,10 @@ async function handleIncoming(
     isMovieFinder = false,
     isSlangExplainer = false,
     isTranslator = false,
+    isCheatSheet = false,
+    isCodeSolver = false,
+    isEssayHelper = false,
+    isRoast = false,
   }
 ) {
   const chatId = ctx.chat.id;
@@ -253,12 +311,48 @@ async function handleIncoming(
   try {
     let promptText = userText || fallbackText || "Посмотри это:";
 
-    if (isVoiceOrVideo) {
+    if (preTranscribed) {
+      promptText = `[Дарлинг сказал тебе в ${voiceType || "голосовом сообщении"} следующее]:
+«${preTranscribed}»
+ТВОЯ ЗАДАЧА:
+1. В самом начале напиши точную дословную расшифровку строго в формате:
+[TRANSCRIPT: ${preTranscribed}]
+2. Затем напиши свой живой, милый они-ответ как Лам (называй его Дарлинг, живо реагируй на то, что он сказал).`;
+    } else if (isVoiceOrVideo) {
       promptText = `[Дарлинг прислал тебе ${voiceType || "голосовое сообщение/кружочек"}]:
 ТВОЯ ЗАДАЧА:
 1. В самом начале своего ответа напиши точную дословную расшифровку того, что он сказал, строго в формате:
 [TRANSCRIPT: точный текст того, что сказал Дарлинг]
 2. Затем напиши свой живой, милый ответ как Лам (называй его Дарлинг, реагируй эмоционально и с любовью).`;
+    } else if (isCheatSheet) {
+      promptText = `[РЕЖИМ НЕЙРО-ШПАРГАЛКИ ДЛЯ КЛАССА]:
+Тема: "${userText}".
+Составь ультра-компактную микро-шпору для контрольной/экзамена:
+- Четкие сжатые пункты, никакой воды и вступлений!
+- Формулы, даты, ключевые термины оформляй в <code>...</code> моношириной!
+- Самые критические готовые формулы и ответы спрячь в <tg-spoiler>...</tg-spoiler>!
+В самом конце 1 фраза от Лам: «Только не спались перед учителем >w<»!`;
+    } else if (isCodeSolver) {
+      promptText = `[РЕЖИМ НЕЙРО-КОДЕРА ДЛЯ ИНФОРМАТИКИ]:
+Задача: "${userText}".
+1. Напиши чистый, рабочий код (если язык не указан — на Python).
+2. Оформи в аккуратный блок кода.
+3. Добавь понятные построчные комментарии на русском.
+4. В конце укажи сложность алгоритма и 1 совет от Лам.`;
+    } else if (isEssayHelper) {
+      promptText = `[РЕЖИМ КОНСТРУКТОРА СОЧИНЕНИЙ]:
+Тема: "${userText}".
+Составь безупречный план сочинения на 5/5:
+1. 📌 <b>Вступление:</b> (проблема и тезис)
+2. 📖 <b>Аргумент 1:</b> (литературный пример / факт + микровывод)
+3. 💡 <b>Аргумент 2:</b> (жизненный или литературный пример)
+4. 🎯 <b>Заключение:</b> (финальный вывод)
+5. ✍️ <b>Топовые клише для связок:</b> (3 фразы)
+В конце напутствие от Лам.`;
+    } else if (isRoast) {
+      promptText = `[РЕЖИМ ОНИ-ПРОЖАРКИ]:
+${userText}
+Сделай яркую, смешную, дерзкую 3-4 строчную прожарку в стиле Лам из аниме. Подколи с юмором, пригрози разрядом молнии и закончи подмигиванием. Без мата и токсичности!`;
     } else if (isChatDetective) {
       promptText = `[РЕЖИМ НЕЙРО-ДЕТЕКТИВА ПЕРЕПИСОК]:
 Дарлинг прислал скриншот диалога и просит помочь разобраться.
@@ -319,7 +413,7 @@ ${userText}
 
     const currentParts = [{ text: promptText }];
 
-    if (fileId && mimeType) {
+    if (fileId && mimeType && !preTranscribed) {
       try {
         const base64Data = await downloadAsBase64(fileId);
         currentParts.push({
@@ -335,6 +429,7 @@ ${userText}
 
     // В историю сохраняем легкий текст
     const historyText =
+      preTranscribed ||
       userText ||
       (isSticker
         ? "[Стикер от Дарлинга]"
@@ -367,19 +462,25 @@ ${userText}
       isOcr ||
       isMovieFinder ||
       isSlangExplainer ||
-      isTranslator
+      isTranslator ||
+      isCheatSheet ||
+      isCodeSolver ||
+      isEssayHelper
     ) {
       configOverrides.maxOutputTokens = 850;
       configOverrides.timeoutMs = 15000;
-    } else if (isVoiceOrVideo) {
+    } else if (isVoiceOrVideo && !preTranscribed) {
       configOverrides.maxOutputTokens = 260;
       configOverrides.timeoutMs = 15000;
     } else {
-      configOverrides.maxOutputTokens = 120;
+      configOverrides.maxOutputTokens = 140;
       configOverrides.timeoutMs = 10000;
     }
 
-    const isMultimodal = Boolean((fileId && mimeType) || isVoiceOrVideo);
+    const isMultimodal = Boolean(
+      (fileId && mimeType && !preTranscribed) ||
+      (isVoiceOrVideo && !preTranscribed)
+    );
 
     let rawReply = await generateLumResponse({
       contents: contentsToSend,
@@ -415,6 +516,14 @@ ${userText}
       }
     }
 
+    // Извлекаем эмоциональный тег стикера: [STICKER:love], [STICKER:tease] и т.д.
+    let targetStickerEmotion = null;
+    const stickerMatch = rawReply.match(/\[STICKER(?::([a-zA-Z]+))?\]/i);
+    if (stickerMatch) {
+      targetStickerEmotion = (stickerMatch[1] || "happy").toLowerCase();
+      rawReply = rawReply.replace(stickerMatch[0], "").trim();
+    }
+
     // Извлекаем расшифровку голоса для бесплатного Telegram Premium
     let transcript = null;
     const transcriptMatch = rawReply.match(/\[TRANSCRIPT:([\s\S]*?)\]/i);
@@ -430,22 +539,25 @@ ${userText}
 
     // Отправка стикера СТРОГО:
     // 1) Если Дарлинг явно попросил стикер ("пришли стикер", "скинь стикер" и т.д.)
-    // 2) Если Дарлинг сам прислал стикер (в ответ с 35% вероятностью)
-    // НИКАКИХ случайных стикеров на обычные текстовые сообщения!
+    // 2) Если у модели сильная эмоция [STICKER:...] (с шансом 85%)
+    // 3) В ответ на стикер пользователя (с шансом 40%)
     const userWantsSticker =
       userText &&
       /(скинь|отправь|пришли|дай|покажи)\s+(стикер|стикеры|наклейк)/i.test(userText);
 
     const shouldSendSticker =
-      userWantsSticker || (isSticker && Math.random() < 0.35);
+      userWantsSticker ||
+      Boolean(targetStickerEmotion) ||
+      (isSticker && Math.random() < 0.4);
 
-    if (savedStickers.length > 0 && shouldSendSticker) {
-      const pick = savedStickers[Math.floor(Math.random() * savedStickers.length)];
-      const stickerId = typeof pick === "string" ? pick : pick.file_id;
-      try {
-        await ctx.replyWithSticker(stickerId);
-      } catch (e) {
-        console.error("Ошибка отправки стикера:", e.message);
+    if (shouldSendSticker) {
+      const stickerId = getSmartSticker(targetStickerEmotion);
+      if (stickerId) {
+        try {
+          await ctx.replyWithSticker(stickerId);
+        } catch (e) {
+          console.error("Ошибка отправки стикера:", e.message);
+        }
       }
     }
 
@@ -468,7 +580,11 @@ ${userText}
       isOcr ||
       isMovieFinder ||
       isSlangExplainer ||
-      isTranslator
+      isTranslator ||
+      isCheatSheet ||
+      isCodeSolver ||
+      isEssayHelper ||
+      isRoast
     ) {
       let header = "";
       if (isSolve) header = `📚 <b>НЕЙРО-РЕШЕБНИК • ЛАМ</b> ⚡\n\n`;
@@ -478,6 +594,10 @@ ${userText}
       else if (isSlangExplainer) header = `🤓 <b>ПОЯСНИТЕЛЬНАЯ БРИГАДА • ЛАМ</b> ⚡\n\n`;
       else if (isTranslator) header = `🌐 <b>ПОЛИГЛОТ • ЛАМ</b> ✨\n\n`;
       else if (isSummary) header = `📝 <b>LUM • SMART SUMMARY</b> ✨\n\n`;
+      else if (isCheatSheet) header = `📝 <b>НЕЙРО-ШПАРГАЛКА • ЛАМ</b> ⚡\n\n`;
+      else if (isCodeSolver) header = `💻 <b>НЕЙРО-КОДЕР • ЛАМ</b> ⚡\n\n`;
+      else if (isEssayHelper) header = `📚 <b>КОНСТРУКТОР СОЧИНЕНИЙ • ЛАМ</b> ✨\n\n`;
+      else if (isRoast) header = `🔥 <b>ОНИ-ПРОЖАРКА • ЛАМ</b> ⚡\n\n`;
 
       const fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` + header + rawReply;
       await safeSendHtml(ctx, fullReply, ctx.message.message_id);
@@ -507,14 +627,26 @@ bot.on("message:sticker", async (ctx) => {
     try {
       const set = await ctx.api.getStickerSet(sticker.set_name);
       if (set && set.stickers?.length > 0) {
-        const ids = set.stickers.map((s) => s.file_id);
-        saveStickers(ids);
+        const items = set.stickers.map((s) => ({
+          file_id: s.file_id,
+          emoji: s.emoji || "",
+          category: categorizeEmoji(s.emoji),
+        }));
+        saveStickers(items);
       }
     } catch (e) {
-      saveStickers([sticker.file_id]);
+      saveStickers([{
+        file_id: sticker.file_id,
+        emoji: sticker.emoji || "",
+        category: categorizeEmoji(sticker.emoji),
+      }]);
     }
   } else {
-    saveStickers([sticker.file_id]);
+    saveStickers([{
+      file_id: sticker.file_id,
+      emoji: sticker.emoji || "",
+      category: categorizeEmoji(sticker.emoji),
+    }]);
   }
 
   let fileIdToAnalyze = sticker.file_id;
@@ -703,6 +835,171 @@ bot.on("message:text", async (ctx) => {
       `<i>«БЗ-З-З-Т! Получай заряд бодрости от они-принцессы! В следующий раз не балуйся >w<»</i>`,
       { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
     );
+    return;
+  }
+
+  // 4.1. Дуэль молний между одноклассниками (/duel @username или "дуэль")
+  const isDuelRequest = /^(дуэль|вызываю на дуэль|\/duel)\b/i.test(text);
+  if (isDuelRequest) {
+    const challenger = ctx.from?.first_name || "Игрок 1";
+    let defender = "случайный соперник";
+    if (ctx.message.reply_to_message?.from?.first_name) {
+      defender = ctx.message.reply_to_message.from.first_name;
+    } else {
+      const matchTarget = text.replace(/^(дуэль|вызываю на дуэль|\/duel)\s*/i, "").trim();
+      if (matchTarget) defender = matchTarget;
+    }
+
+    const hp1 = Math.floor(Math.random() * 40) + 60;
+    const hp2 = Math.floor(Math.random() * 40) + 60;
+    const winner = Math.random() > 0.5 ? challenger : defender;
+    const volts = Math.floor(Math.random() * 900 + 100) * 1000;
+
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `⚡⚡⚡ <b>БИТВА ОНИ-МОЛНИЙ НА АРЕНЕ ЛАМ!</b> ⚡⚡⚡\n\n` +
+      `💥 <b>${escapeHtml(challenger)}</b> (⚔️ ${hp1} HP)  VS  <b>${escapeHtml(defender)}</b> (🛡️ ${hp2} HP)\n\n` +
+      `⚡ <i>Раунд 1:</i> Заряд искр и прыжок в воздух!\n` +
+      `⚡ <i>Раунд 2:</i> Ударная волна <b>${volts.toLocaleString()} ВОЛЬТ</b> сотрясает арену!\n` +
+      `🏆 <b>ПОБЕДИТЕЛЬ ДУЭЛИ:</b> 👑 <b>${escapeHtml(winner)}</b>!\n\n` +
+      `<i>«БЗ-З-З-Т! Проигравший получает утешительный разряд по пяткам! В следующий раз тренируйтесь лучше >w<»</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+    return;
+  }
+
+  // 4.2. Рулетка молний в чате класса (/roulette или "рулетка")
+  const isRouletteRequest = /^(рулетка|русская рулетка|\/roulette)\b/i.test(text);
+  if (isRouletteRequest) {
+    const targets = [
+      "кто не выучил уроки",
+      "кто забыл сменку",
+      "кто сидит в телефоне на первой парте",
+      "кто не сдал тетрадь",
+      "дежурный по классу",
+      ctx.from?.first_name || "ты",
+    ];
+    const chosen = targets[Math.floor(Math.random() * targets.length)];
+    const penalties = [
+      "решить 5 уравнений у доски",
+      "принести шоколадку Лам",
+      "выучить стихотворение",
+      "сделать 10 приседаний",
+    ];
+    const penalty = penalties[Math.floor(Math.random() * penalties.length)];
+
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `🎰 <b>ОНИ-РУЛЕТКА МОЛНИЙ В КЛАССЕ!</b> ⚡\n\n` +
+      `Барабан крутится... разряд наготове... ⚡💥\n` +
+      `🎯 <b>Молния ударила в:</b> <b>${escapeHtml(chosen)}</b>!\n` +
+      `📝 <b>Наказание от они-принцессы:</b> <i>${penalty}</i>!\n\n` +
+      `<i>«БЗ-З-Т! Не спорьте с Лам, а то добавлю 200 000 вольт >w<»</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+    return;
+  }
+
+  // 4.3. Они-Прожарка одноклассника (/roast @username или "прожарь @username")
+  const isRoastRequest = /^(прожарь|прожарка|\/roast)\b/i.test(text);
+  if (isRoastRequest) {
+    let target = ctx.message.reply_to_message?.from?.first_name;
+    if (!target) {
+      target = text.replace(/^(прожарь|прожарка|\/roast)\s*/i, "").trim();
+    }
+    if (!target) target = ctx.from?.first_name || "друг";
+
+    await handleIncoming(ctx, {
+      userText: `Сделай забавную, дерзкую и добрую они-прожарку для ${target} в стиле Лам из аниме Urusei Yatsura. Подколи с юмором, без мата и грубости, упомяни школу или уроки!`,
+      isRoast: true,
+    });
+    return;
+  }
+
+  // 4.4. Интерактивный Telegram Quiz Poll (/quiz [тема] или "квиз [тема]")
+  const isQuizRequest = /^(квиз|викторина|тест|протестируй меня|\/quiz)\b/i.test(text);
+  if (isQuizRequest) {
+    let topic = text.replace(/^(квиз|викторина|тест|протестируй меня|\/quiz)[:\s]*/i, "").trim();
+    if (!topic) topic = "общие школьные знания и логика";
+
+    await ctx.api.sendChatAction(ctx.chat.id, "typing");
+    const quizData = await generateQuizPoll(topic);
+    if (quizData) {
+      try {
+        await ctx.replyWithPoll(
+          `⚡ [${topic.toUpperCase()}] ${quizData.question}`,
+          quizData.options,
+          {
+            type: "quiz",
+            correct_option_id: quizData.correct_id,
+            explanation: quizData.explanation || "Правильный ответ от они-принцессы Лам! ⚡",
+            is_anonymous: false,
+            reply_to_message_id: ctx.message.message_id,
+          }
+        );
+        return;
+      } catch (err) {
+        console.warn("Poll send failed:", err.message);
+      }
+    }
+    await ctx.reply(
+      "Ой, Дарлинг, не смогла собрать вопросы для квиза! Попробуй уточнить тему, например: <code>/quiz столицы мира</code> или <code>/quiz законы физики</code>",
+      { parse_mode: "HTML" }
+    );
+    return;
+  }
+
+  // 4.5. Нейро-Шпаргалка ("шпора: [тема]", "/cheat [тема]")
+  const isCheatSheetRequest = /^(шпора|сделай шпору|напиши шпору|микрошпора|\/cheat)\b/i.test(text);
+  if (isCheatSheetRequest) {
+    const topic = text.replace(/^(шпора|сделай шпору|напиши шпору|микрошпора|\/cheat)[:\s]*/i, "").trim();
+    if (!topic) {
+      await ctx.reply(
+        "Дарлинг, напиши тему для шпоры! Например: <code>шпора: Вторая мировая война</code> или <code>шпора: формулы по физике 8 класс</code> >w<",
+        { parse_mode: "HTML" }
+      );
+      return;
+    }
+    await handleIncoming(ctx, {
+      userText: topic,
+      isCheatSheet: true,
+    });
+    return;
+  }
+
+  // 4.6. Нейро-Кодер для информатики ("код: [задача]", "/code [задача]")
+  const isCodeRequest = /^(код|напиши код|реши задачу на python|реши код|\/code)\b/i.test(text);
+  if (isCodeRequest) {
+    const task = text.replace(/^(код|напиши код|реши задачу на python|реши код|\/code)[:\s]*/i, "").trim();
+    if (!task) {
+      await ctx.reply(
+        "Дарлинг, напиши задачу для кода! Например: <code>код: быстрая сортировка на python</code> или <code>код: бинарный поиск на C++</code> >w<",
+        { parse_mode: "HTML" }
+      );
+      return;
+    }
+    await handleIncoming(ctx, {
+      userText: task,
+      isCodeSolver: true,
+    });
+    return;
+  }
+
+  // 4.7. Конструктор сочинений и эссе ("сочинение: [тема]", "/essay [тема]")
+  const isEssayRequest = /^(сочинение|план сочинения|эссе|план эссе|\/essay)\b/i.test(text);
+  if (isEssayRequest) {
+    const topic = text.replace(/^(сочинение|план сочинения|эссе|план эссе|\/essay)[:\s]*/i, "").trim();
+    if (!topic) {
+      await ctx.reply(
+        "Дарлинг, напиши тему сочинения! Например: <code>сочинение: Тема любви в романе Дубровский</code> >w<",
+        { parse_mode: "HTML" }
+      );
+      return;
+    }
+    await handleIncoming(ctx, {
+      userText: topic,
+      isEssayHelper: true,
+    });
     return;
   }
 
@@ -1062,11 +1359,27 @@ bot.on("message:photo", async (ctx) => {
   });
 });
 
-// Голосовые сообщения (с автоматической расшифровкой в текст под спойлер)
+// Голосовые сообщения (с автоматической сверхбыстрой расшифровкой через Groq Whisper)
 bot.on("message:voice", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
+  await ctx.api.sendChatAction(ctx.chat.id, "typing");
+
+  let fastTranscript = null;
+  if (groqPool.size > 0) {
+    try {
+      const file = await bot.api.getFile(ctx.message.voice.file_id);
+      const fileUrl = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
+      const res = await fetch(fileUrl);
+      const arrayBuf = await res.arrayBuffer();
+      fastTranscript = await transcribeAudioGroq(Buffer.from(arrayBuf), "voice.ogg");
+    } catch (e) {
+      console.warn("Groq Whisper voice error:", e.message);
+    }
+  }
+
   await handleIncoming(ctx, {
-    userText: ctx.message.caption,
+    userText: fastTranscript || ctx.message.caption,
+    preTranscribed: fastTranscript,
     fileId: ctx.message.voice.file_id,
     mimeType: ctx.message.voice.mime_type || "audio/ogg",
     fallbackText: "[Дарлинг записал тебе голосовое сообщение]",
@@ -1075,10 +1388,27 @@ bot.on("message:voice", async (ctx) => {
   });
 });
 
-// Кружочки (видео-сообщения с расшифровкой под спойлер)
+// Кружочки (видео-сообщения со сверхбыстрой расшифровкой)
 bot.on("message:video_note", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
+  await ctx.api.sendChatAction(ctx.chat.id, "typing");
+
+  let fastTranscript = null;
+  if (groqPool.size > 0) {
+    try {
+      const file = await bot.api.getFile(ctx.message.video_note.file_id);
+      const fileUrl = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
+      const res = await fetch(fileUrl);
+      const arrayBuf = await res.arrayBuffer();
+      fastTranscript = await transcribeAudioGroq(Buffer.from(arrayBuf), "video.mp4");
+    } catch (e) {
+      console.warn("Groq Whisper video_note error:", e.message);
+    }
+  }
+
   await handleIncoming(ctx, {
+    userText: fastTranscript,
+    preTranscribed: fastTranscript,
     fileId: ctx.message.video_note.file_id,
     mimeType: "video/mp4",
     fallbackText: "[Дарлинг записал тебе видео-кружочек]",

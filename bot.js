@@ -61,11 +61,16 @@ const bot = new Bot(token);
 
 let ai = null;
 if (geminiKey) {
-  ai = new GoogleGenAI({ apiKey: geminiKey });
+  ai = new GoogleGenAI({
+    apiKey: geminiKey,
+    httpOptions: {
+      retryOptions: { attempts: 1 },
+    },
+  });
 }
 
-// Модели с автоматическим переключением при лимитах
-const MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-flash-latest"];
+// Модели с автоматическим параллельным выбором быстрейшей
+const MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest"];
 
 // Сохранение стикеров
 const STICKERS_FILE = path.join(__dirname, "lum_stickers.json");
@@ -97,7 +102,7 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоцио�
 
 ПРАВИЛА ОБЩЕНИЯ:
 1. РЕАКЦИИ НА СООБЩЕНИЯ:
-   В самом начале ответа можешь выбрать ОДНУ эмодзи-реакцию в теге [REACT:эмодзи].
+   Иногда (редко) можешь в начале ответа указать [REACT:эмодзи].
    Доступные эмодзи: ❤️, 🥰, 😍, 💋, 💘, 🔥, 🎉, 🤩, 💯, ✨, 🤣, 😁, 🤪, ⚡, 😈, 👀, 🌚, 🥺, 😢, 💔, 😭, 😎, 🆒, 👏, 🫡
    Пример: [REACT:🤣] ахахах ну ты лицо скорчил конечно)
 
@@ -138,35 +143,56 @@ async function downloadAsBase64(fileId) {
   return Buffer.from(arrayBuf).toString("base64");
 }
 
-// Генерация через Gemini с отказоустойчивостью и таймаутом
+// Ультра-быстрая параллельная генерация через Gemini без задержек
 async function generateGemini(contents, customConfig = {}) {
   if (!ai) return null;
 
-  for (const model of MODELS) {
-    try {
-      const timeoutMs = customConfig.timeoutMs || 7000;
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout")), timeoutMs)
-      );
+  const timeoutMs = customConfig.timeoutMs || 4500;
+  const maxTokens = customConfig.maxOutputTokens || 120;
 
-      const requestPromise = ai.models.generateContent({
-        model: model,
-        contents: contents,
-        config: {
-          systemInstruction: LUM_SYSTEM_PROMPT,
-          maxOutputTokens: customConfig.maxOutputTokens || 150,
-          ...customConfig,
-        },
-      });
-
-      const response = await Promise.race([requestPromise, timeoutPromise]);
-      if (response && response.text) {
-        return response.text.trim();
-      }
-    } catch (err) {
-      console.warn(`Модель ${model} не ответила (${err.message}), переключаем...`);
+  const fetchFromModel = async (modelName) => {
+    const res = await ai.models.generateContent({
+      model: modelName,
+      contents: contents,
+      config: {
+        systemInstruction: LUM_SYSTEM_PROMPT,
+        maxOutputTokens: maxTokens,
+        ...customConfig,
+      },
+    });
+    if (res && res.text) {
+      return res.text.trim();
     }
+    throw new Error("Empty");
+  };
+
+  try {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
+    );
+
+    // Параллельный запуск — берем модель, ответившую первой!
+    const fastestResponse = await Promise.race([
+      Promise.any(MODELS.map((m) => fetchFromModel(m))),
+      timeoutPromise,
+    ]);
+
+    if (fastestResponse) {
+      return fastestResponse;
+    }
+  } catch (err) {
+    console.warn("Параллельная генерация не удалась вовремя:", err.message);
   }
+
+  // Резервный одиночный запрос
+  try {
+    const backupRes = await Promise.race([
+      fetchFromModel("gemini-flash-latest"),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000)),
+    ]);
+    if (backupRes) return backupRes;
+  } catch (e) {}
+
   return null;
 }
 
@@ -232,14 +258,10 @@ async function handleIncoming(
   const history = getHistory(chatId);
   if (ctx.from) recordInteraction(ctx.from.id);
 
-  try {
-    await ctx.react("⚡");
-  } catch (e) {}
-
   await ctx.api.sendChatAction(chatId, "typing");
   const typingInterval = setInterval(() => {
     ctx.api.sendChatAction(chatId, "typing").catch(() => {});
-  }, 4000);
+  }, 3500);
 
   try {
     let promptText = userText || fallbackText || "Посмотри это:";
@@ -371,21 +393,28 @@ ${userText}
 
     if (!rawReply) {
       history.pop();
+      const naturalFallbacks = [
+        "Дарлинг, я тут с тобой! 💕 Мои радары на секунду заискрили >w< О чём ты говорил?",
+        "Ахах, я тут! ✨ Отвлеклась на секундочку на свои антенны. Рассказывай дальше, Дарлинг, я вся во внимании!",
+        "Ой, космическая связь чуть забарахлила! Но я рядом с тобой, Дарлинг 💕 Повтори ещё разок~",
+      ];
       if (isSticker) {
-        rawReply = "[REACT:🥰] ой, ахах, это же я на стикере! Какая милота >w<";
+        rawReply = "ой, ахах, это же я на стикере! Какая милота >w<";
       } else {
-        rawReply = "Дарлинг, я тут с тобой! 💕 Рассказывай дальше~";
+        rawReply = naturalFallbacks[Math.floor(Math.random() * naturalFallbacks.length)];
       }
     }
 
-    // Извлекаем умную реакцию
+    // Извлекаем реакцию, но ставим её РЕДКО (только в 25% случаев, чтобы не спамить!)
     const reactMatch = rawReply.match(/^\[REACT:([^\]]+)\]\s*/i);
     if (reactMatch) {
       const emoji = reactMatch[1].trim();
       rawReply = rawReply.replace(reactMatch[0], "").trim();
-      try {
-        await ctx.react(emoji);
-      } catch (e) {}
+      if (Math.random() < 0.25) {
+        try {
+          await ctx.react(emoji);
+        } catch (e) {}
+      }
     }
 
     // Извлекаем расшифровку голоса для бесплатного Telegram Premium
@@ -498,14 +527,49 @@ bot.on("message:sticker", async (ctx) => {
 bot.on("message:text", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
   const text = ctx.message.text.trim();
+
+  // 0. Мгновенный ответ на вопрос "чему ты научилась", "что ты умеешь", "команды" (без задержек!)
+  const isHelpOrCapabilities = /(что ты умеешь|чему ты научилась|чемы ты научилась|чему научилась|что умеешь|твои команды|покажи команды|твои функции|список команд|расскажи что ты умеешь|помощь)/i.test(
+    text
+  );
+  if (isHelpOrCapabilities) {
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `⚡ <b>ВОТ ВСЕ МОИ СУПЕРСПОСОБНОСТИ, ДАРЛИНГ!</b> 💚✨\n\n` +
+      `🎬 <b>Загрузчик медиа</b> — скинь ссылку TikTok, Reels, YouTube, Pinterest\n` +
+      `🎙 <b>Telegram Premium расшифровка</b> — отправь голосовое или кружочек, я переведу речь в текст под спойлер!\n` +
+      `🕵️ <b>Нейро-Детектив переписок</b> — скриншот переписки: <i>«что ответить?»</i> (подтекст + 3 варианта!)\n` +
+      `📚 <b>Нейро-АнтиГДЗ</b> — фото задачи или <i>«реши: [уравнение]»</i> с подробным решением\n` +
+      `📄 <b>Оцифровщик конспектов</b> — фото тетради со словом <i>«текст»</i> (перепечатаю в текст!)\n` +
+      `🎬 <b>Кино & Аниме радар</b> — <i>«найди фильм где...»</i>, <i>«посоветуй аниме»</i>\n` +
+      `💎 <b>Крипто & Валютный радар</b> — <i>«курс»</i>, <i>«100 долларов в сомах»</i>, <i>«1 btc в usd»</i>\n` +
+      `☀️ <b>Утренний дайджест</b> — <i>«доброе утро»</i> или <i>/morning</i>\n` +
+      `💚 <b>Уровень любви</b> — <i>/love</i> или <i>«профиль»</i>\n` +
+      `⚡ <b>Разряд молнии</b> — <i>«ударь молнией @username»</i>\n` +
+      `🥗 <b>AI Food калории</b> — фото тарелки со словом <i>«калории»</i> (КБЖУ и вес)\n` +
+      `🎨 <b>AI Арт & Стикеры</b> — <i>«нарисуй киберпанк»</i>, <i>«стикер котик»</i>, <i>«аватарка они»</i>\n` +
+      `🎵 <b>Поиск музыки</b> — <i>«найди трек [название]»</i> с обложкой и аудиопревью\n` +
+      `⛅ <b>Метео-радар</b> — <i>«погода в Бишкеке»</i>, <i>«погода в Москве»</i>\n` +
+      `🤓 <b>Поясни за сленг</b> — <i>«поясни за сленг альтушка»</i>\n` +
+      `🌐 <b>Полиглот</b> — <i>«переведи на японский: привет красавица»</i>\n` +
+      `🔮 <b>Шар Судьбы</b> — <i>«шар судьбы стоит ли мне...»</i>\n` +
+      `🎲 <b>Рандом & Кости</b> — <i>«монетка»</i>, <i>«брось кубик»</i>, <i>«рандом 1 100»</i>\n` +
+      `🪐 <b>Космический гороскоп</b> — <i>«гороскоп лев»</i>\n` +
+      `🔐 <b>Крипто-пароли</b> — <i>«пароль 16»</i>\n` +
+      `📱 <b>Генератор QR</b> — <i>«сделай qr [ссылка]»</i>\n` +
+      `⏰ <b>Таймер</b> — <i>«напомни через 20 минут сделать чай»</i>\n` +
+      `📝 <b>Саммари</b> — <i>«кратко: [длинный текст]»</i>\n` +
+      `🥰 <b>Живые стикеры</b> и милое общение 💕\n\n` +
+      `<i>Просто напиши мне любую из этих команд! >w<</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+    return;
+  }
+
   const detectedUrl = extractUrl(text);
 
   // 1. Скачивание видео (TikTok, YouTube, Pinterest, X/Twitter, Instagram)
   if (detectedUrl && isVideoUrl(detectedUrl)) {
-    try {
-      await ctx.react("⚡");
-    } catch (e) {}
-
     const statusMsg = await ctx.reply("секундочку, Дарлинг, уже вытаскиваю видео для тебя~ >w<");
     await ctx.api.sendChatAction(ctx.chat.id, "upload_video");
 
@@ -572,10 +636,6 @@ bot.on("message:text", async (ctx) => {
   // 2. Утренний дайджест (/morning или "доброе утро")
   const isMorningRequest = /^(доброе утро|утренний дайджест|\/morning)\b/i.test(text);
   if (isMorningRequest) {
-    try {
-      await ctx.react("☀️");
-    } catch (e) {}
-
     const digest = await getMorningDigest("Бишкек", "близнецы");
     await safeSendHtml(ctx, digest, ctx.message.message_id);
     return;
@@ -584,10 +644,6 @@ bot.on("message:text", async (ctx) => {
   // 3. Уровень любви и RPG-профиль (/love или "профиль", "уровень любви")
   const isLoveRequest = /^(уровень любви|наша любовь|профиль|статус|\/love)\b/i.test(text);
   if (isLoveRequest) {
-    try {
-      await ctx.react("💚");
-    } catch (e) {}
-
     const stats = recordInteraction(ctx.from.id);
     const bar = renderProgressBar(stats.loveLevel);
     await ctx.reply(
@@ -659,10 +715,6 @@ bot.on("message:text", async (ctx) => {
   // 8. Конвертер конкретной валюты ("100 долларов в сомах", "1 btc в usd", "5000 рублей в сомах")
   const conversion = await convertCurrencyQuery(text);
   if (conversion) {
-    try {
-      await ctx.react("⚡");
-    } catch (e) {}
-
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `💱 <b>LUM • КУРСОВОЙ КОНВЕРТЕР</b> ✨\n\n` +
@@ -678,10 +730,6 @@ bot.on("message:text", async (ctx) => {
     text
   );
   if (isMarketRequest) {
-    try {
-      await ctx.react("💎");
-    } catch (e) {}
-
     const market = await getLiveMarketRates();
     if (market) {
       const { crypto: c, rates: r } = market;
@@ -713,10 +761,6 @@ bot.on("message:text", async (ctx) => {
     text
   );
   if (isImageRequest) {
-    try {
-      await ctx.react("🎨");
-    } catch (e) {}
-
     const statusMsg = await ctx.reply("🎨 <i>секундочку, Дарлинг, уже рисую шедевр для тебя...</i> >w<", {
       parse_mode: "HTML",
     });
@@ -747,10 +791,6 @@ bot.on("message:text", async (ctx) => {
   // 11. Поиск музыки и превью
   const isMusicRequest = /^(найди трек|найди песню|скинь трек|скинь песню|найди музыку|\/music|\/song)\b/i.test(text);
   if (isMusicRequest) {
-    try {
-      await ctx.react("🎵");
-    } catch (e) {}
-
     const statusMsg = await ctx.reply("🎵 <i>секундочку, Дарлинг, ищу трек для твоих ушек...</i>", {
       parse_mode: "HTML",
     });
@@ -794,10 +834,6 @@ bot.on("message:text", async (ctx) => {
   // 12. Умные напоминания
   const reminder = parseReminderRequest(text);
   if (reminder) {
-    try {
-      await ctx.react("⏰");
-    } catch (e) {}
-
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n⏰ <b>Договорились, Дарлинг!</b>\n\nЯ напомню тебе ровно через <b>${reminder.count} ${reminder.unitName}</b>:\n👉 <i>«${escapeHtml(reminder.reminderText)}»</i>\n\n<i>Не переживай, я ни за что не забуду! >w<</i>`,
       { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
@@ -821,10 +857,6 @@ bot.on("message:text", async (ctx) => {
   // 13. Метео-радар (Живая погода)
   const isWeatherRequest = /^(погода в|погода|какая погода в|какая погода|\/weather)\b/i.test(text);
   if (isWeatherRequest) {
-    try {
-      await ctx.react("🌤");
-    } catch (e) {}
-
     const weather = await getLiveWeather(text);
     if (weather) {
       await ctx.reply(
@@ -843,10 +875,6 @@ bot.on("message:text", async (ctx) => {
   // 14. Магический Шар 8-Ball от Лам
   const is8BallRequest = /^(шар судьбы|магический шар|шар|8ball|\/8ball|правда ли|стоит ли|ответь да или нет)\b/i.test(text);
   if (is8BallRequest) {
-    try {
-      await ctx.react("🔮");
-    } catch (e) {}
-
     const ball = askMagic8Ball(text);
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
@@ -863,10 +891,6 @@ bot.on("message:text", async (ctx) => {
   // 15. Бросок монетки, костей или случайного числа
   const diceOrCoin = rollDiceOrCoin(text);
   if (diceOrCoin) {
-    try {
-      await ctx.react("🎲");
-    } catch (e) {}
-
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `⚡ <b>LUM • RANDOM ENGINE</b> 🎲\n\n` +
@@ -880,10 +904,6 @@ bot.on("message:text", async (ctx) => {
   // 16. Космический Гороскоп
   const isHoroscopeRequest = /^(гороскоп|мой гороскоп|астропрогноз|\/horoscope)\b/i.test(text);
   if (isHoroscopeRequest) {
-    try {
-      await ctx.react("✨");
-    } catch (e) {}
-
     const h = getDailyHoroscope(text);
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
@@ -900,10 +920,6 @@ bot.on("message:text", async (ctx) => {
   // 17. Генератор надежных паролей
   const isPasswordRequest = /^(пароль|сгенерируй пароль|придумай пароль|новый пароль|\/password)\b/i.test(text);
   if (isPasswordRequest) {
-    try {
-      await ctx.react("🔐");
-    } catch (e) {}
-
     const p = generateSecurePassword(text);
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
@@ -923,10 +939,6 @@ bot.on("message:text", async (ctx) => {
   if (isQrRequest) {
     const qr = getQrCodeUrl(text);
     if (qr) {
-      try {
-        await ctx.react("⚡");
-      } catch (e) {}
-
       await ctx.replyWithPhoto(qr.qrUrl, {
         caption:
           `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
@@ -945,10 +957,6 @@ bot.on("message:text", async (ctx) => {
   if (isWikiRequest) {
     const wiki = await getWikiSummary(text);
     if (wiki) {
-      try {
-        await ctx.react("💡");
-      } catch (e) {}
-
       const captionText =
         `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
         `📖 <b>${escapeHtml(wiki.title)}</b>\n\n` +

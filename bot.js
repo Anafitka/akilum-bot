@@ -22,6 +22,10 @@ const {
   askMagic8Ball,
   rollDiceOrCoin,
   getDailyHoroscope,
+  getMorningDigest,
+  recordInteraction,
+  recordLightningBolt,
+  renderProgressBar,
 } = require("./features");
 require("dotenv").config();
 
@@ -169,27 +173,35 @@ async function generateGemini(contents, customConfig = {}) {
 // Старт меню со всеми суперспособностями
 bot.command("start", async (ctx) => {
   chatHistories.delete(ctx.chat.id);
+  if (ctx.from) recordInteraction(ctx.from.id);
   await ctx.api.sendChatAction(ctx.chat.id, "typing");
   await ctx.reply(
     `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
     `⚡ <b>ПРИВЕТ, ДАРЛИНГ! Я — ЛАМ!</b> 💚✨\n\n` +
-    `Твоя любимая они-принцесса с ультра-технологиями на борту:\n\n` +
+    `Твоя они-принцесса с ультра-технологиями на борту:\n\n` +
     `🎬 <b>Загрузчик медиа</b> — ссылки TikTok, Reels, YouTube, Pinterest (без водяных знаков!)\n` +
     `🎙 <b>Telegram Premium расшифровка</b> — перевожу голосовые и кружочки в текст под спойлер!\n` +
+    `🕵️ <b>Нейро-Детектив переписок</b> — скриншот переписки: <i>«что ответить?»</i> (подтекст + 3 варианта!)\n` +
+    `📚 <b>Нейро-АнтиГДЗ</b> — фото задачи или <i>«реши: [уравнение]»</i> с подробным решением\n` +
+    `📄 <b>Оцифровщик конспектов</b> — фото тетради с подписью <i>«текст»</i> (перепечатает в текст!)\n` +
+    `🎬 <b>Кино & Аниме радар</b> — <i>«найди фильм где...»</i>, <i>«посоветуй аниме»</i>\n` +
     `💎 <b>Крипто & Валютный радар</b> — <i>«курс»</i>, <i>«100 долларов в сомах»</i>, <i>«1 btc в usd»</i>\n` +
-    `📚 <b>Нейро-АнтиГДЗ</b> — фото задачи или <i>«реши: [задача]»</i> с подробным решением\n` +
-    `🥗 <b>AI Food калории</b> — пришли фото еды со словом «калории», расскажу КБЖУ\n` +
-    `🎨 <b>AI Арт & Стикеры</b> — <i>«нарисуй киберпанк город»</i>, <i>«стикер котик»</i>, <i>«аватарка они»</i>\n` +
+    `☀️ <b>Утренний дайджест</b> — <i>«доброе утро»</i> или <i>/morning</i>\n` +
+    `💚 <b>Уровень любви</b> — <i>/love</i> или <i>«профиль»</i>\n` +
+    `⚡ <b>Разряд молнии</b> — <i>«ударь молнией @username»</i>\n` +
+    `🥗 <b>AI Food калории</b> — фото тарелки со словом <i>«калории»</i> (КБЖУ и вес)\n` +
+    `🎨 <b>AI Арт & Стикеры</b> — <i>«нарисуй киберпанк»</i>, <i>«стикер котик»</i>, <i>«аватарка они»</i>\n` +
     `🎵 <b>Поиск музыки</b> — <i>«найди трек [название]»</i> с обложкой и аудиопревью\n` +
     `⛅ <b>Метео-радар</b> — <i>«погода в Бишкеке»</i>, <i>«погода в Москве»</i>\n` +
+    `🤓 <b>Поясни за сленг</b> — <i>«поясни за сленг альтушка»</i>\n` +
+    `🌐 <b>Полиглот</b> — <i>«переведи на японский: привет красавица»</i>\n` +
     `🔮 <b>Шар Судьбы</b> — <i>«шар судьбы стоит ли мне...»</i>\n` +
     `🎲 <b>Рандом & Кости</b> — <i>«монетка»</i>, <i>«брось кубик»</i>, <i>«рандом 1 100»</i>\n` +
     `🪐 <b>Космический гороскоп</b> — <i>«гороскоп лев»</i>\n` +
     `🔐 <b>Крипто-пароли</b> — <i>«пароль 16»</i>\n` +
     `📱 <b>Генератор QR</b> — <i>«сделай qr [ссылка]»</i>\n` +
-    `📖 <b>Энциклопедия</b> — <i>«что такое сингулярность»</i>\n` +
-    `⏰ <b>Таймер</b> — <i>«напомни через 20 минут сделать чай»</i>\n` +
-    `📝 <b>Саммари текстов</b> — <i>«кратко: [длинная статья]»</i>\n` +
+    `⏰ <b>Таймер</b> — <i>«напомни через 20 минут позвонить»</i>\n` +
+    `📝 <b>Саммари</b> — <i>«кратко: [длинная статья]»</i>\n` +
     `🥰 <b>Живые стикеры</b> и забота о тебе 💕\n\n` +
     `<i>Ну что, какую технологию протестируем первой? >w<</i>`,
     { parse_mode: "HTML" }
@@ -209,10 +221,16 @@ async function handleIncoming(
     voiceType = "",
     isSolve = false,
     isSummary = false,
+    isChatDetective = false,
+    isOcr = false,
+    isMovieFinder = false,
+    isSlangExplainer = false,
+    isTranslator = false,
   }
 ) {
   const chatId = ctx.chat.id;
   const history = getHistory(chatId);
+  if (ctx.from) recordInteraction(ctx.from.id);
 
   try {
     await ctx.react("⚡");
@@ -232,6 +250,44 @@ async function handleIncoming(
 1. В самом начале своего ответа напиши точную дословную расшифровку того, что он сказал, строго в формате:
 [TRANSCRIPT: точный текст того, что сказал Дарлинг]
 2. Затем напиши свой живой, милый ответ как Лам (называй его Дарлинг, реагируй эмоционально и с любовью).`;
+    } else if (isChatDetective) {
+      promptText = `[РЕЖИМ НЕЙРО-ДЕТЕКТИВА ПЕРЕПИСОК]:
+Дарлинг прислал скриншот диалога и просит помочь разобраться.
+Внимательно изучи контекст, тон, смайлики и фразы на скриншоте:
+1. 🧐 <b>Анализ скрытого подтекста:</b> (что на самом деле думает собеседник? флиртует, морозится, ревнует, проявляет интерес или проверяет?)
+2. 💡 <b>3 идеальных варианта ответа:</b>
+   • 😎 <b>Уверенно / Харизматично:</b> «...»
+   • 🥰 <b>Мило / С симпатией:</b> «...»
+   • 🤪 <b>С юмором / С подколом:</b> «...»
+3. ⚡ <b>Совет от Лам:</b> (твое личное они-мнение с легкой ревностью или поддержкой!)`;
+    } else if (isOcr) {
+      promptText = `[РЕЖИМ ОЦИФРОВКИ КОНСПЕКТОВ И ДОКУМЕНТОВ]:
+Внимательно прочитай весь рукописный или печатный текст на этом фото.
+Выведи точный текст, аккуратно разбив на абзацы и списки, чтобы Дарлингу было удобно его скопировать в конспекты.
+Если есть формулы или заголовки — выдели их.
+В самом конце добавь короткую ободряющую реплику от Лам.`;
+    } else if (isMovieFinder) {
+      promptText = `[РЕЖИМ КИНО И АНИМЕ РАДАРА]:
+Запрос Дарлинга: "${userText}".
+Найди точное совпадение или лучший вариант:
+🎬 <b>Название:</b> (Русское + Оригинальное, Год)
+⭐ <b>Рейтинг:</b> (Кинопоиск / IMDb)
+🎭 <b>Жанр:</b> ...
+📖 <b>Сюжет:</b> (емко 2-3 предложения без спойлеров)
+🍿 <b>Почему стоит глянуть:</b> (мнение Лам)`;
+    } else if (isSlangExplainer) {
+      promptText = `[ПОЯСНИТЕЛЬНАЯ БРИГАДА ЛАМ]:
+Запрос Дарлинга: "${userText}".
+Объясни с юмором и точностью значение слова или мема.
+Приведи пример из реальной жизни и как правильно его использовать.
+В конце добавь забавный комментарий от Лам.`;
+    } else if (isTranslator) {
+      promptText = `[РЕЖИМ ПОЛИГЛОТА ЛАМ]:
+${userText}
+Сделай красивый и качественный перевод:
+🌐 <b>Перевод:</b> «...»
+🗣 <b>Транскрипция / Произношение:</b> ...
+💡 <b>Особенности и сленг:</b> ...`;
     } else if (isSolve) {
       promptText = `[РЕЖИМ НЕЙРО-РЕШЕБНИКА АНТИ-ГДЗ]:
 ${userText || "Разбери и реши задание на этом фото"}
@@ -295,7 +351,15 @@ ${userText}
     ];
 
     const configOverrides = {};
-    if (isSolve || isSummary) {
+    if (
+      isSolve ||
+      isSummary ||
+      isChatDetective ||
+      isOcr ||
+      isMovieFinder ||
+      isSlangExplainer ||
+      isTranslator
+    ) {
       configOverrides.maxOutputTokens = 850;
       configOverrides.timeoutMs = 12000;
     } else if (isVoiceOrVideo) {
@@ -358,13 +422,26 @@ ${userText}
       return;
     }
 
-    // Режим решения задач или саммари
-    if (isSolve || isSummary) {
-      const fullReply =
-        `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
-        (isSolve ? `📚 <b>НЕЙРО-РЕШЕБНИК • ЛАМ</b> ⚡\n\n` : `📝 <b>LUM • SMART SUMMARY</b> ✨\n\n`) +
-        rawReply;
+    // Специальные технологические карточки
+    if (
+      isSolve ||
+      isSummary ||
+      isChatDetective ||
+      isOcr ||
+      isMovieFinder ||
+      isSlangExplainer ||
+      isTranslator
+    ) {
+      let header = "";
+      if (isSolve) header = `📚 <b>НЕЙРО-РЕШЕБНИК • ЛАМ</b> ⚡\n\n`;
+      else if (isChatDetective) header = `🕵️ <b>НЕЙРО-ДЕТЕКТИВ ПЕРЕПИСОК • ЛАМ</b> 💕\n\n`;
+      else if (isOcr) header = `📄 <b>ОЦИФРОВЩИК ТЕКСТА • ЛАМ</b> ✨\n\n`;
+      else if (isMovieFinder) header = `🎬 <b>КИНО & АНИМЕ РАДАР • ЛАМ</b> 🍿\n\n`;
+      else if (isSlangExplainer) header = `🤓 <b>ПОЯСНИТЕЛЬНАЯ БРИГАДА • ЛАМ</b> ⚡\n\n`;
+      else if (isTranslator) header = `🌐 <b>ПОЛИГЛОТ • ЛАМ</b> ✨\n\n`;
+      else if (isSummary) header = `📝 <b>LUM • SMART SUMMARY</b> ✨\n\n`;
 
+      const fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` + header + rawReply;
       await safeSendHtml(ctx, fullReply, ctx.message.message_id);
       return;
     }
@@ -384,6 +461,7 @@ ${userText}
 
 // 1. СТИКЕРЫ
 bot.on("message:sticker", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   const sticker = ctx.message.sticker;
 
   if (sticker.set_name) {
@@ -418,6 +496,7 @@ bot.on("message:sticker", async (ctx) => {
 
 // 2. ТЕКСТОВЫЕ СООБЩЕНИЯ И КОМАНДЫ
 bot.on("message:text", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   const text = ctx.message.text.trim();
   const detectedUrl = extractUrl(text);
 
@@ -490,7 +569,94 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 2. Конвертер конкретной валюты ("100 долларов в сомах", "1 btc в usd", "5000 рублей в сомах")
+  // 2. Утренний дайджест (/morning или "доброе утро")
+  const isMorningRequest = /^(доброе утро|утренний дайджест|\/morning)\b/i.test(text);
+  if (isMorningRequest) {
+    try {
+      await ctx.react("☀️");
+    } catch (e) {}
+
+    const digest = await getMorningDigest("Бишкек", "близнецы");
+    await safeSendHtml(ctx, digest, ctx.message.message_id);
+    return;
+  }
+
+  // 3. Уровень любви и RPG-профиль (/love или "профиль", "уровень любви")
+  const isLoveRequest = /^(уровень любви|наша любовь|профиль|статус|\/love)\b/i.test(text);
+  if (isLoveRequest) {
+    try {
+      await ctx.react("💚");
+    } catch (e) {}
+
+    const stats = recordInteraction(ctx.from.id);
+    const bar = renderProgressBar(stats.loveLevel);
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💚 <b>ПРОФИЛЬ ДАРЛИНГА • СВЯЗЬ С ЛАМ</b> ✨\n\n` +
+      `⚡ <b>Статус:</b> <code>Любимый Дарлинг 💕</code>\n` +
+      `💖 <b>Уровень любви:</b> [<code>${bar}</code>] <b>${stats.loveLevel}%</b>\n` +
+      `💬 <b>Сообщений вместе:</b> <code>${stats.count}</code>\n` +
+      `⚡ <b>Выпущено молний:</b> <code>${stats.bolts}</code>\n\n` +
+      `<i>«Дарлинг, ты для меня самый особенный во всей галактике! Никому тебя не отдам >w<»</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+    return;
+  }
+
+  // 4. Удар молнией в друга или в чат
+  const isBoltRequest = /^(ударь молнией|ударить молнией|молния в|удар током|\/bolt)\b/i.test(text);
+  if (isBoltRequest) {
+    try {
+      await ctx.react("⚡");
+    } catch (e) {}
+
+    recordLightningBolt(ctx.from.id);
+    let target = text.replace(/^(ударь молнией|ударить молнией|молния в|удар током|\/bolt)\s*/i, "").trim();
+    if (!target) {
+      target = ctx.message.reply_to_message?.from?.first_name || "цель";
+    }
+
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `⚡⚡⚡ <b>РАЗРЯД 100 000 ВОЛЬТ!</b> ⚡⚡⚡\n\n` +
+      `Лам взлетает в воздух с горящими глазами и направляет ослепительную молнию прямо в <b>${escapeHtml(target)}</b>! ⚡💥\n\n` +
+      `<i>«БЗ-З-З-Т! Получай заряд бодрости от они-принцессы! В следующий раз не балуйся >w<»</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+    return;
+  }
+
+  // 5. Кино & Аниме радар
+  const isMovieRequest = /^(найди фильм|найди аниме|посоветуй фильм|посоветуй аниме|фильм где|аниме где|что посмотреть|\/movie|\/anime)\b/i.test(text);
+  if (isMovieRequest) {
+    await handleIncoming(ctx, {
+      userText: text,
+      isMovieFinder: true,
+    });
+    return;
+  }
+
+  // 6. Пояснительная бригада (Зумерский сленг)
+  const isSlangRequest = /^(поясни за сленг|что значит|поясни за|поясни мне за)\b/i.test(text);
+  if (isSlangRequest) {
+    await handleIncoming(ctx, {
+      userText: text,
+      isSlangExplainer: true,
+    });
+    return;
+  }
+
+  // 7. Полиглот (Умный переводчик)
+  const isTranslateRequest = /^(переведи на|перевод на|translate to)\b/i.test(text);
+  if (isTranslateRequest) {
+    await handleIncoming(ctx, {
+      userText: text,
+      isTranslator: true,
+    });
+    return;
+  }
+
+  // 8. Конвертер конкретной валюты ("100 долларов в сомах", "1 btc в usd", "5000 рублей в сомах")
   const conversion = await convertCurrencyQuery(text);
   if (conversion) {
     try {
@@ -507,7 +673,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 3. Криптовалютный & Валютный рынок (Общий радар)
+  // 9. Криптовалютный & Валютный рынок (Общий радар)
   const isMarketRequest = /^(курс валют|курс доллара|курс биткоина|крипта|криптовалюта|котировки|\/crypto|\/rates|\/currency)\b|^курс$/i.test(
     text
   );
@@ -542,7 +708,7 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 4. Генератор артов, стикеров, аватарок и мемов (Pollinations Flux AI)
+  // 10. Генератор артов, стикеров, аватарок и мемов (Pollinations Flux AI)
   const isImageRequest = /^(нарисуй|сгенерируй фото|сгенерируй арт|сделай арт|создай фото|нарисуй мне|стикер|аватарка|аватарку|мем|\/art|\/draw|\/img)\b/i.test(
     text
   );
@@ -578,7 +744,7 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 5. Поиск музыки и превью
+  // 11. Поиск музыки и превью
   const isMusicRequest = /^(найди трек|найди песню|скинь трек|скинь песню|найди музыку|\/music|\/song)\b/i.test(text);
   if (isMusicRequest) {
     try {
@@ -625,7 +791,7 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 6. Умные напоминания
+  // 12. Умные напоминания
   const reminder = parseReminderRequest(text);
   if (reminder) {
     try {
@@ -652,7 +818,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 7. Метео-радар (Живая погода)
+  // 13. Метео-радар (Живая погода)
   const isWeatherRequest = /^(погода в|погода|какая погода в|какая погода|\/weather)\b/i.test(text);
   if (isWeatherRequest) {
     try {
@@ -674,7 +840,7 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 8. Магический Шар 8-Ball от Лам
+  // 14. Магический Шар 8-Ball от Лам
   const is8BallRequest = /^(шар судьбы|магический шар|шар|8ball|\/8ball|правда ли|стоит ли|ответь да или нет)\b/i.test(text);
   if (is8BallRequest) {
     try {
@@ -694,7 +860,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 9. Бросок монетки, костей или случайного числа
+  // 15. Бросок монетки, костей или случайного числа
   const diceOrCoin = rollDiceOrCoin(text);
   if (diceOrCoin) {
     try {
@@ -711,7 +877,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 10. Космический Гороскоп
+  // 16. Космический Гороскоп
   const isHoroscopeRequest = /^(гороскоп|мой гороскоп|астропрогноз|\/horoscope)\b/i.test(text);
   if (isHoroscopeRequest) {
     try {
@@ -731,7 +897,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 11. Генератор надежных паролей
+  // 17. Генератор надежных паролей
   const isPasswordRequest = /^(пароль|сгенерируй пароль|придумай пароль|новый пароль|\/password)\b/i.test(text);
   if (isPasswordRequest) {
     try {
@@ -752,7 +918,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 12. Генератор QR-кодов
+  // 18. Генератор QR-кодов
   const isQrRequest = /^(сделай qr|создай qr|qr-код|qr|\/qr)\b/i.test(text);
   if (isQrRequest) {
     const qr = getQrCodeUrl(text);
@@ -774,7 +940,7 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 13. Википедия (Эрудит)
+  // 19. Википедия (Эрудит)
   const isWikiRequest = /^(что такое|кто такой|кто такая|википедия|\/wiki)\b/i.test(text);
   if (isWikiRequest) {
     const wiki = await getWikiSummary(text);
@@ -808,7 +974,7 @@ bot.on("message:text", async (ctx) => {
     }
   }
 
-  // 14. Саммаризатор текста
+  // 20. Саммаризатор текста
   const isSummaryRequest = /^(кратко:|перескажи:|саммари:|выжимка:|\/summary)\b/i.test(text);
   if (isSummaryRequest) {
     await handleIncoming(ctx, {
@@ -818,7 +984,7 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 15. Нейро-Решебник задач АнтиГДЗ
+  // 21. Нейро-Решебник задач АнтиГДЗ
   const isSolveRequest = /^(реши задачу|реши уравнение|помоги решить|реши:|реши|\/solve)\b/i.test(text);
   if (isSolveRequest) {
     await handleIncoming(ctx, {
@@ -832,12 +998,16 @@ bot.on("message:text", async (ctx) => {
   await handleIncoming(ctx, { userText: text });
 });
 
-// Фотографии (с поддержкой АнтиГДЗ и анализа калорий)
+// Фотографии (с поддержкой АнтиГДЗ, Детектива переписок, OCR и анализа калорий)
 bot.on("message:photo", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   const photo = ctx.message.photo[ctx.message.photo.length - 1];
   const caption = ctx.message.caption || "";
+
   const isSolve = /реши|дз|домашка|задач|уравнени|помоги|\/solve/i.test(caption);
   const isFood = /калори|еда|блюдо|съел|тарелк|кбжу/i.test(caption);
+  const isChatDetective = /переписк|скрин|что ответить|что она имел|что он имел|как ответить|намёк|намек|флирт|помоги ответить/i.test(caption);
+  const isOcr = /конспект|текст|сканируй|распознай|перепечатай|ocr|сфоткал тетрадь/i.test(caption);
 
   let fallback = "Я прислал тебе фото, посмотри!";
   if (isFood) {
@@ -855,11 +1025,14 @@ bot.on("message:photo", async (ctx) => {
     mimeType: "image/jpeg",
     fallbackText: fallback,
     isSolve: isSolve,
+    isChatDetective: isChatDetective,
+    isOcr: isOcr,
   });
 });
 
 // Голосовые сообщения (с автоматической расшифровкой в текст под спойлер)
 bot.on("message:voice", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   await handleIncoming(ctx, {
     userText: ctx.message.caption,
     fileId: ctx.message.voice.file_id,
@@ -872,6 +1045,7 @@ bot.on("message:voice", async (ctx) => {
 
 // Кружочки (видео-сообщения с расшифровкой под спойлер)
 bot.on("message:video_note", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   await handleIncoming(ctx, {
     fileId: ctx.message.video_note.file_id,
     mimeType: "video/mp4",
@@ -883,6 +1057,7 @@ bot.on("message:video_note", async (ctx) => {
 
 // Видео
 bot.on("message:video", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   await handleIncoming(ctx, {
     userText: ctx.message.caption,
     fileId: ctx.message.video.file_id,
@@ -893,6 +1068,7 @@ bot.on("message:video", async (ctx) => {
 
 // Аудио
 bot.on("message:audio", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   await handleIncoming(ctx, {
     userText: ctx.message.caption,
     fileId: ctx.message.audio.file_id,
@@ -905,6 +1081,7 @@ bot.on("message:audio", async (ctx) => {
 
 // Документы
 bot.on("message:document", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
   const doc = ctx.message.document;
   await handleIncoming(ctx, {
     userText: ctx.message.caption,

@@ -487,6 +487,106 @@ function getDailyHoroscope(text) {
   };
 }
 
+/**
+ * 12. Комплексный утренний дайджест (/morning)
+ */
+async function getMorningDigest(city = "Бишкек", sign = "близнецы") {
+  const [weather, market] = await Promise.all([
+    getLiveWeather(city || "Бишкек"),
+    getLiveMarketRates(),
+  ]);
+  const horoscope = getDailyHoroscope(sign || "близнецы");
+
+  let weatherBlock = "⛅ <b>Погода:</b> <i>Не удалось получить данные с радара</i>";
+  if (weather) {
+    const signPrefix = weather.temp > 0 ? "+" : "";
+    weatherBlock =
+      `⛅ <b>Погода в ${weather.city}:</b> <code>${signPrefix}${weather.temp}°C</code>, <i>${weather.condition}</i>\n` +
+      `└ <i>${weather.advice}</i>`;
+  }
+
+  let marketBlock = "";
+  if (market) {
+    const { crypto: c, rates: r } = market;
+    marketBlock =
+      `💎 <b>Финансовый пульс:</b>\n` +
+      `├ ₿ BTC: <code>$${c.BTC.toLocaleString("en-US")}</code> | 💎 TON: <code>$${c.TON.toFixed(2)}</code>\n` +
+      `└ 💵 USD: <code>${r.KGS.toFixed(2)} KGS</code> | <code>${r.RUB.toFixed(2)} RUB</code>`;
+  }
+
+  return (
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `☀️ <b>ДОБРОЕ УТРО, ДАРЛИНГ!</b> 💚✨\n\n` +
+    `Твой утренний космический дайджест готов:\n\n` +
+    weatherBlock + "\n\n" +
+    (marketBlock ? marketBlock + "\n\n" : "") +
+    `🪐 <b>Гороскоп дня (${horoscope.sign}):</b>\n` +
+    `├ ⚡ Энергия: <code>${horoscope.energy}%</code> | 🍀 Число удачи: <code>${horoscope.luckyNum}</code>\n` +
+    `└ 💬 <i>«${horoscope.advice}»</i>\n\n` +
+    `<i>Просыпайся, потягивайся и вперёд покорять мир! Я всегда рядом с тобой 💕</i>`
+  );
+}
+
+/**
+ * 13. RPG-профиль отношений с Лам и статистика молний
+ */
+const USER_STATS_FILE = path.join(__dirname, "user_stats.json");
+let userStatsCache = null;
+
+function loadUserStats() {
+  if (userStatsCache) return userStatsCache;
+  try {
+    if (fs.existsSync(USER_STATS_FILE)) {
+      userStatsCache = JSON.parse(fs.readFileSync(USER_STATS_FILE, "utf-8"));
+    } else {
+      userStatsCache = {};
+    }
+  } catch (e) {
+    userStatsCache = {};
+  }
+  return userStatsCache;
+}
+
+function saveUserStats() {
+  try {
+    fs.writeFileSync(USER_STATS_FILE, JSON.stringify(userStatsCache || {}, null, 2));
+  } catch (e) {
+    console.error("Ошибка сохранения статистики:", e.message);
+  }
+}
+
+function recordInteraction(userId) {
+  const stats = loadUserStats();
+  const id = String(userId);
+  if (!stats[id]) {
+    stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
+  }
+  stats[id].count += 1;
+  if (stats[id].count % 2 === 0 && stats[id].loveLevel < 100) {
+    stats[id].loveLevel += 1;
+  }
+  saveUserStats();
+  return stats[id];
+}
+
+function recordLightningBolt(userId) {
+  const stats = loadUserStats();
+  const id = String(userId);
+  if (!stats[id]) {
+    stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
+  }
+  stats[id].bolts += 1;
+  saveUserStats();
+  return stats[id].bolts;
+}
+
+function renderProgressBar(percentage) {
+  const totalBars = 10;
+  const filledBars = Math.round((percentage / 100) * totalBars);
+  const emptyBars = totalBars - filledBars;
+  return "█".repeat(filledBars) + "░".repeat(emptyBars);
+}
+
 module.exports = {
   generateArtwork,
   searchMusicTrack,
@@ -500,4 +600,8 @@ module.exports = {
   askMagic8Ball,
   rollDiceOrCoin,
   getDailyHoroscope,
+  getMorningDigest,
+  recordInteraction,
+  recordLightningBolt,
+  renderProgressBar,
 };

@@ -28,26 +28,34 @@ function isVideoUrl(url) {
 }
 
 async function expandUrl(rawUrl) {
+  // TikTok short links can be passed directly to TikWM without slow page expands!
+  if (/vt\.tiktok\.com|vm\.tiktok\.com/i.test(rawUrl)) {
+    return rawUrl;
+  }
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500);
     const res = await fetch(rawUrl, {
       method: "GET",
       redirect: "follow",
+      signal: controller.signal,
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
       },
     });
+    clearTimeout(timeout);
     return res.url || rawUrl;
   } catch (e) {
     return rawUrl;
   }
 }
 
-// 1. Движок TikWM для TikTok
+// 1. Турбо-движок TikWM для TikTok
 async function tryTikwm(url) {
   if (!/tiktok\.com/i.test(url)) return null;
   try {
-    console.log("[Downloader] TikWM запуск для:", url);
+    console.log("[Downloader] TikWM молниеносный запуск для:", url);
     const apiRes = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`, {
       headers: {
         "User-Agent":
@@ -60,15 +68,9 @@ async function tryTikwm(url) {
         ? data.data.play
         : `https://www.tikwm.com${data.data.play}`;
       const title = data.data.title || "TikTok Video";
-      const timestamp = Date.now();
-      const filePath = path.join(DOWNLOADS_DIR, `${timestamp}_tiktok.mp4`);
 
-      const fileRes = await fetch(videoUrl);
-      const arrayBuffer = await fileRes.arrayBuffer();
-      fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
-
-      console.log("[Downloader] TikWM успешно скачал:", filePath);
-      return { filePath, title };
+      // Сначала пробуем вернуть directUrl для мгновенной пересылки Телеграмом
+      return { directUrl: videoUrl, title };
     }
   } catch (e) {
     console.warn("[Downloader] TikWM ошибка:", e.message);
@@ -86,15 +88,7 @@ async function tryInstagramDirect(url) {
       const videoItem = res.url_list.find((item) => item.type === "video") || res.url_list[0];
       const videoUrl = videoItem.url;
       const title = res.post_info?.caption?.slice(0, 50) || "Instagram Reel";
-      const timestamp = Date.now();
-      const filePath = path.join(DOWNLOADS_DIR, `${timestamp}_insta.mp4`);
-
-      const fileRes = await fetch(videoUrl);
-      const arrayBuffer = await fileRes.arrayBuffer();
-      fs.writeFileSync(filePath, Buffer.from(arrayBuffer));
-
-      console.log("[Downloader] instagram-url-direct успешно скачал:", filePath);
-      return { filePath, title };
+      return { directUrl: videoUrl, title };
     }
   } catch (e) {
     console.warn("[Downloader] instagram-url-direct ошибка:", e.message);
@@ -106,7 +100,7 @@ async function tryInstagramDirect(url) {
 async function tryAlldl(url) {
   try {
     console.log("[Downloader] alldl запуск для:", url);
-    const result = await alldl.download(url, DOWNLOADS_DIR, { maxHeight: 1080 });
+    const result = await alldl.download(url, DOWNLOADS_DIR, { maxHeight: 720 });
     if (result && result.path && fs.existsSync(result.path)) {
       const stats = fs.statSync(result.path);
       if (stats.size > 0) {
@@ -135,7 +129,7 @@ async function tryYtDlp(url) {
       "-o",
       outputTemplate,
       "-f",
-      "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[ext=mp4]/best",
+      "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[ext=mp4]/best",
       "--merge-output-format",
       "mp4",
       "--no-playlist",
@@ -187,6 +181,16 @@ async function tryYtDlp(url) {
   });
 }
 
+// Скачивание directUrl в файл при необходимости резервного варианта
+async function downloadDirectUrlToFile(directUrl) {
+  const timestamp = Date.now();
+  const filePath = path.join(DOWNLOADS_DIR, `${timestamp}_stream.mp4`);
+  const res = await fetch(directUrl);
+  const arrayBuf = await res.arrayBuffer();
+  fs.writeFileSync(filePath, Buffer.from(arrayBuf));
+  return filePath;
+}
+
 // Главный каскадный диспетчер скачивания
 async function downloadVideo(rawUrl) {
   const url = await expandUrl(rawUrl);
@@ -212,14 +216,8 @@ async function downloadVideo(rawUrl) {
     if (!result) result = await tryYtDlp(url);
   }
 
-  if (!result || !result.filePath || !fs.existsSync(result.filePath)) {
+  if (!result || (!result.filePath && !result.directUrl)) {
     throw new Error("FAILED_ALL_ENGINES");
-  }
-
-  const stats = fs.statSync(result.filePath);
-  if (stats.size > 50 * 1024 * 1024) {
-    cleanupFile(result.filePath);
-    throw new Error("FILE_TOO_LARGE");
   }
 
   return result;
@@ -235,4 +233,10 @@ function cleanupFile(filePath) {
   }
 }
 
-module.exports = { extractUrl, isVideoUrl, downloadVideo, cleanupFile };
+module.exports = {
+  extractUrl,
+  isVideoUrl,
+  downloadVideo,
+  downloadDirectUrlToFile,
+  cleanupFile,
+};

@@ -2,7 +2,13 @@ const { Bot, InputFile } = require("grammy");
 const { GoogleGenAI } = require("@google/genai");
 const fs = require("fs");
 const path = require("path");
-const { extractUrl, isVideoUrl, downloadVideo, cleanupFile } = require("./downloader");
+const {
+  extractUrl,
+  isVideoUrl,
+  downloadVideo,
+  downloadDirectUrlToFile,
+  cleanupFile,
+} = require("./downloader");
 require("dotenv").config();
 
 const token = process.env.BOT_TOKEN;
@@ -21,7 +27,7 @@ if (geminiKey) {
 }
 
 // Модели с автоматическим переключением при лимитах
-const MODELS = ["gemini-flash-lite-latest", "gemini-flash-latest"];
+const MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-flash-latest"];
 
 // Сохранение стикеров
 const STICKERS_FILE = path.join(__dirname, "lum_stickers.json");
@@ -90,24 +96,31 @@ async function downloadAsBase64(fileId) {
   return Buffer.from(arrayBuf).toString("base64");
 }
 
-// Генерация через Gemini с отказоустойчивостью
+// Генерация через Gemini с отказоустойчивостью и таймаутом
 async function generateGemini(contents) {
   if (!ai) return null;
 
   for (const model of MODELS) {
     try {
-      const response = await ai.models.generateContent({
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), 6000)
+      );
+
+      const requestPromise = ai.models.generateContent({
         model: model,
         contents: contents,
         config: {
           systemInstruction: LUM_SYSTEM_PROMPT,
+          maxOutputTokens: 120,
         },
       });
+
+      const response = await Promise.race([requestPromise, timeoutPromise]);
       if (response && response.text) {
         return response.text.trim();
       }
     } catch (err) {
-      console.warn(`Ошибка модели ${model}:`, err.message);
+      console.warn(`Модель ${model} не ответила (${err.message}), переключаем...`);
     }
   }
   return null;
@@ -128,85 +141,90 @@ async function handleIncoming(ctx, { userText, fileId, mimeType, fallbackText, i
   const chatId = ctx.chat.id;
   const history = getHistory(chatId);
 
+  // Мгновенная реакция и непрерывный статус набора текста
+  try {
+    await ctx.react("⚡");
+  } catch (e) {}
   await ctx.api.sendChatAction(chatId, "typing");
+  const typingInterval = setInterval(() => {
+    ctx.api.sendChatAction(chatId, "typing").catch(() => {});
+  }, 4000);
 
-  const parts = [];
-  const promptText = userText || fallbackText || "Посмотри это:";
-  parts.push({ text: promptText });
+  try {
+    const parts = [];
+    const promptText = userText || fallbackText || "Посмотри это:";
+    parts.push({ text: promptText });
 
-  if (fileId && mimeType) {
-    try {
-      const base64Data = await downloadAsBase64(fileId);
-      parts.push({
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Data,
-        },
-      });
-    } catch (e) {
-      console.error("Ошибка скачивания медиа для анализа:", e.message);
+    if (fileId && mimeType) {
+      try {
+        const base64Data = await downloadAsBase64(fileId);
+        parts.push({
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data,
+          },
+        });
+      } catch (e) {
+        console.error("Ошибка скачивания медиа для анализа:", e.message);
+      }
     }
-  }
 
-  history.push({
-    role: "user",
-    parts: parts,
-  });
+    history.push({
+      role: "user",
+      parts: parts,
+    });
 
-  if (history.length > 16) {
-    history.splice(0, history.length - 16);
-  }
+    if (history.length > 16) {
+      history.splice(0, history.length - 16);
+    }
 
-  let rawReply = await generateGemini(history);
+    let rawReply = await generateGemini(history);
 
-  // Живой резервный ответ, если сеть/квоты забарахлили
-  if (!rawReply) {
-    history.pop();
-    if (isSticker) {
-      rawReply = "[REACT:🥰] ой, ахах, это же я на стикере! Какая милота >w<";
+    // Живой резервный ответ, если сеть/квоты забарахлили
+    if (!rawReply) {
+      history.pop();
+      if (isSticker) {
+        rawReply = "[REACT:🥰] ой, ахах, это же я на стикере! Какая милота >w<";
+      } else {
+        rawReply = "Дарлинг, я тут с тобой! 💕 Рассказывай дальше~";
+      }
+    }
+
+    // Извлекаем умную реакцию
+    const reactMatch = rawReply.match(/^\[REACT:([^\]]+)\]\s*/i);
+    if (reactMatch) {
+      const emoji = reactMatch[1].trim();
+      rawReply = rawReply.replace(reactMatch[0], "").trim();
+      try {
+        await ctx.react(emoji);
+      } catch (e) {}
+    }
+
+    history.push({
+      role: "model",
+      parts: [{ text: rawReply }],
+    });
+
+    // Отправка стикера из сохранённого пака Лам
+    if (savedStickers.length > 0 && (isSticker || Math.random() < 0.35)) {
+      const randomSticker = savedStickers[Math.floor(Math.random() * savedStickers.length)];
+      try {
+        await ctx.replyWithSticker(randomSticker);
+      } catch (e) {
+        console.error("Ошибка отправки стикера:", e.message);
+      }
+    }
+
+    // Мгновенная отправка текста без искусственных задержек
+    const msgParts = rawReply.split(/\n\n+/).filter((p) => p.trim().length > 0);
+    if (msgParts.length > 1) {
+      await ctx.reply(msgParts[0].trim());
+      await ctx.reply(msgParts.slice(1).join("\n").trim());
     } else {
-      rawReply = "Дарлинг, я тебя слушаю! 💕 Рассказывай дальше~";
+      await ctx.reply(rawReply);
     }
-  }
-
-  // Извлекаем умную реакцию
-  const reactMatch = rawReply.match(/^\[REACT:([^\]]+)\]\s*/i);
-  if (reactMatch) {
-    const emoji = reactMatch[1].trim();
-    rawReply = rawReply.replace(reactMatch[0], "").trim();
-    try {
-      await ctx.react(emoji);
-    } catch (e) {}
-  }
-
-  history.push({
-    role: "model",
-    parts: [{ text: rawReply }],
-  });
-
-  // Отправка стикера из сохранённого пака Лам
-  if (savedStickers.length > 0 && (isSticker || Math.random() < 0.35)) {
-    const randomSticker = savedStickers[Math.floor(Math.random() * savedStickers.length)];
-    try {
-      await sleep(500);
-      await ctx.replyWithSticker(randomSticker);
-    } catch (e) {
-      console.error("Ошибка отправки стикера:", e.message);
-    }
-  }
-
-  // Отправка текста
-  const msgParts = rawReply.split(/\n\n+/).filter((p) => p.trim().length > 0);
-  if (msgParts.length > 1) {
-    await sleep(800);
-    await ctx.reply(msgParts[0].trim());
-    await ctx.api.sendChatAction(chatId, "typing");
-    await sleep(1200);
-    await ctx.reply(msgParts.slice(1).join("\n").trim());
-  } else {
-    const delay = Math.min(2000, Math.max(700, rawReply.length * 25));
-    await sleep(delay);
-    await ctx.reply(rawReply);
+  } finally {
+    clearInterval(typingInterval);
   }
 }
 
@@ -260,22 +278,40 @@ bot.on("message:text", async (ctx) => {
     await ctx.api.sendChatAction(ctx.chat.id, "upload_video");
 
     try {
-      const { filePath, title } = await downloadVideo(detectedUrl);
+      const result = await downloadVideo(detectedUrl);
+      const title = result.title || "Видео";
+      let sent = false;
 
-      try {
-        await ctx.replyWithVideo(new InputFile(filePath), {
-          caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
-          reply_to_message_id: ctx.message.message_id,
-        });
-      } catch (sendVideoErr) {
-        console.warn("replyWithVideo failed, fallback to replyWithDocument:", sendVideoErr.message);
-        await ctx.replyWithDocument(new InputFile(filePath), {
-          caption: `Дарлинг, вот твоё видео! ✨\n\n🎬 ${title}`,
-          reply_to_message_id: ctx.message.message_id,
-        });
+      // Способ 1: Мгновенная пересылка прямой ссылки через серверы Telegram (2-3 секунды!)
+      if (result.directUrl) {
+        try {
+          await ctx.replyWithVideo(result.directUrl, {
+            caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
+            reply_to_message_id: ctx.message.message_id,
+          });
+          sent = true;
+        } catch (streamErr) {
+          console.warn("Direct URL send failed, fallback to file download:", streamErr.message);
+        }
       }
 
-      cleanupFile(filePath);
+      // Способ 2: Отправка через локальный файл (если прямой URL не сработал или скачан через alldl/yt-dlp)
+      if (!sent) {
+        const filePath = result.filePath || (await downloadDirectUrlToFile(result.directUrl));
+        try {
+          await ctx.replyWithVideo(new InputFile(filePath), {
+            caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
+            reply_to_message_id: ctx.message.message_id,
+          });
+        } catch (sendVideoErr) {
+          console.warn("replyWithVideo failed, fallback to replyWithDocument:", sendVideoErr.message);
+          await ctx.replyWithDocument(new InputFile(filePath), {
+            caption: `Дарлинг, вот твоё видео! ✨\n\n🎬 ${title}`,
+            reply_to_message_id: ctx.message.message_id,
+          });
+        }
+        cleanupFile(filePath);
+      }
 
       try {
         await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);

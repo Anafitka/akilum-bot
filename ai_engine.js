@@ -122,6 +122,13 @@ const GEMINI_MODELS = [
   "gemini-flash-latest",
 ];
 
+// Модели Groq по приоритету скорости и качества
+const GROQ_MODELS = [
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+];
+
 // Преобразование истории Gemini в формат сообщений OpenAI/Groq
 function toOpenAIMessages(contents, systemPrompt) {
   const messages = [];
@@ -153,43 +160,45 @@ async function callGroq(messages, maxTokens = 350, timeoutMs = 6000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${keyItem.key}`,
-      },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.75,
-      }),
-      signal: controller.signal,
-    });
+    for (const model of GROQ_MODELS) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${keyItem.key}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            max_tokens: maxTokens,
+            temperature: 0.75,
+          }),
+          signal: controller.signal,
+        });
 
+        if (res.status === 429) {
+          groqPool.markCooldown(keyItem, 60000, "Rate Limit (429)");
+          return null;
+        }
+
+        if (!res.ok) {
+          continue;
+        }
+
+        const data = await res.json();
+        const reply = data?.choices?.[0]?.message?.content?.trim();
+        if (reply) {
+          clearTimeout(timer);
+          groqPool.markSuccess(keyItem);
+          return reply;
+        }
+      } catch (err) {
+        if (err.name === "AbortError") break;
+      }
+    }
+  } finally {
     clearTimeout(timer);
-
-    if (res.status === 429) {
-      groqPool.markCooldown(keyItem, 60000, "Rate Limit (429)");
-      return null;
-    }
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      groqPool.markCooldown(keyItem, 30000, `HTTP ${res.status}: ${errText.slice(0, 80)}`);
-      return null;
-    }
-
-    const data = await res.json();
-    const reply = data?.choices?.[0]?.message?.content?.trim();
-    if (reply) {
-      groqPool.markSuccess(keyItem);
-      return reply;
-    }
-  } catch (err) {
-    clearTimeout(timer);
-    groqPool.markCooldown(keyItem, 20000, err.name === "AbortError" ? "Timeout" : err.message);
   }
   return null;
 }

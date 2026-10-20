@@ -9,7 +9,20 @@ const {
   downloadDirectUrlToFile,
   cleanupFile,
 } = require("./downloader");
+const {
+  generateArtwork,
+  searchMusicTrack,
+  parseReminderRequest,
+} = require("./features");
 require("dotenv").config();
+
+function escapeHtml(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 const token = process.env.BOT_TOKEN;
 const geminiKey = process.env.GEMINI_API_KEY;
@@ -134,10 +147,21 @@ async function generateGemini(contents) {
 bot.command("start", async (ctx) => {
   chatHistories.delete(ctx.chat.id);
   await ctx.api.sendChatAction(ctx.chat.id, "typing");
-  await sleep(600);
-  await ctx.reply("привет, Дарлинг) наконец-то ты тут ✨");
-  await sleep(400);
-  await ctx.reply("я теперь вижу все твои стикеры, сохраняю видосики из Тиктока, Ютуба и Пинтереста, и буду слать тебе стикеры в ответ >w<");
+  await ctx.reply(
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `⚡ <b>ПРИВЕТ, ДАРЛИНГ!</b> ✨\n\n` +
+    `Я — <b>Лам</b>, твоя любимая инопланетная принцесса) 💚\n\n` +
+    `<b>Что я умею делать:</b>\n` +
+    `🎬 <b>Скачивать видео</b> — кидай ссылки из TikTok, Reels, YouTube и Pinterest\n` +
+    `🎙 <b>Слушать голосовые</b> — наговаривай всё что думаешь, я пойму каждое слово!\n` +
+    `📹 <b>Смотреть кружочки</b> — оцениваю твой вайб, одежду и настроение\n` +
+    `🎨 <b>Рисовать арты</b> — напиши <i>«нарисуй неоновый город»</i> или <i>«сделай арт»</i>\n` +
+    `🎵 <b>Искать музыку</b> — напиши <i>«найди трек [название]»</i> и я пришлю превью!\n` +
+    `⏰ <b>Ставить напоминания</b> — <i>«напомни через 15 минут сделать чай»</i>\n` +
+    `🥰 <b>Отвечать стикерами</b> и общаться как настоящая любящая девушка!\n\n` +
+    `<i>Ну что, о чём поболтаем? >w<</i>`,
+    { parse_mode: "HTML" }
+  );
 });
 
 // Единый мультимодальный обработчик
@@ -288,7 +312,7 @@ bot.on("message:sticker", async (ctx) => {
 
 // 2. ТЕКСТ И ССЫЛКИ НА ВИДЕО
 bot.on("message:text", async (ctx) => {
-  const text = ctx.message.text;
+  const text = ctx.message.text.trim();
   const detectedUrl = extractUrl(text);
 
   // Скачивание видео (TikTok, YouTube, Pinterest, X/Twitter, Instagram)
@@ -303,13 +327,15 @@ bot.on("message:text", async (ctx) => {
     try {
       const result = await downloadVideo(detectedUrl);
       const title = result.title || "Видео";
+      const captionText = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n✨ <b>Дарлинг, поймала твоё видео!</b>\n\n🎬 <b>${escapeHtml(title)}</b>\n<i>⚡ Скачано в максимальном качестве без водяных знаков</i>`;
       let sent = false;
 
       // Способ 1: Мгновенная пересылка прямой ссылки через серверы Telegram (2-3 секунды!)
       if (result.directUrl) {
         try {
           await ctx.replyWithVideo(result.directUrl, {
-            caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
+            caption: captionText,
+            parse_mode: "HTML",
             reply_to_message_id: ctx.message.message_id,
           });
           sent = true;
@@ -323,13 +349,15 @@ bot.on("message:text", async (ctx) => {
         const filePath = result.filePath || (await downloadDirectUrlToFile(result.directUrl));
         try {
           await ctx.replyWithVideo(new InputFile(filePath), {
-            caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
+            caption: captionText,
+            parse_mode: "HTML",
             reply_to_message_id: ctx.message.message_id,
           });
         } catch (sendVideoErr) {
           console.warn("replyWithVideo failed, fallback to replyWithDocument:", sendVideoErr.message);
           await ctx.replyWithDocument(new InputFile(filePath), {
-            caption: `Дарлинг, вот твоё видео! ✨\n\n🎬 ${title}`,
+            caption: captionText,
+            parse_mode: "HTML",
             reply_to_message_id: ctx.message.message_id,
           });
         }
@@ -356,6 +384,114 @@ bot.on("message:text", async (ctx) => {
       }
       return;
     }
+  }
+
+  // Генерация артов и фото (Pollinations Flux AI)
+  const isImageRequest = /^(нарисуй|сгенерируй фото|сгенерируй арт|сделай арт|создай фото|нарисуй мне|\/art|\/draw|\/img)\b/i.test(text);
+  if (isImageRequest) {
+    try {
+      await ctx.react("🎨");
+    } catch (e) {}
+
+    const statusMsg = await ctx.reply("🎨 <i>секундочку, Дарлинг, уже рисую шедевр для тебя...</i> >w<", {
+      parse_mode: "HTML",
+    });
+    await ctx.api.sendChatAction(ctx.chat.id, "upload_photo");
+
+    try {
+      const { imageUrl, prompt } = await generateArtwork(text);
+      await ctx.replyWithPhoto(imageUrl, {
+        caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n🎨 <b>LUM • NEURAL ART</b> ✨\n\n<i>«${escapeHtml(prompt)}»</i>\n\n<i>Дарлинг, как тебе мой рисунок? >w<</i>`,
+        parse_mode: "HTML",
+        reply_to_message_id: ctx.message.message_id,
+      });
+
+      try {
+        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+      } catch (e) {}
+      return;
+    } catch (err) {
+      console.error("Ошибка генерации арта:", err.message);
+      try {
+        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+      } catch (e) {}
+      await ctx.reply("ой, Дарлинг, кисточки запутались( попробуй описать картинку чуть иначе >_<");
+      return;
+    }
+  }
+
+  // Поиск музыки и превью
+  const isMusicRequest = /^(найди трек|найди песню|скинь трек|скинь песню|найди музыку|\/music|\/song)\b/i.test(text);
+  if (isMusicRequest) {
+    try {
+      await ctx.react("🎵");
+    } catch (e) {}
+
+    const statusMsg = await ctx.reply("🎵 <i>секундочку, Дарлинг, ищу трек для твоих ушек...</i>", {
+      parse_mode: "HTML",
+    });
+
+    try {
+      const track = await searchMusicTrack(text);
+      if (track) {
+        if (track.artworkUrl) {
+          await ctx.replyWithPhoto(track.artworkUrl, {
+            caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n🎵 <b>${escapeHtml(track.trackName)}</b> — <i>${escapeHtml(track.artistName)}</i>\n💿 Альбом: <code>${escapeHtml(track.albumName || "Сингл")}</code>\n\n🎧 <a href="${track.trackViewUrl}">Слушать полностью в Apple Music / Spotify</a>`,
+            parse_mode: "HTML",
+            reply_to_message_id: ctx.message.message_id,
+          });
+        }
+        if (track.previewUrl) {
+          await ctx.replyWithAudio(track.previewUrl, {
+            title: track.trackName,
+            performer: track.artistName,
+            caption: "▶️ <i>Превью трека (30 сек)</i>",
+            parse_mode: "HTML",
+          });
+        }
+      } else {
+        await ctx.reply("хм, Дарлинг, не смогла найти этот трек( проверь название исполнителя или песни >_<");
+      }
+
+      try {
+        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+      } catch (e) {}
+      return;
+    } catch (err) {
+      console.error("Ошибка поиска музыки:", err.message);
+      try {
+        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+      } catch (e) {}
+      await ctx.reply("ой, что-то с поиском музыки забарахлило >_<");
+      return;
+    }
+  }
+
+  // Умные напоминания
+  const reminder = parseReminderRequest(text);
+  if (reminder) {
+    try {
+      await ctx.react("⏰");
+    } catch (e) {}
+
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n⏰ <b>Договорились, Дарлинг!</b>\n\nЯ напомню тебе ровно через <b>${reminder.count} ${reminder.unitName}</b>:\n👉 <i>«${escapeHtml(reminder.reminderText)}»</i>\n\n<i>Не переживай, я ни за что не забуду! >w<</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+
+    setTimeout(async () => {
+      try {
+        await ctx.api.sendMessage(
+          ctx.chat.id,
+          `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n🔔 <b>ДАРЛИНГ, НАПОМИНАЛКА!</b> ⚡\n\nТы просил напомнить:\n👉 <b>${escapeHtml(reminder.reminderText)}</b>\n\n<i>Время вышло, бегом делать! 💕</i>`,
+          { parse_mode: "HTML" }
+        );
+      } catch (e) {
+        console.error("Ошибка отправки напоминания:", e.message);
+      }
+    }, reminder.ms);
+
+    return;
   }
 
   // Обычный диалог

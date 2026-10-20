@@ -1,10 +1,11 @@
-const { Bot, InputFile } = require("grammy");
+const { Bot, InputFile, InlineKeyboard } = require("grammy");
 const fs = require("fs");
 const path = require("path");
 const {
   extractUrl,
   isVideoUrl,
   downloadVideo,
+  downloadAudio,
   downloadDirectUrlToFile,
   cleanupFile,
 } = require("./downloader");
@@ -39,6 +40,9 @@ const {
   getProactiveStatus,
   initProactiveScheduler,
 } = require("./proactive");
+const { startWebAppServer } = require("./webapp_server");
+const { fetchLiveSearchResults } = require("./web_search");
+const { createPdfFromImages } = require("./pdf_compiler");
 require("dotenv").config();
 
 function escapeHtml(text) {
@@ -49,17 +53,33 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;");
 }
 
-async function safeSendHtml(ctx, text, replyToId = null) {
+async function safeSendHtml(ctx, text, replyToId = null, replyMarkup = null) {
   const options = { parse_mode: "HTML" };
   if (replyToId) options.reply_to_message_id = replyToId;
+  if (replyMarkup) options.reply_markup = replyMarkup;
   try {
     return await ctx.reply(text, options);
   } catch (err) {
     console.warn("safeSendHtml fallback:", err.message);
     const plain = text.replace(/<[^>]+>/g, "");
-    return await ctx.reply(plain, replyToId ? { reply_to_message_id: replyToId } : {});
+    const fallbackOpt = replyToId ? { reply_to_message_id: replyToId } : {};
+    if (replyMarkup) fallbackOpt.reply_markup = replyMarkup;
+    return await ctx.reply(plain, fallbackOpt);
   }
 }
+
+function getWebAppUrl() {
+  if (process.env.WEBAPP_URL) return process.env.WEBAPP_URL;
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  if (process.env.RAILWAY_STATIC_URL) return `https://${process.env.RAILWAY_STATIC_URL}`;
+  return null;
+}
+
+// Кэш для быстрого извлечения аудио из скачанных видео
+const videoAudioCache = new Map();
+
+// Хранилище сессий для сборщика фото домашки в PDF (userId -> { images: Buffer[], lastUpdated: number })
+const pdfSessions = new Map();
 
 const token = process.env.BOT_TOKEN;
 
@@ -196,11 +216,22 @@ bot.command("start", async (ctx) => {
   chatHistories.delete(ctx.chat.id);
   if (ctx.from) recordInteraction(ctx.from.id);
   await ctx.api.sendChatAction(ctx.chat.id, "typing");
+
+  const webAppUrl = getWebAppUrl();
+  const replyOptions = { parse_mode: "HTML" };
+  if (webAppUrl) {
+    replyOptions.reply_markup = new InlineKeyboard().webApp("⚡ Запустить Oni Terminal WebApp", webAppUrl);
+  }
+
   await ctx.reply(
     `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
     `⚡ <b>ПРИВЕТ, ДАРЛИНГ! Я — ЛАМ!</b> 💚✨\n\n` +
     `Твоя они-принцесса с ультра-технологиями на борту:\n\n` +
-    `🎬 <b>Загрузчик медиа</b> — ссылки TikTok, Reels, YouTube, Pinterest (без водяных знаков!)\n` +
+    `🌌 <b>Cyberpunk Oni Terminal</b> — <i>/app</i> (полноэкранный WebApp прямо в Telegram!)\n` +
+    `🌐 <b>Живой Интернет-Радар</b> — <i>«загугли [запрос]»</i>, <i>«новости»</i> (DuckDuckGo в реальном времени!)\n` +
+    `📄 <b>Сборщик домашки в PDF</b> — <i>/pdf</i> (объединяет фото тетрадей в аккуратный PDF для учителя)\n` +
+    `🎬 <b>Загрузчик медиа + MP3 звук</b> — TikTok, Reels, YouTube (кнопка <b>[🎵 Скачать MP3]</b> под видео!)\n` +
+    `💡 <b>Умные кнопки под ответами</b> — [💡 Проще] [📚 Пример] [⚡ Другой вариант]\n` +
     `🎙 <b>Telegram Premium расшифровка</b> — перевожу голосовые и кружочки в текст под спойлер!\n` +
     `🕵️ <b>Нейро-Детектив переписок</b> — скриншот переписки: <i>«что ответить?»</i> (подтекст + 3 варианта!)\n` +
     `📚 <b>Нейро-АнтиГДЗ</b> — фото задачи или <i>«реши: [уравнение]»</i> с подробным решением\n` +
@@ -232,7 +263,75 @@ bot.command("start", async (ctx) => {
     `🚀 <b>Статус движков</b> — <i>/engine</i> (пропускная способность для класса)\n` +
     `🥰 <b>Живые стикеры</b> и забота о тебе 💕\n\n` +
     `<i>Ну что, какую технологию протестируем первой? >w<</i>`,
-    { parse_mode: "HTML" }
+    replyOptions
+  );
+});
+
+// Запуск полноэкранного Telegram Mini App (Cyberpunk Oni Terminal)
+bot.command(["app", "webapp"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const webAppUrl = getWebAppUrl();
+  if (webAppUrl) {
+    const kb = new InlineKeyboard().webApp("⚡ Открыть Cyberpunk Oni Terminal", webAppUrl);
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `⚡ <b>CYBERPUNK ONI TERMINAL • ЛАМ</b> 💚\n\n` +
+      `Дарлинг, твой персональный киберпанк-терминал готов к запуску!\n` +
+      `• Интерактивный Они-кликер с искрами молний ⚡\n` +
+      `• Быстрые технологические кнопки для школы 🎒\n` +
+      `• Неоновый дизайн во весь экран прямо внутри Telegram! 🌌\n\n` +
+      `<i>Нажми кнопку ниже, чтобы открыть терминал >w<</i>`,
+      { parse_mode: "HTML", reply_markup: kb, reply_to_message_id: ctx.message.message_id }
+    );
+  } else {
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `⚡ <b>CYBERPUNK ONI TERMINAL • ЛАМ</b> 💚\n\n` +
+      `Сервер терминала уже запущен на порту <code>${process.env.PORT || 3000}</code>!\n\n` +
+      `💡 <b>Чтобы открывать терминал прямо внутри Telegram:</b>\n` +
+      `1. В панели Railway перейди в свой сервис → <b>Settings → Networking → Generate Domain</b>.\n` +
+      `2. Скопируй домен и добавь переменную в <b>Variables</b>:\n` +
+      `<code>WEBAPP_URL=https://твой-домен.railway.app</code>\n\n` +
+      `После этого кнопка мини-приложения станет активной для всего класса! ✨`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+  }
+});
+
+// Сборщик фото домашки в PDF
+bot.command("pdf", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const userId = ctx.from?.id;
+  const session = userId ? pdfSessions.get(userId) : null;
+
+  if (session && session.images && session.images.length > 0) {
+    await ctx.api.sendChatAction(ctx.chat.id, "upload_document");
+    try {
+      const pdfBuffer = await createPdfFromImages(session.images, `Домашка_${ctx.from?.first_name || "Дарлинга"}`);
+      const fileName = `Домашка_${(ctx.from?.first_name || "Дарлинга").replace(/[^\wа-яА-ЯёЁ]/gi, "_")}.pdf`;
+      await ctx.replyWithDocument(new InputFile(pdfBuffer, fileName), {
+        caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n📄 <b>Дарлинг, твоя домашка собрана в единый PDF!</b> 🎓✨\n\n• Страниц: <code>${session.images.length}</code>\n• Файл готов для отправки учителю!\n\n<i>«Лам аккуратно скрепила все листы своими они-лучами >w<»</i>`,
+        parse_mode: "HTML",
+        reply_to_message_id: ctx.message.message_id,
+      });
+      pdfSessions.delete(userId);
+      return;
+    } catch (err) {
+      console.error("Ошибка компиляции PDF:", err.message);
+      await ctx.reply("Ой, Дарлинг, не смогла собрать PDF из этих фото >_< Попробуй прислать фото заново!");
+      return;
+    }
+  }
+
+  await ctx.reply(
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `📄 <b>СБОРЩИК ДОМАШКИ И КОНСПЕКТОВ В PDF</b> 📚✨\n\n` +
+    `Я умею собирать разрозненные фото тетрадей в один аккуратный многостраничный PDF-файл для учителя!\n\n` +
+    `<b>Как пользоваться:</b>\n` +
+    `1. Отправляй мне подряд фото страниц тетради с подписью <code>pdf</code> (или скинь фото и нажми <b>[В PDF]</b>).\n` +
+    `2. Под каждой страницей я покажу кнопку сборки.\n` +
+    `3. Напиши <code>/pdf</code> или <code>«собери в pdf»</code> — и получи готовый документ! 🎓`,
+    { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
   );
 });
 
@@ -598,6 +697,12 @@ ${userText}
       }
     }
 
+    const actionKb = new InlineKeyboard()
+      .text("💡 Объясни проще", "act:simpler")
+      .text("📚 Дай пример", "act:example")
+      .row()
+      .text("⚡ Другой вариант", "act:alt");
+
     // Если есть расшифровка голоса — выводим красивый блок под спойлер
     if (transcript) {
       const fullReply =
@@ -605,7 +710,7 @@ ${userText}
         `<tg-spoiler>📝 <b>Расшифровка:</b> «${escapeHtml(transcript)}»</tg-spoiler>\n\n` +
         escapeHtml(rawReply);
 
-      await safeSendHtml(ctx, fullReply, ctx.message.message_id);
+      await safeSendHtml(ctx, fullReply, ctx.message.message_id, actionKb);
       return;
     }
 
@@ -637,17 +742,22 @@ ${userText}
       else if (isRoast) header = `🔥 <b>ОНИ-ПРОЖАРКА • ЛАМ</b> ⚡\n\n`;
 
       const fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` + header + rawReply;
-      await safeSendHtml(ctx, fullReply, ctx.message.message_id);
+      await safeSendHtml(ctx, fullReply, ctx.message.message_id, actionKb);
       return;
     }
 
-    // Обычная отправка коротких сообщений
+    // Обычная отправка коротких сообщений с умными кнопками для развернутых ответов
     const msgParts = rawReply.split(/\n\n+/).filter((p) => p.trim().length > 0);
+    const shouldAttachKb = rawReply.length > 55 && !isSticker;
+
     if (msgParts.length > 1) {
       await ctx.reply(msgParts[0].trim());
-      await ctx.reply(msgParts.slice(1).join("\n").trim());
+      await ctx.reply(
+        msgParts.slice(1).join("\n").trim(),
+        shouldAttachKb ? { reply_markup: actionKb } : {}
+      );
     } else {
-      await ctx.reply(rawReply);
+      await ctx.reply(rawReply, shouldAttachKb ? { reply_markup: actionKb } : {});
     }
   } finally {
     if (userId) activeUsers.delete(userId);
@@ -715,11 +825,20 @@ bot.on("message:text", async (ctx) => {
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `⚡ <b>ВОТ ВСЕ МОИ СУПЕРСПОСОБНОСТИ, ДАРЛИНГ!</b> 💚✨\n\n` +
-      `🎬 <b>Загрузчик медиа</b> — скинь ссылку TikTok, Reels, YouTube, Pinterest\n` +
+      `🌌 <b>Cyberpunk Oni Terminal</b> — <i>/app</i> (полноэкранный WebApp в Telegram!)\n` +
+      `🌐 <b>Живой Интернет-Радар</b> — <i>«загугли [запрос]»</i>, <i>«новости»</i> (DuckDuckGo в реальном времени!)\n` +
+      `📄 <b>Сборщик домашки в PDF</b> — <i>/pdf</i> (объединяет фото тетрадей в PDF для учителя)\n` +
+      `🎬 <b>Загрузчик медиа + MP3</b> — ссылки TikTok, Reels, YouTube (кнопка <b>[🎵 Скачать MP3]</b> под видео!)\n` +
+      `💡 <b>Умные кнопки под ответами</b> — [💡 Проще] [📚 Пример] [⚡ Другой вариант]\n` +
       `🎙 <b>Telegram Premium расшифровка</b> — отправь голосовое или кружочек, я переведу речь в текст под спойлер!\n` +
       `🕵️ <b>Нейро-Детектив переписок</b> — скриншот переписки: <i>«что ответить?»</i> (подтекст + 3 варианта!)\n` +
       `📚 <b>Нейро-АнтиГДЗ</b> — фото задачи или <i>«реши: [уравнение]»</i> с подробным решением\n` +
       `📄 <b>Оцифровщик конспектов</b> — фото тетради со словом <i>«текст»</i> (перепечатаю в текст!)\n` +
+      `🎯 <b>Интерактивные Квизы</b> — <i>/quiz [тема]</i> (Telegram опросы-тесты для контрольных)\n` +
+      `📝 <b>Нейро-Шпора</b> — <i>«шпора: [тема]»</i> (микро-шпора с формулами под спойлер)\n` +
+      `💻 <b>Нейро-Кодер</b> — <i>«код: [задача]»</i> (готовый код на Python/C++ для информатики)\n` +
+      `📚 <b>Конструктор сочинений</b> — <i>«сочинение: [тема]»</i> (план, аргументы и клише на 5/5)\n` +
+      `⚔️ <b>Битвы класса</b> — <i>/duel @username</i>, <i>/roulette</i>, <i>/roast @username</i>\n` +
       `🎬 <b>Кино & Аниме радар</b> — <i>«найди фильм где...»</i>, <i>«посоветуй аниме»</i>\n` +
       `💎 <b>Крипто & Валютный радар</b> — <i>«курс»</i>, <i>«100 долларов в сомах»</i>, <i>«1 btc в usd»</i>\n` +
       `☀️ <b>Утренний дайджест</b> — <i>«доброе утро»</i> или <i>/morning</i>\n` +
@@ -772,11 +891,25 @@ bot.on("message:text", async (ctx) => {
       const captionText = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n✨ <b>Дарлинг, поймала твоё видео!</b>\n\n🎬 <b>${escapeHtml(title)}</b>\n<i>⚡ Скачано в максимальном качестве без водяных знаков</i>`;
       let sent = false;
 
+      const audioId = "va_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      videoAudioCache.set(audioId, {
+        directUrl: result.directUrl,
+        musicUrl: result.musicUrl,
+        originalUrl: result.originalUrl || detectedUrl,
+        title: title,
+      });
+      if (videoAudioCache.size > 100) {
+        const firstKey = videoAudioCache.keys().next().value;
+        videoAudioCache.delete(firstKey);
+      }
+      const videoKb = new InlineKeyboard().text("🎵 Скачать MP3 звук", `get_mp3:${audioId}`);
+
       if (result.directUrl) {
         try {
           await ctx.replyWithVideo(result.directUrl, {
             caption: captionText,
             parse_mode: "HTML",
+            reply_markup: videoKb,
             reply_to_message_id: ctx.message.message_id,
           });
           sent = true;
@@ -791,6 +924,7 @@ bot.on("message:text", async (ctx) => {
           await ctx.replyWithVideo(new InputFile(filePath), {
             caption: captionText,
             parse_mode: "HTML",
+            reply_markup: videoKb,
             reply_to_message_id: ctx.message.message_id,
           });
         } catch (sendVideoErr) {
@@ -798,6 +932,7 @@ bot.on("message:text", async (ctx) => {
           await ctx.replyWithDocument(new InputFile(filePath), {
             caption: captionText,
             parse_mode: "HTML",
+            reply_markup: videoKb,
             reply_to_message_id: ctx.message.message_id,
           });
         }
@@ -1360,15 +1495,158 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
+  // 22. Живой интернет-радар в реальном времени (DuckDuckGo Live Search)
+  const isSearchRequest = /^(загугли|найди в интернете|поиск в инете|поищи в интернете|новости|гугл|\/search|\/google)\b/i.test(text);
+  if (isSearchRequest) {
+    let query = text.replace(/^(загугли|найди в интернете|поиск в инете|поищи в интернете|новости|гугл|\/search|\/google)[:\s]*/i, "").trim();
+    if (!query) query = "главные мировые новости сегодня";
+
+    await ctx.api.sendChatAction(ctx.chat.id, "typing");
+    const statusMsg = await ctx.reply("🌐 <i>Лам подключает спутниковые радары и сканирует интернет...</i> ⚡", { parse_mode: "HTML" });
+
+    try {
+      const searchResults = await fetchLiveSearchResults(query);
+      if (!searchResults || searchResults.length === 0) {
+        try { await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id); } catch (e) {}
+        await ctx.reply("Дарлинг, мои радары ничего не нашли по этому запросу( Попробуй спросить другими словами >_<");
+        return;
+      }
+
+      const snippetsText = searchResults.map((r, i) => `${i + 1}. [${r.title}]: ${r.snippet}`).join("\n\n");
+      const searchPrompt = `[РЕАЛЬНЫЕ ДАННЫЕ ИЗ ИНТЕРНЕТА В РЕАЛЬНОМ ВРЕМЕНИ]:
+Запрос Дарлинга: "${query}"
+Свежая информация из поисковика DuckDuckGo:
+${snippetsText}
+
+ТВОЯ ЗАДАЧА КАК ЛАМ:
+1. Сделай структурированный, понятный, актуальный ответ на русском языке на основе этих свежих данных.
+2. Говори живым языком они-принцессы Лам (называй его Дарлинг, будь озорной и милой).
+3. Изложи факты четко, без устаревшей информации.`;
+
+      const aiAnswer = await generateLumResponse({
+        contents: [{ role: "user", parts: [{ text: searchPrompt }] }],
+        systemPrompt: LUM_SYSTEM_PROMPT,
+        maxOutputTokens: 650,
+        timeoutMs: 14000,
+      });
+
+      let sourcesHtml = `\n\n🌐 <b>Свежие источники из сети:</b>\n`;
+      searchResults.slice(0, 3).forEach((r) => {
+        sourcesHtml += `• <a href="${r.url}">${escapeHtml(r.title)}</a>\n`;
+      });
+
+      const fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+        `🌐 <b>ИНТЕРНЕТ-РАДАР ЛАМ • LIVE SEARCH</b> ⚡\n\n` +
+        (aiAnswer || "Вот что мне удалось найти в сети по твоему запросу, Дарлинг:") +
+        sourcesHtml;
+
+      try { await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id); } catch (e) {}
+
+      const actionKb = new InlineKeyboard()
+        .text("💡 Объясни проще", "act:simpler")
+        .text("📚 Дай пример", "act:example")
+        .row()
+        .text("⚡ Другой вариант", "act:alt");
+
+      await safeSendHtml(ctx, fullReply, ctx.message.message_id, actionKb);
+      return;
+    } catch (err) {
+      console.error("Ошибка живого поиска:", err.message);
+      try { await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id); } catch (e) {}
+      await ctx.reply("Ой, Дарлинг, спутниковая связь забарахлила! Попробуй повторить запрос чуть позже >_<");
+      return;
+    }
+  }
+
+  // 23. Сборка домашки в PDF по фразе «собери в pdf», «сделай pdf»
+  const isCompilePdfRequest = /^(собери в pdf|сделай pdf|собери pdf|объедини в pdf|готово pdf)\b/i.test(text);
+  if (isCompilePdfRequest) {
+    const userId = ctx.from?.id;
+    const session = userId ? pdfSessions.get(userId) : null;
+    if (session && session.images && session.images.length > 0) {
+      await ctx.api.sendChatAction(ctx.chat.id, "upload_document");
+      try {
+        const pdfBuffer = await createPdfFromImages(session.images, `Домашка_${ctx.from?.first_name || "Дарлинга"}`);
+        const fileName = `Домашка_${(ctx.from?.first_name || "Дарлинга").replace(/[^\wа-яА-ЯёЁ]/gi, "_")}.pdf`;
+        await ctx.replyWithDocument(new InputFile(pdfBuffer, fileName), {
+          caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n📄 <b>Дарлинг, твоя домашка собрана в единый PDF!</b> 🎓✨\n\n• Страниц: <code>${session.images.length}</code>\n• Файл готов для отправки учителю!\n\n<i>«Лам аккуратно скрепила все листы своими они-лучами >w<»</i>`,
+          parse_mode: "HTML",
+          reply_to_message_id: ctx.message.message_id,
+        });
+        pdfSessions.delete(userId);
+        return;
+      } catch (err) {
+        console.error("Ошибка сборки PDF:", err.message);
+        await ctx.reply("Ой, не получилось собрать PDF из этих фото( попробуй заново!");
+        return;
+      }
+    } else {
+      await ctx.reply(
+        "Дарлинг, в очереди пока нет фото страниц! Сначала пришли мне фото тетрадей с подписью <code>pdf</code>, а потом напиши <code>«собери в pdf»</code> >w<",
+        { parse_mode: "HTML" }
+      );
+      return;
+    }
+  }
+
   // Обычный диалог
   await handleIncoming(ctx, { userText: text });
 });
 
-// Фотографии (с поддержкой АнтиГДЗ, Детектива переписок, OCR и анализа калорий)
+// Фотографии (с поддержкой PDF сборщика, АнтиГДЗ, Детектива переписок, OCR и анализа калорий)
 bot.on("message:photo", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
   const photo = ctx.message.photo[ctx.message.photo.length - 1];
   const caption = ctx.message.caption || "";
+
+  // 1. Проверяем, связано ли фото с созданием PDF домашки/конспектов
+  const isPdf = /(^|\s)(pdf|пдф|в pdf|в пдф|собери в pdf|собери pdf|сделай pdf)(\s|$)/i.test(caption);
+  if (isPdf) {
+    const userId = ctx.from?.id;
+    if (userId) {
+      if (!pdfSessions.has(userId)) {
+        pdfSessions.set(userId, { images: [], lastUpdated: Date.now() });
+      }
+      const session = pdfSessions.get(userId);
+      session.lastUpdated = Date.now();
+
+      await ctx.api.sendChatAction(ctx.chat.id, "upload_document");
+      try {
+        const file = await bot.api.getFile(photo.file_id);
+        const fileUrl = `https://api.telegram.org/file/bot${token}/${file.file_path}`;
+        const res = await fetch(fileUrl);
+        const arrayBuf = await res.arrayBuffer();
+        session.images.push(Buffer.from(arrayBuf));
+
+        const shouldCompileNow = /(собери|сделай|готово)/i.test(caption);
+        if (shouldCompileNow && session.images.length > 0) {
+          const pdfBuffer = await createPdfFromImages(session.images, `Домашка_${ctx.from?.first_name || "Дарлинга"}`);
+          const fileName = `Домашка_${(ctx.from?.first_name || "Дарлинга").replace(/[^\wа-яА-ЯёЁ]/gi, "_")}.pdf`;
+          await ctx.replyWithDocument(new InputFile(pdfBuffer, fileName), {
+            caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n📄 <b>Дарлинг, твоя домашка собрана в единый PDF!</b> 🎓✨\n\n• Страниц: <code>${session.images.length}</code>\n• Файл готов для отправки учителю!\n\n<i>«Лам всё аккуратно скрепила своими они-лучами >w<»</i>`,
+            parse_mode: "HTML",
+            reply_to_message_id: ctx.message.message_id,
+          });
+          pdfSessions.delete(userId);
+          return;
+        }
+
+        const pdfKb = new InlineKeyboard()
+          .text(`📚 Собрать PDF (${session.images.length} стр.)`, "action:build_pdf")
+          .text("❌ Сбросить", "action:clear_pdf");
+
+        await ctx.reply(
+          `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+          `📄 <b>Страница #${session.images.length} добавлена в документ!</b>\n\n` +
+          `Присылай следующее фото страницы или нажми кнопку ниже, чтобы сгенерировать готовый PDF файл для учителя:`,
+          { parse_mode: "HTML", reply_markup: pdfKb, reply_to_message_id: ctx.message.message_id }
+        );
+        return;
+      } catch (err) {
+        console.error("Ошибка загрузки фото для PDF:", err.message);
+      }
+    }
+  }
 
   const isSolve = /реши|дз|домашка|задач|уравнени|помоги|\/solve/i.test(caption);
   const isFood = /калори|еда|блюдо|съел|тарелк|кбжу/i.test(caption);
@@ -1490,7 +1768,179 @@ bot.on("message:document", async (ctx) => {
   });
 });
 
+// Обработка интерактивных кнопок действий под ответами ([💡 Объясни проще], [📚 Дай пример], [⚡ Другой вариант])
+bot.callbackQuery(/^act:(simpler|example|alt)$/, async (ctx) => {
+  const type = ctx.match[1];
+  await ctx.answerCallbackQuery();
+
+  const originalText = ctx.callbackQuery.message?.text || "";
+  let promptText = "";
+  if (type === "simpler") {
+    promptText = `[ЗАПРОС: ОБЪЯСНИ ПРОЩЕ]\nРанее ты ответила:\n«${originalText}»\nДарлинг просит: объясни это ещё проще, своими словами, на пальцах как пятикласснику, коротко и ясно!`;
+  } else if (type === "example") {
+    promptText = `[ЗАПРОС: ДАЙ ПРИМЕР]\nРанее ты ответила:\n«${originalText}»\nДарлинг просит: приведи конкретный жизненный, школьный или практический пример, чтобы всё стало предельно понятно!`;
+  } else if (type === "alt") {
+    promptText = `[ЗАПРОС: ДРУГОЙ ВАРИАНТ]\nРанее ты ответила:\n«${originalText}»\nДарлинг просит: предложи другой вариант решения или альтернативный способ/взгляд на эту тему!`;
+  }
+
+  await ctx.api.sendChatAction(ctx.chat.id, "typing");
+  try {
+    const aiAnswer = await generateLumResponse({
+      contents: [{ role: "user", parts: [{ text: promptText }] }],
+      systemPrompt: LUM_SYSTEM_PROMPT,
+      maxOutputTokens: 500,
+      timeoutMs: 12000,
+    });
+
+    if (aiAnswer) {
+      const followUpKb = new InlineKeyboard()
+        .text("💡 Ещё проще", "act:simpler")
+        .text("📚 Ещё пример", "act:example")
+        .row()
+        .text("⚡ Другой вариант", "act:alt");
+
+      await ctx.reply(aiAnswer, {
+        reply_to_message_id: ctx.callbackQuery.message.message_id,
+        reply_markup: followUpKb,
+      });
+    }
+  } catch (err) {
+    console.warn("Callback action error:", err.message);
+  }
+});
+
+// Обработка кнопки [🎵 Скачать MP3 звук из видео]
+bot.callbackQuery(/^get_mp3:(.+)$/, async (ctx) => {
+  const audioId = ctx.match[1];
+  const info = videoAudioCache.get(audioId);
+  await ctx.answerCallbackQuery({ text: "🎵 Секундочку, вытаскиваю аудиодорожку..." });
+
+  if (!info) {
+    await ctx.reply("Дарлинг, ссылка на это видео устарела! Отправь видео заново >_<");
+    return;
+  }
+
+  await ctx.api.sendChatAction(ctx.chat.id, "upload_voice");
+  try {
+    const audioRes = await downloadAudio(info);
+    if (!audioRes) {
+      await ctx.reply("Ой, не удалось извлечь звук из этого видео( попробуй другое видео >_<");
+      return;
+    }
+
+    const caption = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n🎵 <b>${escapeHtml(audioRes.title || info.title || "Звук из видео")}</b>\n⚡ <i>Аудиодорожка извлечена технологиями Лам! >w<</i>`;
+
+    if (audioRes.directUrl) {
+      try {
+        await ctx.replyWithAudio(audioRes.directUrl, {
+          title: audioRes.title || info.title || "Audio Track",
+          performer: "LUM • Sound Extractor",
+          caption,
+          parse_mode: "HTML",
+          reply_to_message_id: ctx.callbackQuery.message.message_id,
+        });
+        return;
+      } catch (streamErr) {
+        console.warn("Direct audio URL failed, falling back to file:", streamErr.message);
+      }
+    }
+
+    if (audioRes.filePath) {
+      await ctx.replyWithAudio(new InputFile(audioRes.filePath), {
+        title: audioRes.title || info.title || "Audio Track",
+        performer: "LUM • Sound Extractor",
+        caption,
+        parse_mode: "HTML",
+        reply_to_message_id: ctx.callbackQuery.message.message_id,
+      });
+      cleanupFile(audioRes.filePath);
+    }
+  } catch (err) {
+    console.error("Ошибка при извлечении аудио:", err.message);
+    await ctx.reply("Ой, что-то пошло не так при извлечении звука >_<");
+  }
+});
+
+// Сборка PDF по интерактивной кнопке
+bot.callbackQuery("action:build_pdf", async (ctx) => {
+  const userId = ctx.from?.id;
+  const session = userId ? pdfSessions.get(userId) : null;
+  await ctx.answerCallbackQuery({ text: "📄 Собираю PDF документ..." });
+
+  if (!session || !session.images || session.images.length === 0) {
+    await ctx.reply("В очереди нет сохраненных страниц! Отправь фото с подписью <code>pdf</code> >_<", { parse_mode: "HTML" });
+    return;
+  }
+
+  await ctx.api.sendChatAction(ctx.chat.id, "upload_document");
+  try {
+    const pdfBuffer = await createPdfFromImages(session.images, `Домашка_${ctx.from?.first_name || "Дарлинга"}`);
+    const fileName = `Домашка_${(ctx.from?.first_name || "Дарлинга").replace(/[^\wа-яА-ЯёЁ]/gi, "_")}.pdf`;
+    await ctx.replyWithDocument(new InputFile(pdfBuffer, fileName), {
+      caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n📄 <b>Дарлинг, твоя домашка собрана в PDF!</b> 🎓✨\n\n• Страниц: <code>${session.images.length}</code>\n• Готово для отправки учителю!\n\n<i>«Лам всё аккуратно скрепила своими они-лучами >w<»</i>`,
+      parse_mode: "HTML",
+      reply_to_message_id: ctx.callbackQuery.message.message_id,
+    });
+    pdfSessions.delete(userId);
+  } catch (err) {
+    console.error("Ошибка сборки PDF по кнопке:", err.message);
+    await ctx.reply("Ой, не получилось собрать PDF документ( попробуй заново!");
+  }
+});
+
+// Сброс очереди PDF по кнопке
+bot.callbackQuery("action:clear_pdf", async (ctx) => {
+  const userId = ctx.from?.id;
+  if (userId) pdfSessions.delete(userId);
+  await ctx.answerCallbackQuery({ text: "Очередь PDF очищена!" });
+  await ctx.reply("🗑️ Очередь страниц PDF очищена! Можешь начать заново >w<");
+});
+
+// Обработка данных из Telegram Mini App (Web App)
+bot.on("message:web_app_data", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const data = ctx.message.web_app_data?.data;
+  if (!data) return;
+
+  if (data === "/morning") {
+    const digest = await getMorningDigest("Бишкек", "близнецы");
+    await safeSendHtml(ctx, digest, ctx.message.message_id);
+  } else if (data === "/love") {
+    const stats = recordInteraction(ctx.from.id);
+    const bar = renderProgressBar(stats.loveLevel);
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💚 <b>ПРОФИЛЬ ДАРЛИНГА • СВЯЗЬ С ЛАМ</b> ✨\n\n` +
+      `⚡ <b>Статус:</b> <code>Любимый Дарлинг 💕</code>\n` +
+      `💖 <b>Уровень любви:</b> [<code>${bar}</code>] <b>${stats.loveLevel}%</b>\n` +
+      `💬 <b>Сообщений вместе:</b> <code>${stats.count}</code>\n` +
+      `⚡ <b>Выпущено молний:</b> <code>${stats.bolts}</code>\n\n` +
+      `<i>«Дарлинг, ты кликал по мне в терминале? Я всё почувствовала! >w<»</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+  } else {
+    await handleIncoming(ctx, { userText: data });
+  }
+});
+
 initProactiveScheduler(bot, getSmartSticker);
+
+// Запуск WebApp сервера для Telegram Mini App
+startWebAppServer();
+
+// Установка кнопки меню WebApp (если URL сконфигурирован)
+const activeWebAppUrl = getWebAppUrl();
+if (activeWebAppUrl) {
+  bot.api
+    .setChatMenuButton({
+      menu_button: {
+        type: "web_app",
+        text: "⚡ Лам Терминал",
+        web_app: { url: activeWebAppUrl },
+      },
+    })
+    .catch((e) => console.warn("Menu button notice:", e.message));
+}
 
 bot.start();
 console.log("⚡ Ультра-Лам запущена со всеми новейшими технологиями!");

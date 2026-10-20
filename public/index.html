@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>LUM • Cyberpunk Oni Terminal</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: #070913;
+      --card: rgba(18, 24, 38, 0.85);
+      --neon-green: #00ff88;
+      --neon-cyan: #00f0ff;
+      --neon-gold: #ffd700;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 70px;
+    }
+    /* Animated Cyberpunk Grid Background */
+    .cyber-grid {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: 
+        linear-gradient(to right, rgba(0, 255, 136, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
+      background-size: 30px 30px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .container {
+      position: relative;
+      z-index: 1;
+      padding: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    /* Header Card */
+    .hero-card {
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 240, 255, 0.1));
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: 20px;
+      padding: 18px;
+      text-align: center;
+      box-shadow: 0 0 25px rgba(0, 255, 136, 0.2);
+      margin-bottom: 16px;
+      backdrop-filter: blur(10px);
+    }
+    .lum-avatar {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 3px solid var(--neon-green);
+      box-shadow: 0 0 20px var(--neon-green);
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      background: radial-gradient(circle, #1a365d, #0f172a);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    .lum-avatar:active {
+      transform: scale(0.92);
+    }
+    .hero-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+      text-shadow: 0 0 10px var(--neon-green);
+      letter-spacing: 1px;
+    }
+    .hero-subtitle {
+      font-size: 13px;
+      color: var(--neon-cyan);
+      margin-top: 4px;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .stat-box {
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--neon-gold);
+    }
+    .stat-lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--neon-cyan);
+      margin: 18px 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, rgba(0, 240, 255, 0.4), transparent);
+    }
+
+    /* Cyber Grid Buttons */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .cyber-btn {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+    .cyber-btn:active {
+      transform: scale(0.96);
+      border-color: var(--neon-green);
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    }
+    .cyber-btn .icon {
+      font-size: 26px;
+    }
+    .cyber-btn .title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .cyber-btn .desc {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Floating sparks on tap */
+    .spark {
+      position: absolute;
+      pointer-events: none;
+      animation: flySpark 0.7s forwards ease-out;
+      font-size: 20px;
+      z-index: 999;
+    }
+    @keyframes flySpark {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; width: 100%;
+      height: 60px;
+      background: rgba(11, 15, 25, 0.95);
+      border-top: 1px solid rgba(0, 255, 136, 0.2);
+      backdrop-filter: blur(15px);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 10;
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      cursor: pointer;
+      gap: 3px;
+      transition: color 0.2s;
+    }
+    .nav-item.active {
+      color: var(--neon-green);
+    }
+    .nav-item .nav-icon {
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="cyber-grid"></div>
+
+  <div class="container">
+    <!-- Hero / Clicker Card -->
+    <div class="hero-card" id="clickerArea">
+      <div class="lum-avatar" id="lumAvatar">⚡</div>
+      <div class="hero-title">LUM • ОНИ-ТЕРМИНАЛ</div>
+      <div class="hero-subtitle" id="lumQuote">«Тапни по мне, Дарлинг, поделюсь зарядом!»</div>
+      
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="stat-val" id="clickCounter">0</div>
+          <div class="stat-lbl">Разрядов</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" id="loveCounter">100%</div>
+          <div class="stat-lbl">Связь</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val">0.3с</div>
+          <div class="stat-lbl">Groq LPU</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Tool Actions -->
+    <div class="section-title">⚡ Школьный Арсенал</div>
+    <div class="grid-2">
+      <div class="cyber-btn" onclick="sendAction('шпора: формулы по физике')">
+        <div class="icon">📝</div>
+        <div class="title">Микро-Шпора</div>
+        <div class="desc">Формулы под спойлером</div>
+      </div>
+      <div class="cyber-btn" onclick="sendAction('/quiz школьная программа')">
+        <div class="icon">🎯</div>
+        <div class="title">Квиз-Тест</div>
+        <div class="desc">Опрос для класса</div>
+      </div>
+      <div class="cyber-btn" onclick="sendAction('код: калькулятор на python')">
+        <div class="icon">💻</div>
+        <div class="title">Нейро-Кодер</div>
+        <div class="desc">Код для информатики</div>
+      </div>
+      <div class="cyber-btn" onclick="sendAction('/roulette')">
+        <div class="icon">🎰</div>
+        <div class="title">Рулетка Класса</div>
+        <div class="desc">Кого ударит током</div>
+      </div>
+    </div>
+
+    <!-- Media & Fun Actions -->
+    <div class="section-title">✨ Космические Модули</div>
+    <div class="grid-2">
+      <div class="cyber-btn" onclick="sendAction('/duel')">
+        <div class="icon">⚔️</div>
+        <div class="title">Дуэль Молний</div>
+        <div class="desc">Битва на 100 000V</div>
+      </div>
+      <div class="cyber-btn" onclick="sendAction('/morning')">
+        <div class="icon">☀️</div>
+        <div class="title">Дайджест</div>
+        <div class="desc">Погода + крипта</div>
+      </div>
+      <div class="cyber-btn" onclick="sendAction('курс')">
+        <div class="icon">💎</div>
+        <div class="title">Крипто-Радар</div>
+        <div class="desc">BTC, TON, Валюты</div>
+      </div>
+      <div class="cyber-btn" onclick="sendAction('/love')">
+        <div class="icon">💚</div>
+        <div class="title">Профиль Любви</div>
+        <div class="desc">Рейтинг Дарлинга</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.setHeaderColor('#070913');
+      tg.setBackgroundColor('#070913');
+    }
+
+    let clicks = 0;
+    const quotes = [
+      "БЗ-З-Т! Молния в сердце! ⚡",
+      "Дарлинг, ты самый классный! 💕",
+      "Учи уроки, а то током ударю! >w<",
+      "Заряд 100 000 Вольт получен! ⚡✨",
+      "Я рядом с тобой в Telegram! 🥰",
+      "Никому тебя не отдам! 💚"
+    ];
+
+    const avatar = document.getElementById('lumAvatar');
+    const quoteEl = document.getElementById('lumQuote');
+    const counterEl = document.getElementById('clickCounter');
+
+    avatar.addEventListener('click', (e) => {
+      clicks++;
+      counterEl.textContent = clicks;
+
+      // Haptic feedback
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('medium');
+      }
+
+      // Random quote
+      quoteEl.textContent = `«${quotes[Math.floor(Math.random() * quotes.length)]}»`;
+
+      // Spark particles
+      createSpark(e.clientX, e.clientY);
+    });
+
+    function createSpark(x, y) {
+      const spark = document.createElement('div');
+      spark.className = 'spark';
+      spark.textContent = ['⚡', '✨', '💖', '💥', '💚'][Math.floor(Math.random() * 5)];
+      spark.style.left = `${x - 10}px`;
+      spark.style.top = `${y - 10}px`;
+      
+      const dx = `${(Math.random() - 0.5) * 120}px`;
+      const dy = `${-Math.random() * 80 - 20}px`;
+      spark.style.setProperty('--dx', dx);
+      spark.style.setProperty('--dy', dy);
+
+      document.body.appendChild(spark);
+      setTimeout(() => spark.remove(), 700);
+    }
+
+    function sendAction(commandText) {
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+      }
+      if (tg?.sendData) {
+        tg.sendData(commandText);
+      } else {
+        alert("Команда скопирована: " + commandText);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -70,7 +70,10 @@ async function tryTikwm(url) {
       const title = data.data.title || "TikTok Video";
 
       // Сначала пробуем вернуть directUrl для мгновенной пересылки Телеграмом
-      return { directUrl: videoUrl, title };
+      const musicUrl = data.data.music
+        ? (data.data.music.startsWith("http") ? data.data.music : `https://www.tikwm.com${data.data.music}`)
+        : null;
+      return { directUrl: videoUrl, title, musicUrl };
     }
   } catch (e) {
     console.warn("[Downloader] TikWM ошибка:", e.message);
@@ -220,7 +223,69 @@ async function downloadVideo(rawUrl) {
     throw new Error("FAILED_ALL_ENGINES");
   }
 
+  result.originalUrl = url;
   return result;
+}
+
+// Извлечение чистого аудио/MP3 из видео
+async function downloadAudio(videoInfo) {
+  if (!videoInfo) return null;
+  if (videoInfo.musicUrl) {
+    return { directUrl: videoInfo.musicUrl, title: videoInfo.title };
+  }
+
+  if (videoInfo.originalUrl) {
+    return new Promise((resolve) => {
+      const timestamp = Date.now();
+      const outputTemplate = path.join(DOWNLOADS_DIR, `${timestamp}_audio.%(ext)s`);
+      const args = [
+        videoInfo.originalUrl,
+        "-o",
+        outputTemplate,
+        "-f",
+        "bestaudio/best",
+        "--extract-audio",
+        "--audio-format",
+        "mp3",
+        "--no-playlist",
+        "--max-filesize",
+        "30M",
+        "--no-warnings",
+      ];
+
+      if (isWin) {
+        args.push("--ffmpeg-location", BIN_DIR);
+        args.push("--js-runtimes", "node");
+      }
+
+      if (fs.existsSync(COOKIES_PATH)) {
+        args.push("--cookies", COOKIES_PATH);
+      }
+
+      const proc = spawn(YTDLP_PATH, args);
+      proc.on("close", () => {
+        const files = fs.readdirSync(DOWNLOADS_DIR).filter((f) => f.startsWith(`${timestamp}_audio.`));
+        if (files.length > 0) {
+          return resolve({ filePath: path.join(DOWNLOADS_DIR, files[0]), title: videoInfo.title });
+        }
+        if (videoInfo.directUrl) {
+          return resolve({ directUrl: videoInfo.directUrl, title: videoInfo.title });
+        }
+        resolve(null);
+      });
+
+      proc.on("error", () => {
+        if (videoInfo.directUrl) return resolve({ directUrl: videoInfo.directUrl, title: videoInfo.title });
+        resolve(null);
+      });
+    });
+  }
+
+  if (videoInfo.directUrl) {
+    return { directUrl: videoInfo.directUrl, title: videoInfo.title };
+  }
+
+  return null;
 }
 
 function cleanupFile(filePath) {
@@ -237,6 +302,7 @@ module.exports = {
   extractUrl,
   isVideoUrl,
   downloadVideo,
+  downloadAudio,
   downloadDirectUrlToFile,
   cleanupFile,
 };

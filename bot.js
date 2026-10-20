@@ -1,5 +1,4 @@
 const { Bot, InputFile } = require("grammy");
-const { GoogleGenAI } = require("@google/genai");
 const fs = require("fs");
 const path = require("path");
 const {
@@ -27,6 +26,11 @@ const {
   recordLightningBolt,
   renderProgressBar,
 } = require("./features");
+const {
+  generateLumResponse,
+  geminiPool,
+  groqPool,
+} = require("./ai_engine");
 require("dotenv").config();
 
 function escapeHtml(text) {
@@ -50,7 +54,6 @@ async function safeSendHtml(ctx, text, replyToId = null) {
 }
 
 const token = process.env.BOT_TOKEN;
-const geminiKey = process.env.GEMINI_API_KEY;
 
 if (!token) {
   console.error("ОШИБКА: BOT_TOKEN не указан!");
@@ -59,18 +62,8 @@ if (!token) {
 
 const bot = new Bot(token);
 
-let ai = null;
-if (geminiKey) {
-  ai = new GoogleGenAI({
-    apiKey: geminiKey,
-    httpOptions: {
-      retryOptions: { attempts: 1 },
-    },
-  });
-}
-
-// Модели с автоматическим параллельным выбором быстрейшей
-const MODELS = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
+// Защита от спама и блокировок внутри класса (1 запрос за раз на человека)
+const activeUsers = new Set();
 
 // Сохранение стикеров
 const STICKERS_FILE = path.join(__dirname, "lum_stickers.json");
@@ -122,7 +115,8 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоцио�
    - Разговорный язык («ахах», «блин», «кстати», «хм»).
    - НЕ заканчивай каждое сообщение дежурным вопросом.
    - Каомодзи (>w<, >_<, (,,>﹏<,,), ^^) используй умеренно.
-   - Твой характер: милая, озорная, любящая, иногда ревнивая или подкалывает.`;
+   - Твой характер: милая, озорная, любящая, иногда ревнивая или подкалывает.
+   - СТИКЕРЫ: НЕ используй тег [STICKER], если Дарлинг прямо не попросил прислать стикер!`;
 
 const chatHistories = new Map();
 
@@ -141,50 +135,6 @@ async function downloadAsBase64(fileId) {
   const res = await fetch(fileUrl);
   const arrayBuf = await res.arrayBuffer();
   return Buffer.from(arrayBuf).toString("base64");
-}
-
-// Параллельная генерация через Gemini с достаточным таймаутом
-async function generateGemini(contents, customConfig = {}) {
-  if (!ai) return null;
-
-  const timeoutMs = customConfig.timeoutMs || 25000;
-  const maxTokens = customConfig.maxOutputTokens || 120;
-
-  const fetchFromModel = async (modelName) => {
-    const res = await ai.models.generateContent({
-      model: modelName,
-      contents: contents,
-      config: {
-        systemInstruction: LUM_SYSTEM_PROMPT,
-        maxOutputTokens: maxTokens,
-        ...customConfig,
-      },
-    });
-    if (res && res.text) {
-      return res.text.trim();
-    }
-    throw new Error("Empty response");
-  };
-
-  try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), timeoutMs)
-    );
-
-    // Параллельный запуск — берем модель, ответившую первой!
-    const fastestResponse = await Promise.race([
-      Promise.any(MODELS.map((m) => fetchFromModel(m))),
-      timeoutPromise,
-    ]);
-
-    if (fastestResponse) {
-      return fastestResponse;
-    }
-  } catch (err) {
-    console.warn("Параллельная генерация не завершилась вовремя:", err.message);
-  }
-
-  return null;
 }
 
 // Старт меню со всеми суперспособностями
@@ -219,10 +169,47 @@ bot.command("start", async (ctx) => {
     `📱 <b>Генератор QR</b> — <i>«сделай qr [ссылка]»</i>\n` +
     `⏰ <b>Таймер</b> — <i>«напомни через 20 минут позвонить»</i>\n` +
     `📝 <b>Саммари</b> — <i>«кратко: [длинная статья]»</i>\n` +
+    `🚀 <b>Статус движков</b> — <i>/engine</i> (пропускная способность для класса)\n` +
     `🥰 <b>Живые стикеры</b> и забота о тебе 💕\n\n` +
     `<i>Ну что, какую технологию протестируем первой? >w<</i>`,
     { parse_mode: "HTML" }
   );
+});
+
+// Мониторинг нейро-движков и емкости для класса
+bot.command(["engine", "status", "capacity"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const geminiStats = geminiPool.getStats();
+
+  let text = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `⚡ <b>НЕЙРО-ДВИЖКИ ЛАМ • СТАТУС ДЛЯ КЛАССА</b> 💚\n\n`;
+
+  text += `🚀 <b>Groq LPU Engine:</b>\n`;
+  if (groqPool.size > 0) {
+    text += `• Ключей в пуле: <code>${groqPool.size}</code>\n`;
+    text += `• Лимит: <code>${groqPool.size * 14400}</code> запросов/день\n`;
+    text += `• Скорость: <code>~0.3–0.5 сек</code> 🟢\n\n`;
+  } else {
+    text += `• Статус: <i>Не подключен (можно добавить GROQ_API_KEY с console.groq.com для скорости 0.3с и 14 400 запросов/день!)</i>\n\n`;
+  }
+
+  text += `💎 <b>Google Gemini Multi-Key Pool:</b>\n`;
+  text += `• Ключей в пуле: <code>${geminiPool.size}</code>\n`;
+  geminiStats.forEach((s) => {
+    const statusIcon = s.active ? "🟢 Активен" : `⏳ Кулдаун (${s.cooldownLeftSec}с)`;
+    text += `  └ Ключ #${s.id} [<code>${s.key}</code>]: ${statusIcon} (✅ ${s.success} / ❌ ${s.fails})\n`;
+  });
+  text += `• Модели ротации: <code>3.1-flash-lite, 3.5-flash-lite, 3.7-flash, 3.8-flash</code>\n\n`;
+
+  text += `🌐 <b>Pollinations AI:</b>\n`;
+  text += `• Аварийный резерв без ключей: 🟢 Активен\n\n`;
+
+  text += `💡 <b>Как масштабировать на весь класс?</b>\n` +
+    `1. Вставь в Railway переменные через запятую:\n` +
+    `<code>GEMINI_API_KEY=ключ1,ключ2,ключ3</code> (создаются бесплатно за 30с на <b>aistudio.google.com</b>)\n` +
+    `2. Добавь бесплатный <code>GROQ_API_KEY=gsk_...</code> с <b>console.groq.com</b> (дает 14 400 бесплатных запросов в день со скоростью молнии!).`;
+
+  await safeSendHtml(ctx, text, ctx.message.message_id);
 });
 
 // Единый мультимодальный обработчик
@@ -248,6 +235,15 @@ async function handleIncoming(
   const chatId = ctx.chat.id;
   const history = getHistory(chatId);
   if (ctx.from) recordInteraction(ctx.from.id);
+
+  const userId = ctx.from?.id;
+  if (userId) {
+    if (activeUsers.has(userId)) {
+      console.log(`[AntiSpam] Пропуск параллельного запроса от пользователя ${userId}`);
+      return;
+    }
+    activeUsers.add(userId);
+  }
 
   await ctx.api.sendChatAction(chatId, "typing");
   const typingInterval = setInterval(() => {
@@ -374,13 +370,24 @@ ${userText}
       isTranslator
     ) {
       configOverrides.maxOutputTokens = 850;
-      configOverrides.timeoutMs = 12000;
+      configOverrides.timeoutMs = 15000;
     } else if (isVoiceOrVideo) {
       configOverrides.maxOutputTokens = 260;
-      configOverrides.timeoutMs = 8000;
+      configOverrides.timeoutMs = 15000;
+    } else {
+      configOverrides.maxOutputTokens = 120;
+      configOverrides.timeoutMs = 10000;
     }
 
-    let rawReply = await generateGemini(contentsToSend, configOverrides);
+    const isMultimodal = Boolean((fileId && mimeType) || isVoiceOrVideo);
+
+    let rawReply = await generateLumResponse({
+      contents: contentsToSend,
+      systemPrompt: LUM_SYSTEM_PROMPT,
+      maxOutputTokens: configOverrides.maxOutputTokens,
+      timeoutMs: configOverrides.timeoutMs,
+      isMultimodal,
+    });
 
     if (!rawReply) {
       history.pop();
@@ -396,24 +403,16 @@ ${userText}
       }
     }
 
-    // Извлекаем реакцию, но ставим её ОЧЕНЬ РЕДКО (не чаще 15% случаев)
+    // Извлекаем реакцию, но ставим её ОЧЕНЬ РЕДКО (не чаще 5% случаев, чтобы не раздражать)
     const reactMatch = rawReply.match(/^\[REACT:([^\]]+)\]\s*/i);
     if (reactMatch) {
       const emoji = reactMatch[1].trim();
       rawReply = rawReply.replace(reactMatch[0], "").trim();
-      if (Math.random() < 0.15) {
+      if (Math.random() < 0.05) {
         try {
           await ctx.react(emoji);
         } catch (e) {}
       }
-    }
-
-    // Проверяем, просила ли модель прикрепить стикер по контексту [STICKER]
-    const stickerTagMatch = rawReply.match(/\[STICKER\]/i);
-    let shouldSendSticker = false;
-    if (stickerTagMatch) {
-      rawReply = rawReply.replace(stickerTagMatch[0], "").trim();
-      shouldSendSticker = true;
     }
 
     // Извлекаем расшифровку голоса для бесплатного Telegram Premium
@@ -429,11 +428,18 @@ ${userText}
       parts: [{ text: rawReply }],
     });
 
-    // Отправка стикера ТОЛЬКО:
-    // 1) Если Дарлинг сам прислал стикер (в ответ)
-    // 2) Если модель сочла нужным прикрепить [STICKER] под тему
-    // Никаких случайных стикеров на обычные текстовые сообщения!
-    if (savedStickers.length > 0 && (isSticker || shouldSendSticker)) {
+    // Отправка стикера СТРОГО:
+    // 1) Если Дарлинг явно попросил стикер ("пришли стикер", "скинь стикер" и т.д.)
+    // 2) Если Дарлинг сам прислал стикер (в ответ с 35% вероятностью)
+    // НИКАКИХ случайных стикеров на обычные текстовые сообщения!
+    const userWantsSticker =
+      userText &&
+      /(скинь|отправь|пришли|дай|покажи)\s+(стикер|стикеры|наклейк)/i.test(userText);
+
+    const shouldSendSticker =
+      userWantsSticker || (isSticker && Math.random() < 0.35);
+
+    if (savedStickers.length > 0 && shouldSendSticker) {
       const pick = savedStickers[Math.floor(Math.random() * savedStickers.length)];
       const stickerId = typeof pick === "string" ? pick : pick.file_id;
       try {
@@ -487,6 +493,7 @@ ${userText}
       await ctx.reply(rawReply);
     }
   } finally {
+    if (userId) activeUsers.delete(userId);
     clearInterval(typingInterval);
   }
 }

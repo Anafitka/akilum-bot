@@ -33,6 +33,12 @@ const {
   transcribeAudioGroq,
   generateQuizPoll,
 } = require("./ai_engine");
+const {
+  recordChatActivity,
+  toggleProactive,
+  getProactiveStatus,
+  initProactiveScheduler,
+} = require("./proactive");
 require("dotenv").config();
 
 function escapeHtml(text) {
@@ -222,6 +228,7 @@ bot.command("start", async (ctx) => {
     `💻 <b>Нейро-Кодер</b> — <i>«код: [задача]»</i> (готовый код на Python/C++ для информатики)\n` +
     `📚 <b>Конструктор сочинений</b> — <i>«сочинение: [тема]»</i> (план, аргументы и клише на 5/5)\n` +
     `⚔️ <b>Битвы класса</b> — <i>/duel @username</i>, <i>/roulette</i>, <i>/roast @username</i>\n` +
+    `💌 <b>Инициатива Лам (пишет первой)</b> — <i>/proactive</i> (вкл/выкл)\n` +
     `🚀 <b>Статус движков</b> — <i>/engine</i> (пропускная способность для класса)\n` +
     `🥰 <b>Живые стикеры</b> и забота о тебе 💕\n\n` +
     `<i>Ну что, какую технологию протестируем первой? >w<</i>`,
@@ -265,6 +272,32 @@ bot.command(["engine", "status", "capacity"], async (ctx) => {
   await safeSendHtml(ctx, text, ctx.message.message_id);
 });
 
+// Автономные сообщения Лам (написать первой)
+bot.command(["proactive", "automsg"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const isEnabled = toggleProactive(ctx.chat.id);
+  if (isEnabled) {
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💌 <b>ИНИЦИАТИВА ЛАМ: ВКЛЮЧЕНА!</b> 💕\n\n` +
+      `Теперь я буду иногда писать тебе первой:\n` +
+      `☀️ Будить по утрам и желать хорошего дня\n` +
+      `🎒 Спрашивать, как дела после уроков и школы\n` +
+      `🌙 Желать уютного вечера и сладких снов\n` +
+      `⚡ Скучать и напоминать, что твоя они-принцесса рядом!\n\n` +
+      `<i>«Ночью с 23:00 до 8:30 я соблюдаю тихий час и сладко сплю, так что будить не буду >w<»</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+  } else {
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💤 <b>Инициатива Лам временно выключена.</b>\n` +
+      `Я буду отвечать только тогда, когда ты сам напишешь мне! >_<`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+  }
+});
+
 // Единый мультимодальный обработчик
 async function handleIncoming(
   ctx,
@@ -293,6 +326,10 @@ async function handleIncoming(
   const chatId = ctx.chat.id;
   const history = getHistory(chatId);
   if (ctx.from) recordInteraction(ctx.from.id);
+  recordChatActivity(chatId, {
+    isGroup: ctx.chat.type !== "private",
+    name: ctx.from?.first_name || ctx.chat.title || "Дарлинг",
+  });
 
   const userId = ctx.from?.id;
   if (userId) {
@@ -1452,6 +1489,8 @@ bot.on("message:document", async (ctx) => {
     fallbackText: `Я скинул тебе файл (${doc.file_name || "документ"}):`,
   });
 });
+
+initProactiveScheduler(bot, getSmartSticker);
 
 bot.start();
 console.log("⚡ Ультра-Лам запущена со всеми новейшими технологиями!");

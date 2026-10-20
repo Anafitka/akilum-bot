@@ -115,8 +115,11 @@ if (groqPool.size > 0) {
 
 // Модели Gemini по приоритету (у каждой модели свой независимый лимит квот в Google!)
 const GEMINI_MODELS = [
-  "gemini-3.1-flash-lite",
   "gemini-3.5-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite",
   "gemini-3.7-flash",
   "gemini-3.8-flash",
   "gemini-flash-latest",
@@ -247,19 +250,12 @@ async function callGemini(contents, systemPrompt, maxTokens = 120, timeoutMs = 1
           errMsg.includes("RESOURCE_EXHAUSTED") ||
           errMsg.includes("quota");
         const is503 = errMsg.includes("503") || errMsg.includes("UNAVAILABLE");
+        const isTimeout = errMsg.includes("Timeout");
 
-        if (isQuota) {
-          // У этой конкретной модели квота исчерпана — пробуем следующую модель
-          continue;
-        } else if (is503) {
-          // Временный перегруз модели на серверах Google — пробуем другую модель
-          continue;
-        } else if (errMsg.includes("404")) {
-          continue;
-        } else {
-          keyAllExhausted = false;
-          break;
-        }
+        console.warn(`⚠️ [Gemini] Модель ${model} вернула ошибку: ${errMsg.slice(0, 100)}`);
+
+        // Пробуем следующую модель в списке, не прерывая цикл!
+        continue;
       }
     }
 

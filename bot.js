@@ -53,12 +53,18 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;");
 }
 
+function sanitizeTelegramHtml(html) {
+  if (!html) return "";
+  return String(html).replace(/<(?!\/?(?:b|strong|i|em|u|ins|s|strike|del|span|tg-spoiler|a|code|pre|blockquote|tg-emoji)(?:[\s>]))/gi, "&lt;");
+}
+
 async function safeSendHtml(ctx, text, replyToId = null, replyMarkup = null) {
+  const sanitized = sanitizeTelegramHtml(text);
   const options = { parse_mode: "HTML" };
   if (replyToId) options.reply_to_message_id = replyToId;
   if (replyMarkup) options.reply_markup = replyMarkup;
   try {
-    return await ctx.reply(text, options);
+    return await ctx.reply(sanitized, options);
   } catch (err) {
     console.warn("safeSendHtml fallback:", err.message);
     const plain = text.replace(/<[^>]+>/g, "");
@@ -229,12 +235,12 @@ bot.command("start", async (ctx) => {
   await ctx.api.sendChatAction(ctx.chat.id, "typing");
 
   const webAppUrl = getWebAppUrl();
-  const replyOptions = { parse_mode: "HTML" };
+  let markup = null;
   if (webAppUrl) {
-    replyOptions.reply_markup = new InlineKeyboard().webApp("⚡ Запустить Oni Terminal WebApp", webAppUrl);
+    markup = new InlineKeyboard().webApp("⚡ Запустить Oni Terminal WebApp", webAppUrl);
   }
 
-  await ctx.reply(
+  const startText =
     `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
     `⚡ <b>ПРИВЕТ, ДАРЛИНГ! Я — ЛАМ!</b> 💚✨\n\n` +
     `Твоя они-принцесса с ультра-технологиями на борту:\n\n` +
@@ -273,9 +279,9 @@ bot.command("start", async (ctx) => {
     `💌 <b>Инициатива Лам (пишет первой)</b> — <i>/proactive</i> (вкл/выкл)\n` +
     `🚀 <b>Статус движков</b> — <i>/engine</i> (пропускная способность для класса)\n` +
     `🥰 <b>Живые стикеры</b> и забота о тебе 💕\n\n` +
-    `<i>Ну что, какую технологию протестируем первой? >w<</i>`,
-    replyOptions
-  );
+    `<i>Ну что, какую технологию протестируем первой? &gt;w&lt;</i>`;
+
+  await safeSendHtml(ctx, startText, null, markup);
 });
 
 // Запуск полноэкранного Telegram Mini App (Cyberpunk Oni Terminal)
@@ -284,18 +290,17 @@ bot.command(["app", "webapp"], async (ctx) => {
   const webAppUrl = getWebAppUrl();
   if (webAppUrl) {
     const kb = new InlineKeyboard().webApp("⚡ Открыть Cyberpunk Oni Terminal", webAppUrl);
-    await ctx.reply(
+    const appText =
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `⚡ <b>CYBERPUNK ONI TERMINAL • ЛАМ</b> 💚\n\n` +
       `Дарлинг, твой персональный киберпанк-терминал готов к запуску!\n` +
       `• Интерактивный Они-кликер с искрами молний ⚡\n` +
       `• Быстрые технологические кнопки для школы 🎒\n` +
       `• Неоновый дизайн во весь экран прямо внутри Telegram! 🌌\n\n` +
-      `<i>Нажми кнопку ниже, чтобы открыть терминал >w<</i>`,
-      { parse_mode: "HTML", reply_markup: kb, reply_to_message_id: ctx.message.message_id }
-    );
+      `<i>Нажми кнопку ниже, чтобы открыть терминал &gt;w&lt;</i>`;
+    await safeSendHtml(ctx, appText, ctx.message.message_id, kb);
   } else {
-    await ctx.reply(
+    const fallbackText =
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `⚡ <b>CYBERPUNK ONI TERMINAL • ЛАМ</b> 💚\n\n` +
       `Сервер терминала уже запущен на порту <code>${process.env.PORT || 3000}</code>!\n\n` +
@@ -303,9 +308,8 @@ bot.command(["app", "webapp"], async (ctx) => {
       `1. В панели Railway перейди в свой сервис → <b>Settings → Networking → Generate Domain</b>.\n` +
       `2. Скопируй домен и добавь переменную в <b>Variables</b>:\n` +
       `<code>WEBAPP_URL=https://твой-домен.railway.app</code>\n\n` +
-      `После этого кнопка мини-приложения станет активной для всего класса! ✨`,
-      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
-    );
+      `После этого кнопка мини-приложения станет активной для всего класса! ✨`;
+    await safeSendHtml(ctx, fallbackText, ctx.message.message_id);
   }
 });
 
@@ -604,6 +608,11 @@ ${userText}
       },
     ];
 
+    const isMultimodal = Boolean(
+      (fileId && mimeType && !preTranscribed) ||
+      (isVoiceOrVideo && !preTranscribed)
+    );
+
     const configOverrides = {};
     if (
       isSolve ||
@@ -618,22 +627,17 @@ ${userText}
       isEssayHelper
     ) {
       configOverrides.maxOutputTokens = 850;
-      configOverrides.timeoutMs = 15000;
-    } else if (isGif) {
+      configOverrides.timeoutMs = 25000;
+    } else if (isGif || isMultimodal) {
       configOverrides.maxOutputTokens = 350;
-      configOverrides.timeoutMs = 15000;
+      configOverrides.timeoutMs = 25000;
     } else if (isVoiceOrVideo && !preTranscribed) {
       configOverrides.maxOutputTokens = 260;
-      configOverrides.timeoutMs = 15000;
+      configOverrides.timeoutMs = 20000;
     } else {
-      configOverrides.maxOutputTokens = 140;
-      configOverrides.timeoutMs = 10000;
+      configOverrides.maxOutputTokens = 160;
+      configOverrides.timeoutMs = 12000;
     }
-
-    const isMultimodal = Boolean(
-      (fileId && mimeType && !preTranscribed) ||
-      (isVoiceOrVideo && !preTranscribed)
-    );
 
     let rawReply = await generateLumResponse({
       contents: contentsToSend,
@@ -1519,7 +1523,7 @@ bot.on("message:text", async (ctx) => {
     if (!query) query = "главные мировые новости сегодня";
 
     await ctx.api.sendChatAction(ctx.chat.id, "typing");
-    const statusMsg = await ctx.reply("🌐 <i>Лам подключает спутниковые радары и сканирует интернет...</i> ⚡", { parse_mode: "HTML" });
+    const statusMsg = await safeSendHtml(ctx, "🌐 <i>Лам подключает спутниковые радары и сканирует интернет...</i> ⚡");
 
     try {
       const searchResults = await fetchLiveSearchResults(query);
@@ -1670,7 +1674,9 @@ bot.on("message:photo", async (ctx) => {
   const isChatDetective = /переписк|скрин|что ответить|что она имел|что он имел|как ответить|намёк|намек|флирт|помоги ответить/i.test(caption);
   const isOcr = /конспект|текст|сканируй|распознай|перепечатай|ocr|сфоткал тетрадь/i.test(caption);
 
-  let fallback = "Я прислал тебе фото, посмотри!";
+  let fallback = `[Дарлинг прислал фото]:
+Посмотри внимательно на изображение и расскажи, что на нем изображено (объекты, люди, персонажи, детали, текст или контекст).
+Отреагируй живо, эмоционально, заботливо и с юмором от лица они-принцессы Лам, обращаясь к Дарлингу!`;
   if (isFood) {
     fallback = `[АНАЛИЗ БЛЮДА И КАЛОРИЙ]:
 Посмотри на фото еды и определи:
@@ -1709,7 +1715,7 @@ bot.on("message:animation", async (ctx) => {
     mimeType = "image/gif";
   } else {
     fileIdToAnalyze = anim.file_id;
-    mimeType = "image/jpeg";
+    mimeType = anim.mime_type || "video/mp4";
   }
 
   const fallback = `[Дарлинг прислал GIF-анимацию/гифку (название: "${anim.file_name || 'гифка'}")]:
@@ -1942,7 +1948,7 @@ bot.callbackQuery("action:build_pdf", async (ctx) => {
   await ctx.answerCallbackQuery({ text: "📄 Собираю PDF документ..." });
 
   if (!session || !session.images || session.images.length === 0) {
-    await ctx.reply("В очереди нет сохраненных страниц! Отправь фото с подписью <code>pdf</code> >_<", { parse_mode: "HTML" });
+    await safeSendHtml(ctx, "В очереди нет сохраненных страниц! Отправь фото с подписью <code>pdf</code> &gt;_&lt;");
     return;
   }
 
@@ -2015,6 +2021,11 @@ if (activeWebAppUrl) {
     })
     .catch((e) => console.warn("Menu button notice:", e.message));
 }
+
+bot.catch((err) => {
+  const ctx = err.ctx;
+  console.error(`[Bot Catch] Ошибка при обработке апдейта ${ctx?.update?.update_id}:`, err.error);
+});
 
 bot.start();
 console.log("⚡ Ультра-Лам запущена со всеми новейшими технологиями!");

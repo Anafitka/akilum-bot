@@ -70,7 +70,7 @@ if (geminiKey) {
 }
 
 // Модели с автоматическим параллельным выбором быстрейшей
-const MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest"];
+const MODELS = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
 
 // Сохранение стикеров
 const STICKERS_FILE = path.join(__dirname, "lum_stickers.json");
@@ -143,11 +143,11 @@ async function downloadAsBase64(fileId) {
   return Buffer.from(arrayBuf).toString("base64");
 }
 
-// Ультра-быстрая параллельная генерация через Gemini без задержек
+// Параллельная генерация через Gemini с достаточным таймаутом
 async function generateGemini(contents, customConfig = {}) {
   if (!ai) return null;
 
-  const timeoutMs = customConfig.timeoutMs || 4500;
+  const timeoutMs = customConfig.timeoutMs || 25000;
   const maxTokens = customConfig.maxOutputTokens || 120;
 
   const fetchFromModel = async (modelName) => {
@@ -163,7 +163,7 @@ async function generateGemini(contents, customConfig = {}) {
     if (res && res.text) {
       return res.text.trim();
     }
-    throw new Error("Empty");
+    throw new Error("Empty response");
   };
 
   try {
@@ -181,17 +181,8 @@ async function generateGemini(contents, customConfig = {}) {
       return fastestResponse;
     }
   } catch (err) {
-    console.warn("Параллельная генерация не удалась вовремя:", err.message);
+    console.warn("Параллельная генерация не завершилась вовремя:", err.message);
   }
-
-  // Резервный одиночный запрос
-  try {
-    const backupRes = await Promise.race([
-      fetchFromModel("gemini-flash-latest"),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000)),
-    ]);
-    if (backupRes) return backupRes;
-  } catch (e) {}
 
   return null;
 }
@@ -405,16 +396,24 @@ ${userText}
       }
     }
 
-    // Извлекаем реакцию, но ставим её РЕДКО (только в 25% случаев, чтобы не спамить!)
+    // Извлекаем реакцию, но ставим её ОЧЕНЬ РЕДКО (не чаще 15% случаев)
     const reactMatch = rawReply.match(/^\[REACT:([^\]]+)\]\s*/i);
     if (reactMatch) {
       const emoji = reactMatch[1].trim();
       rawReply = rawReply.replace(reactMatch[0], "").trim();
-      if (Math.random() < 0.25) {
+      if (Math.random() < 0.15) {
         try {
           await ctx.react(emoji);
         } catch (e) {}
       }
+    }
+
+    // Проверяем, просила ли модель прикрепить стикер по контексту [STICKER]
+    const stickerTagMatch = rawReply.match(/\[STICKER\]/i);
+    let shouldSendSticker = false;
+    if (stickerTagMatch) {
+      rawReply = rawReply.replace(stickerTagMatch[0], "").trim();
+      shouldSendSticker = true;
     }
 
     // Извлекаем расшифровку голоса для бесплатного Telegram Premium
@@ -430,11 +429,15 @@ ${userText}
       parts: [{ text: rawReply }],
     });
 
-    // Отправка случайного стикера Лам
-    if (savedStickers.length > 0 && (isSticker || Math.random() < 0.25)) {
-      const randomSticker = savedStickers[Math.floor(Math.random() * savedStickers.length)];
+    // Отправка стикера ТОЛЬКО:
+    // 1) Если Дарлинг сам прислал стикер (в ответ)
+    // 2) Если модель сочла нужным прикрепить [STICKER] под тему
+    // Никаких случайных стикеров на обычные текстовые сообщения!
+    if (savedStickers.length > 0 && (isSticker || shouldSendSticker)) {
+      const pick = savedStickers[Math.floor(Math.random() * savedStickers.length)];
+      const stickerId = typeof pick === "string" ? pick : pick.file_id;
       try {
-        await ctx.replyWithSticker(randomSticker);
+        await ctx.replyWithSticker(stickerId);
       } catch (e) {
         console.error("Ошибка отправки стикера:", e.message);
       }
@@ -564,6 +567,20 @@ bot.on("message:text", async (ctx) => {
       { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
     );
     return;
+  }
+
+  // 0.1 Явный запрос стикера от пользователя
+  const isStickerRequest = /^(скинь стикер|отправь стикер|пришли стикер|покажи стикер)\b/i.test(text);
+  if (isStickerRequest) {
+    if (savedStickers.length > 0) {
+      const pick = savedStickers[Math.floor(Math.random() * savedStickers.length)];
+      const stickerId = typeof pick === "string" ? pick : pick.file_id;
+      try {
+        await ctx.replyWithSticker(stickerId);
+        await ctx.reply("Лови, Дарлинг! Это я для тебя~ >w<");
+        return;
+      } catch (e) {}
+    }
   }
 
   const detectedUrl = extractUrl(text);

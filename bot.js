@@ -13,6 +13,9 @@ const {
   generateArtwork,
   searchMusicTrack,
   parseReminderRequest,
+  getLiveWeather,
+  getQrCodeUrl,
+  getWikiSummary,
 } = require("./features");
 require("dotenv").config();
 
@@ -151,14 +154,16 @@ bot.command("start", async (ctx) => {
     `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
     `⚡ <b>ПРИВЕТ, ДАРЛИНГ!</b> ✨\n\n` +
     `Я — <b>Лам</b>, твоя любимая инопланетная принцесса) 💚\n\n` +
-    `<b>Что я умею делать:</b>\n` +
-    `🎬 <b>Скачивать видео</b> — кидай ссылки из TikTok, Reels, YouTube и Pinterest\n` +
-    `🎙 <b>Слушать голосовые</b> — наговаривай всё что думаешь, я пойму каждое слово!\n` +
-    `📹 <b>Смотреть кружочки</b> — оцениваю твой вайб, одежду и настроение\n` +
-    `🎨 <b>Рисовать арты</b> — напиши <i>«нарисуй неоновый город»</i> или <i>«сделай арт»</i>\n` +
-    `🎵 <b>Искать музыку</b> — напиши <i>«найди трек [название]»</i> и я пришлю превью!\n` +
-    `⏰ <b>Ставить напоминания</b> — <i>«напомни через 15 минут сделать чай»</i>\n` +
-    `🥰 <b>Отвечать стикерами</b> и общаться как настоящая любящая девушка!\n\n` +
+    `<b>Мои суперспособности:</b>\n` +
+    `🎬 <b>Скачивать видео</b> — ссылки TikTok, Reels, YouTube, Pinterest (без водяных знаков!)\n` +
+    `🎨 <b>Рисовать арты</b> — напиши <i>«нарисуй киберпанк город»</i>\n` +
+    `🎵 <b>Искать треки</b> — <i>«найди трек [название]»</i> (пришлю обложку и превью послушать!)\n` +
+    `⛅ <b>Метео-радар</b> — <i>«погода в Бишкеке»</i>, <i>«погода в Москве»</i>\n` +
+    `📱 <b>Генератор QR</b> — <i>«сделай qr [ссылка]»</i>\n` +
+    `📖 <b>Эрудит</b> — <i>«что такое черная дыра»</i>, <i>«кто такой Илон Маск»</i>\n` +
+    `⏰ <b>Таймер</b> — <i>«напомни через 15 минут сделать чай»</i>\n` +
+    `🎙 <b>Слушать голосовые</b> и 📹 <b>смотреть кружочки</b>!\n` +
+    `🥰 <b>Отвечать стикерами</b> и заботиться о тебе 💕\n\n` +
     `<i>Ну что, о чём поболтаем? >w<</i>`,
     { parse_mode: "HTML" }
   );
@@ -492,6 +497,84 @@ bot.on("message:text", async (ctx) => {
     }, reminder.ms);
 
     return;
+  }
+
+  // Метео-радар (Живая погода)
+  const isWeatherRequest = /^(погода в|погода|какая погода в|какая погода|\/weather)\b/i.test(text);
+  if (isWeatherRequest) {
+    try {
+      await ctx.react("🌤");
+    } catch (e) {}
+
+    const weather = await getLiveWeather(text);
+    if (weather) {
+      await ctx.reply(
+        `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+        `⛅ <b>МЕТЕО-РАДАР • ${escapeHtml(weather.city.toUpperCase())}</b> (${escapeHtml(weather.country)})\n\n` +
+        `🌡 <b>Температура:</b> <code>${weather.temp > 0 ? "+" + weather.temp : weather.temp}°C</code>\n` +
+        `🌤 <b>Небо:</b> <i>${weather.condition}</i>\n` +
+        `💨 <b>Ветер:</b> <code>${weather.wind} км/ч</code>\n\n` +
+        `💬 <i>${weather.advice}</i>`,
+        { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+      );
+      return;
+    }
+  }
+
+  // Генератор QR-кодов
+  const isQrRequest = /^(сделай qr|создай qr|qr-код|qr|\/qr)\b/i.test(text);
+  if (isQrRequest) {
+    const qr = getQrCodeUrl(text);
+    if (qr) {
+      try {
+        await ctx.react("⚡");
+      } catch (e) {}
+
+      await ctx.replyWithPhoto(qr.qrUrl, {
+        caption:
+          `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+          `📱 <b>LUM • QR GENERATOR</b> ✨\n\n` +
+          `🔗 <code>${escapeHtml(qr.data)}</code>\n\n` +
+          `<i>Дарлинг, сканируй камерой телефона! >w<</i>`,
+        parse_mode: "HTML",
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return;
+    }
+  }
+
+  // Википедия (Эрудит)
+  const isWikiRequest = /^(что такое|кто такой|кто такая|википедия|\/wiki)\b/i.test(text);
+  if (isWikiRequest) {
+    const wiki = await getWikiSummary(text);
+    if (wiki) {
+      try {
+        await ctx.react("💡");
+      } catch (e) {}
+
+      const captionText =
+        `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+        `📖 <b>${escapeHtml(wiki.title)}</b>\n\n` +
+        `<i>${escapeHtml(wiki.extract)}</i>\n\n` +
+        (wiki.pageUrl ? `🔗 <a href="${wiki.pageUrl}">Читать подробнее в Википедии</a>` : "");
+
+      if (wiki.thumbnail) {
+        try {
+          await ctx.replyWithPhoto(wiki.thumbnail, {
+            caption: captionText,
+            parse_mode: "HTML",
+            reply_to_message_id: ctx.message.message_id,
+          });
+          return;
+        } catch (e) {}
+      }
+
+      await ctx.reply(captionText, {
+        parse_mode: "HTML",
+        reply_to_message_id: ctx.message.message_id,
+      });
+      return;
+    }
   }
 
   // Обычный диалог

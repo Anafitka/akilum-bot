@@ -122,11 +122,11 @@ const GEMINI_MODELS = [
   "gemini-flash-latest",
 ];
 
-// Модели Groq по приоритету скорости и качества
+// Модели Groq по приоритету скорости и качества (120B модель обеспечивает безупречный русский язык без ошибок)
 const GROQ_MODELS = [
-  "qwen/qwen3.8-27b",
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
+  "qwen/qwen3.8-27b",
 ];
 
 // Преобразование истории Gemini в формат сообщений OpenAI/Groq
@@ -150,7 +150,7 @@ function toOpenAIMessages(contents, systemPrompt) {
 }
 
 /**
- * Вызов Groq Cloud API (~0.3-0.5 секунд ответ)
+ * Вызов Groq Cloud API (~0.3-0.6 секунд ответ)
  */
 async function callGroq(messages, maxTokens = 350, timeoutMs = 6000) {
   const keyItem = groqPool.getAvailable();
@@ -158,6 +158,9 @@ async function callGroq(messages, maxTokens = 350, timeoutMs = 6000) {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  // Для reasoning-моделей (gpt-oss-120b) требуется достаточный лимит токенов (минимум 450)
+  const effectiveMaxTokens = Math.max(maxTokens, 450);
 
   try {
     for (const model of GROQ_MODELS) {
@@ -171,7 +174,7 @@ async function callGroq(messages, maxTokens = 350, timeoutMs = 6000) {
           body: JSON.stringify({
             model,
             messages,
-            max_tokens: maxTokens,
+            max_tokens: effectiveMaxTokens,
             temperature: 0.75,
           }),
           signal: controller.signal,

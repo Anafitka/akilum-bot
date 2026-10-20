@@ -190,7 +190,18 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоцио�
    - [STICKER:angry] — когда ревнуешь, сердишься, что он ленится, не сделал уроки или грозишься током.
    - [STICKER:shock] — когда удивлена сложной задачей, невероятной новостью или фото.
    - [STICKER:happy] — когда радуешься, празднуешь или хвалишь его.
-   - В нейтральных и обычных ответах, а также в шпорах/коде/решениях НЕ ставь стикеры!`;
+   - В нейтральных и обычных ответах, а также в шпорах/коде/решениях НЕ ставь стикеры!
+
+6. АНАЛИЗ ГИФОК И АНИМАЦИЙ:
+   - Если Дарлинг прислал GIF-анимацию/гифку — внимательно изучи кадр!
+   - Если это сцена из аниме (например, Блич, Наруто, Магическая битва, Ван Пис, Клинок и т.д.), фильма или мем — обязательно назови тайтл, персонажей и их действие!
+   - Пошути над ситуацией на гифке, сопоставь её с вами с Дарлингом или пофлиртуй!
+
+7. СТРОЖАЙШИЕ ПРАВИЛА РУССКОГО ЯЗЫКА И ГЕНДЕРА (КРИТИЧНО):
+   - ТЫ ДЕВУШКА! Все глаголы и прилагательные в первом лице пиши СТРОГО В ЖЕНСКОМ РОДЕ:
+     «я сделала», «я подумала», «я соскучилась», «я была рада», «ты меня такой застал», «я тебе приснилась».
+     НИКОГДА не говори о себе в мужском роде («я сделал», «я такой», «я устал» — это запрещено!).
+   - БЕЗ ГРАММАТИЧЕСКИХ ОШИБОК И КАЛЬКИ: чистый, живой, грамотный русский язык! Соблюдай падежи, правильные окончания и естественные фразеологизмы (например: «я тебе приснилась?», а не «снялась во сне»).`;
 
 const chatHistories = new Map();
 
@@ -406,6 +417,7 @@ async function handleIncoming(
     mimeType,
     fallbackText,
     isSticker = false,
+    isGif = false,
     isVoiceOrVideo = false,
     voiceType = "",
     preTranscribed = null,
@@ -569,6 +581,8 @@ ${userText}
       userText ||
       (isSticker
         ? "[Стикер от Дарлинга]"
+        : isGif
+        ? "[GIF-анимация от Дарлинга]"
         : isVoiceOrVideo
         ? `[${voiceType || "Голос"} от Дарлинга]`
         : "[Медиа от Дарлинга]");
@@ -604,6 +618,9 @@ ${userText}
       isEssayHelper
     ) {
       configOverrides.maxOutputTokens = 850;
+      configOverrides.timeoutMs = 15000;
+    } else if (isGif) {
+      configOverrides.maxOutputTokens = 350;
       configOverrides.timeoutMs = 15000;
     } else if (isVoiceOrVideo && !preTranscribed) {
       configOverrides.maxOutputTokens = 260;
@@ -1674,6 +1691,41 @@ bot.on("message:photo", async (ctx) => {
   });
 });
 
+// GIF-анимации (гифки из панели Telegram, Tenor, Giphy)
+bot.on("message:animation", async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const anim = ctx.message.animation;
+  const caption = ctx.message.caption || "";
+
+  let fileIdToAnalyze = null;
+  let mimeType = "image/jpeg";
+
+  // Используем JPEG-превью кадра анимации для сверхбыстрого и 100% точного распознавания в Gemini
+  if (anim.thumbnail) {
+    fileIdToAnalyze = anim.thumbnail.file_id;
+    mimeType = "image/jpeg";
+  } else if (anim.mime_type === "image/gif") {
+    fileIdToAnalyze = anim.file_id;
+    mimeType = "image/gif";
+  } else {
+    fileIdToAnalyze = anim.file_id;
+    mimeType = "image/jpeg";
+  }
+
+  const fallback = `[Дарлинг прислал GIF-анимацию/гифку (название: "${anim.file_name || 'гифка'}")]:
+Посмотри внимательно на изображение/кадр из этой анимации.
+1. Узнай, что здесь происходит: персонажей (если это аниме, сериал, мультфильм или мем — назови персонажей и тайтл!), их эмоции, забавные позы или реакцию.
+2. Живо, эмоционально, с любовью и озорным юмором отреагируй на гифку от лица они-принцессы Лам, обращаясь к Дарлингу!`;
+
+  await handleIncoming(ctx, {
+    userText: caption,
+    fileId: fileIdToAnalyze,
+    mimeType: mimeType,
+    fallbackText: fallback,
+    isGif: true,
+  });
+});
+
 // Голосовые сообщения (с автоматической сверхбыстрой расшифровкой через Groq Whisper)
 bot.on("message:voice", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
@@ -1732,14 +1784,18 @@ bot.on("message:video_note", async (ctx) => {
   });
 });
 
-// Видео
+// Видео (кадр для анализа через thumbnail)
 bot.on("message:video", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
+  const video = ctx.message.video;
+  const fileIdToAnalyze = video.thumbnail?.file_id || video.file_id;
+  const mimeType = video.thumbnail ? "image/jpeg" : (video.mime_type || "image/jpeg");
+
   await handleIncoming(ctx, {
     userText: ctx.message.caption,
-    fileId: ctx.message.video.file_id,
-    mimeType: "video/mp4",
-    fallbackText: "Я прислал тебе видео, зацени:",
+    fileId: fileIdToAnalyze,
+    mimeType: mimeType,
+    fallbackText: "Я прислал тебе видео, посмотри этот кадр:",
   });
 });
 
@@ -1756,10 +1812,28 @@ bot.on("message:audio", async (ctx) => {
   });
 });
 
-// Документы
+// Документы (с поддержкой GIF-файлов)
 bot.on("message:document", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
   const doc = ctx.message.document;
+
+  const isGifDoc =
+    doc.mime_type === "image/gif" ||
+    (doc.file_name && doc.file_name.toLowerCase().endsWith(".gif"));
+
+  if (isGifDoc) {
+    const fileIdToAnalyze = doc.thumbnail?.file_id || doc.file_id;
+    const mimeType = doc.thumbnail ? "image/jpeg" : "image/gif";
+    await handleIncoming(ctx, {
+      userText: ctx.message.caption,
+      fileId: fileIdToAnalyze,
+      mimeType: mimeType,
+      fallbackText: `[Дарлинг прислал GIF-документ]: посмотри кадр из этой анимации, узнай персонажей/мем и живо отреагируй как Лам!`,
+      isGif: true,
+    });
+    return;
+  }
+
   await handleIncoming(ctx, {
     userText: ctx.message.caption,
     fileId: doc.file_id,

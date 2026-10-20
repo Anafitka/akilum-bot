@@ -262,10 +262,18 @@ bot.on("message:text", async (ctx) => {
     try {
       const { filePath, title } = await downloadVideo(detectedUrl);
 
-      await ctx.replyWithVideo(new InputFile(filePath), {
-        caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
-        reply_to_message_id: ctx.message.message_id,
-      });
+      try {
+        await ctx.replyWithVideo(new InputFile(filePath), {
+          caption: `Дарлинг, смотри что я сохранила! ✨\n\n🎬 ${title}`,
+          reply_to_message_id: ctx.message.message_id,
+        });
+      } catch (sendVideoErr) {
+        console.warn("replyWithVideo failed, fallback to replyWithDocument:", sendVideoErr.message);
+        await ctx.replyWithDocument(new InputFile(filePath), {
+          caption: `Дарлинг, вот твоё видео! ✨\n\n🎬 ${title}`,
+          reply_to_message_id: ctx.message.message_id,
+        });
+      }
 
       cleanupFile(filePath);
 
@@ -280,12 +288,12 @@ bot.on("message:text", async (ctx) => {
         await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
       } catch (e) {}
 
-      if (err.message === "INSTAGRAM_LOGIN_REQUIRED") {
+      if (err.message === "FILE_TOO_LARGE") {
         await ctx.reply(
-          "блин, Инстаграм заблокировал доступ без авторизации >_<\n\nТикток, Ютуб и Пинтерест я скачиваю легко, а для Инсты нужен вход."
+          "Дарлинг, это видео больше 50 МБ! 🙀 В Телеграме ботам запрещено отправлять такие тяжелые файлы. Попробуй видео покороче~ >_<"
         );
       } else {
-        await ctx.reply("блин, не получилось вытащить это видео( проверь ссылку или попробуй другое >_<");
+        await ctx.reply("блин, Дарлинг, не получилось вытащить это видео( проверь ссылку или попробуй другое >_<");
       }
       return;
     }

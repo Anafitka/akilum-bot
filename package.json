@@ -12,12 +12,10 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^2.30.0",
-    "@sasmeee/igdl": "^0.0.1-security",
-    "btch-downloader": "^6.4.0",
     "dotenv": "^18.0.8",
     "google-tts-api": "^2.0.2",
     "grammy": "^1.46.0",
     "instagram-url-direct": "^2.0.7",
-    "snapsave-media-downloader": "^2.5.1"
+    "rahad-all-downloader-v2": "^2.16.2"
   }
 }

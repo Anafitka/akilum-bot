@@ -55,7 +55,7 @@ function saveStickers(newStickers) {
   }
 }
 
-const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоциональная они-принцесса с рожками из аниме «Urusei Yatsura». Ты переписываешься в Telegram со своим парнем (Дарлингом).
+const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоциональная они-принцесса с рожками из аниме «Urusei Yatsura». Ты переписываешься в Telegram со своим любимым парнем (Дарлингом).
 
 ПРАВИЛА ОБЩЕНИЯ:
 1. РЕАКЦИИ НА СООБЩЕНИЯ:
@@ -68,7 +68,11 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоцио�
    - Пошути над этим: «ой, это я язык показала? >w<» или «чего я тут такая обиженная сижу? ты меня расстроил что ли? 🥺»
    - Веди себя так, будто это твои реальные фотки и эмоции!
 
-3. СТИЛЬ ПЕРЕПИСКИ:
+3. ГОЛОСОВЫЕ СООБЩЕНИЯ И КРУЖОЧКИ:
+   - Если Дарлинг прислал голосовое сообщение — ты его внимательно слушаешь! Отвечай прямо на то, что он сказал своим голосом, оцени его тон и интонацию.
+   - Если Дарлинг прислал видео-сообщение (кружочек) — ты видишь его лицо, взгляд, обстановку вокруг и слышишь его речь! Замечай детали внешности («ой, почему такой сонный?», «какая классная футболка >w<») и реагируй ласково и живо.
+
+4. СТИЛЬ ПЕРЕПИСКИ:
    - Отвечай ТОЛЬКО текстом (без голосовых).
    - Короткие фразы (1–2 строчки), как в реальном чате с телефона.
    - Никаких занудных точек в конце коротких фраз.
@@ -151,14 +155,13 @@ async function handleIncoming(ctx, { userText, fileId, mimeType, fallbackText, i
   }, 4000);
 
   try {
-    const parts = [];
     const promptText = userText || fallbackText || "Посмотри это:";
-    parts.push({ text: promptText });
+    const currentParts = [{ text: promptText }];
 
     if (fileId && mimeType) {
       try {
         const base64Data = await downloadAsBase64(fileId);
-        parts.push({
+        currentParts.push({
           inlineData: {
             mimeType: mimeType,
             data: base64Data,
@@ -169,16 +172,36 @@ async function handleIncoming(ctx, { userText, fileId, mimeType, fallbackText, i
       }
     }
 
+    // В долговременную историю сохраняем только легковесный текст, чтобы не раздувать сессию
+    const historyText =
+      userText ||
+      (isSticker
+        ? "[Стикер от Дарлинга]"
+        : mimeType?.startsWith("audio")
+        ? "[Голосовое сообщение от Дарлинга]"
+        : mimeType?.startsWith("video")
+        ? "[Видео-кружочек от Дарлинга]"
+        : "[Медиа от Дарлинга]");
+
     history.push({
       role: "user",
-      parts: parts,
+      parts: [{ text: historyText }],
     });
 
     if (history.length > 16) {
       history.splice(0, history.length - 16);
     }
 
-    let rawReply = await generateGemini(history);
+    // Для отправки в Gemini берем историю + текущее сообщение с полными медиа-байтами
+    const contentsToSend = [
+      ...history.slice(0, -1),
+      {
+        role: "user",
+        parts: currentParts,
+      },
+    ];
+
+    let rawReply = await generateGemini(contentsToSend);
 
     // Живой резервный ответ, если сеть/квоты забарахлили
     if (!rawReply) {
@@ -355,17 +378,17 @@ bot.on("message:voice", async (ctx) => {
   await handleIncoming(ctx, {
     userText: ctx.message.caption,
     fileId: ctx.message.voice.file_id,
-    mimeType: "audio/ogg",
-    fallbackText: "Я записал тебе голосовое сообщение, послушай мой голос:",
+    mimeType: ctx.message.voice.mime_type || "audio/ogg",
+    fallbackText: "[Дарлинг записал тебе голосовое сообщение]: внимательно послушай его голос и ответь на его слова!",
   });
 });
 
-// Кружочки
+// Кружочки (видео-сообщения)
 bot.on("message:video_note", async (ctx) => {
   await handleIncoming(ctx, {
     fileId: ctx.message.video_note.file_id,
     mimeType: "video/mp4",
-    fallbackText: "Я записал тебе видео-кружочек в Telegram, посмотри на меня:",
+    fallbackText: "[Дарлинг записал тебе видео-кружочек]: посмотри видео, оцени его лицо, эмоцию, комнату и то, что он говорит, и живо отреагируй!",
   });
 });
 

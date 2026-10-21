@@ -275,19 +275,33 @@ const bot = new Bot(token, {
   },
 });
 
-// Автоматический перехват и повтор без reply_to_message_id, если целевое сообщение не найдено
+// Автоматический перехват и очистка невалидных reply_to_message_id
 bot.api.config.use(async (prev, method, payload, signal) => {
+  if (payload && typeof payload === "object") {
+    // 1. Всегда включаем allow_sending_without_reply, чтобы бот не падал при удалении исходного сообщения
+    if (payload.reply_to_message_id != null) {
+      payload.allow_sending_without_reply = true;
+    }
+    if (payload.reply_parameters) {
+      payload.reply_parameters.allow_sending_without_reply = true;
+    }
+    // 2. Если message_id синтетический (из WebApp action, где id >= 10000000) — сразу удаляем
+    if (payload.reply_to_message_id && payload.reply_to_message_id >= 10000000) {
+      delete payload.reply_to_message_id;
+    }
+  }
+
   try {
     return await prev(method, payload, signal);
   } catch (err) {
-    const desc = err?.description || "";
+    const desc = (err?.description || "").toLowerCase();
     if (
-      (desc.includes("replied message not found") ||
-        desc.includes("message to be replied not found")) &&
-      payload &&
-      payload.reply_to_message_id
+      desc.includes("replied") ||
+      desc.includes("reply") ||
+      desc.includes("not found")
     ) {
-      delete payload.reply_to_message_id;
+      if (payload?.reply_to_message_id) delete payload.reply_to_message_id;
+      if (payload?.reply_parameters) delete payload.reply_parameters;
       return await prev(method, payload, signal);
     }
     throw err;
@@ -1247,8 +1261,13 @@ bot.on("message:text", async (ctx) => {
 
   // 1. Скачивание видео (TikTok, YouTube, Pinterest, X/Twitter, Instagram)
   if (detectedUrl && isVideoUrl(detectedUrl)) {
-    const statusMsg = await ctx.reply("Секундочку, Дарлинг, уже вытаскиваю видео для тебя! ✨");
-    await ctx.api.sendChatAction(ctx.chat.id, "upload_video");
+    let statusMsg = null;
+    try {
+      statusMsg = await ctx.reply("Секундочку, Дарлинг, уже вытаскиваю видео для тебя! ✨", {
+        allow_sending_without_reply: true,
+      });
+      await ctx.api.sendChatAction(ctx.chat.id, "upload_video");
+    } catch (e) {}
 
     try {
       const result = await downloadVideo(detectedUrl);
@@ -1275,7 +1294,7 @@ bot.on("message:text", async (ctx) => {
             caption: captionText,
             parse_mode: "HTML",
             reply_markup: videoKb,
-            reply_to_message_id: ctx.message.message_id,
+            allow_sending_without_reply: true,
           });
           sent = true;
         } catch (streamErr) {
@@ -1290,7 +1309,7 @@ bot.on("message:text", async (ctx) => {
             caption: captionText,
             parse_mode: "HTML",
             reply_markup: videoKb,
-            reply_to_message_id: ctx.message.message_id,
+            allow_sending_without_reply: true,
           });
         } catch (sendVideoErr) {
           console.warn("replyWithVideo failed, fallback to replyWithDocument:", sendVideoErr.message);
@@ -1298,31 +1317,39 @@ bot.on("message:text", async (ctx) => {
             caption: captionText,
             parse_mode: "HTML",
             reply_markup: videoKb,
-            reply_to_message_id: ctx.message.message_id,
+            allow_sending_without_reply: true,
           });
         }
         cleanupFile(filePath);
       }
 
-      try {
-        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
-      } catch (e) {}
-
       return;
     } catch (err) {
       console.error("Ошибка скачивания видео:", err.message);
-      try {
-        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
-      } catch (e) {}
 
       if (err.message === "FILE_TOO_LARGE") {
         await ctx.reply(
-          "Дарлинг, это видео больше 50 МБ! В Телеграме ботам нельзя отправлять такие тяжелые файлы. Попробуй видео покороче!"
+          "Дарлинг, это видео больше 50 МБ! В Телеграме ботам нельзя отправлять такие тяжелые файлы. Попробуй видео покороче!",
+          { allow_sending_without_reply: true }
+        );
+      } else if (/instagram\.com/i.test(detectedUrl)) {
+        await ctx.reply(
+          "Дарлинг, Instagram сейчас закрыл доступ к этому рилсу (требует вход в аккаунт) 🔒. Попробуй ссылку из TikTok или YouTube Shorts — они скачиваются идеально!",
+          { allow_sending_without_reply: true }
         );
       } else {
-        await ctx.reply("Блин, Дарлинг, не получилось вытащить это видео( проверь ссылку или попробуй другое!");
+        await ctx.reply(
+          "Блин, Дарлинг, не получилось вытащить это видео( Проверь, что профиль открытый, или попробуй видео из TikTok / YouTube Shorts!",
+          { allow_sending_without_reply: true }
+        );
       }
       return;
+    } finally {
+      if (statusMsg) {
+        try {
+          await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+        } catch (e) {}
+      }
     }
   }
 
@@ -1661,44 +1688,85 @@ bot.on("message:text", async (ctx) => {
   // 11. Поиск музыки и превью
   const isMusicRequest = /^(найди трек|найди песню|скинь трек|скинь песню|найди музыку|\/music|\/song)(?:\s|$|[:.,!?])/i.test(cleanText);
   if (isMusicRequest) {
-    const statusMsg = await ctx.reply("🎵 <i>Секундочку, Дарлинг, ищу трек для твоих ушек...</i>", {
-      parse_mode: "HTML",
-    });
+    let statusMsg = null;
+    try {
+      statusMsg = await ctx.reply("🎵 <i>Секундочку, Дарлинг, ищу трек для твоих ушек...</i>", {
+        parse_mode: "HTML",
+        allow_sending_without_reply: true,
+      });
+    } catch (e) {}
 
     try {
       const track = await searchMusicTrack(cleanText);
       if (track) {
+        const musicCaption =
+          `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+          `🎵 <b>${escapeHtml(track.trackName)}</b> — <i>${escapeHtml(track.artistName)}</i>\n` +
+          `💿 Альбом: <code>${escapeHtml(track.albumName || "Сингл")}</code>\n\n` +
+          `🎧 <a href="${track.trackViewUrl}">Слушать полностью в Apple Music</a>`;
+
+        let delivered = false;
         if (track.artworkUrl) {
-          await ctx.replyWithPhoto(track.artworkUrl, {
-            caption: `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n🎵 <b>${escapeHtml(track.trackName)}</b> — <i>${escapeHtml(track.artistName)}</i>\n💿 Альбом: <code>${escapeHtml(track.albumName || "Сингл")}</code>\n\n🎧 <a href="${track.trackViewUrl}">Слушать полностью в Apple Music / Spotify</a>`,
+          try {
+            await ctx.replyWithPhoto(track.artworkUrl, {
+              caption: musicCaption,
+              parse_mode: "HTML",
+              allow_sending_without_reply: true,
+            });
+            delivered = true;
+          } catch (photoErr) {
+            console.warn("replyWithPhoto error:", photoErr.message);
+          }
+        }
+
+        if (!delivered) {
+          await ctx.reply(musicCaption, {
             parse_mode: "HTML",
-            reply_to_message_id: ctx.message.message_id,
+            disable_web_page_preview: false,
+            allow_sending_without_reply: true,
           });
         }
+
         if (track.previewUrl) {
-          await ctx.replyWithAudio(track.previewUrl, {
-            title: track.trackName,
-            performer: track.artistName,
-            caption: "▶️ <i>Превью трека (30 сек)</i>",
-            parse_mode: "HTML",
-          });
+          try {
+            const audioRes = await fetch(track.previewUrl, { signal: AbortSignal.timeout(6000) });
+            if (audioRes.ok) {
+              const audioBuf = Buffer.from(await audioRes.arrayBuffer());
+              await ctx.replyWithAudio(
+                new InputFile(audioBuf, `${track.artistName} - ${track.trackName}.mp3`),
+                {
+                  title: track.trackName,
+                  performer: track.artistName,
+                  caption: "▶️ <i>Официальное превью трека (30 сек)</i>",
+                  parse_mode: "HTML",
+                  allow_sending_without_reply: true,
+                }
+              );
+            }
+          } catch (audioErr) {
+            console.warn("replyWithAudio stream error:", audioErr.message);
+          }
         }
       } else {
-        await ctx.reply("Хм, Дарлинг, не смогла найти этот трек( Проверь название исполнителя или песни (｡•́︿•̀｡)");
+        await ctx.reply(
+          "Хм, Дарлинг, не смогла найти этот трек( Попробуй указать исполнителя или название точнее!",
+          { allow_sending_without_reply: true }
+        );
       }
-
-      try {
-        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
-      } catch (e) {}
-      return;
     } catch (err) {
       console.error("Ошибка поиска музыки:", err.message);
-      try {
-        await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
-      } catch (e) {}
-      await ctx.reply("Ой, что-то с поиском музыки забарахлило (｡•́︿•̀｡)");
-      return;
+      await ctx.reply(
+        "Хм, Дарлинг, музыкальный радар слегка сбился( Напиши название трека еще раз!",
+        { allow_sending_without_reply: true }
+      );
+    } finally {
+      if (statusMsg) {
+        try {
+          await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id);
+        } catch (e) {}
+      }
     }
+    return;
   }
 
   // 12. Умные напоминания
@@ -2397,6 +2465,7 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   recordInteraction,
   getLiveMarketRates,
   getLiveWeather,
+  searchMusicTrack,
 });
 
 // Установка кнопки меню WebApp (если URL сконфигурирован)

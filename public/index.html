@@ -1077,12 +1077,24 @@
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">🎬 Скачать видео или звук</div>
+        <div class="sheet-title">🎬 Скачать видео без водяных знаков</div>
         <button class="sheet-close" onclick="closeSheet('downloader')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Вставь ссылку на TikTok, Instagram Reels или YouTube Shorts:</p>
-      <input type="text" class="sheet-input" id="downloadInput" placeholder="https://vt.tiktok.com/... или reels..." />
-      <button class="sheet-action-btn" onclick="submitDownload()">⚡ Скачать видео без водяных знаков</button>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Вставь ссылку на TikTok, YouTube Shorts или Reels:</p>
+      
+      <div class="sheet-chips" style="margin-bottom: 12px;">
+        <div class="chip" onclick="setDownloadUrl('https://vt.tiktok.com/ZSjR1v2bL/')">⚡ Тест TikTok</div>
+        <div class="chip" onclick="setDownloadUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')">🎬 Тест YouTube</div>
+      </div>
+
+      <div style="position: relative; margin-bottom: 10px;">
+        <input type="text" class="sheet-input" id="downloadInput" placeholder="https://vt.tiktok.com/... или shorts..." style="padding-right: 80px; margin-bottom: 0;" />
+        <button type="button" onclick="pasteFromClipboard()" style="position: absolute; right: 6px; top: 6px; bottom: 6px; border: none; background: rgba(0,255,163,0.15); color: var(--accent-green); font-size: 11px; font-weight: 700; border-radius: 8px; padding: 0 10px; cursor: pointer;">Вставить</button>
+      </div>
+
+      <div id="downloadAlert" style="display: none; color: #ff5252; font-size: 12px; margin-bottom: 10px; text-align: center;"></div>
+
+      <button class="sheet-action-btn" onclick="submitDownload()">⚡ Скачать видео в чат</button>
     </div>
   </div>
 
@@ -1094,9 +1106,35 @@
         <div class="sheet-title">🎵 Поиск музыки</div>
         <button class="sheet-close" onclick="closeSheet('music')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Введи название трека или исполнителя:</p>
-      <input type="text" class="sheet-input" id="musicInput" placeholder="Macan, Miyagi, Queen..." />
-      <button class="sheet-action-btn" onclick="submitMusic()">🔍 Найти трек и превью</button>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Введи название трека или нажми на популярный хит:</p>
+      
+      <div class="sheet-chips" style="margin-bottom: 12px;">
+        <div class="chip" onclick="searchMusicInApp('Macan')">🔥 Macan</div>
+        <div class="chip" onclick="searchMusicInApp('Miyagi')">👑 Miyagi</div>
+        <div class="chip" onclick="searchMusicInApp('Queen')">🎸 Queen</div>
+        <div class="chip" onclick="searchMusicInApp('The Weeknd')">✨ The Weeknd</div>
+        <div class="chip" onclick="searchMusicInApp('Король и Шут')">⚡ Киш</div>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <input type="text" class="sheet-input" id="musicInput" placeholder="Название или артист..." style="margin-bottom: 0; flex: 1;" />
+        <button class="sheet-action-btn" style="width: auto; padding: 0 16px; margin-top: 0; white-space: nowrap;" onclick="searchMusicInApp()">🔍 Найти</button>
+      </div>
+
+      <!-- Music Player Result Card -->
+      <div id="musicResultCard" style="display: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 12px; margin-bottom: 14px;">
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
+          <img id="musicCover" src="" style="width: 52px; height: 52px; border-radius: 12px; object-fit: cover; background: #222;" />
+          <div style="overflow: hidden; flex: 1;">
+            <div id="musicTitle" style="font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;"></div>
+            <div id="musicArtist" style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+          </div>
+        </div>
+        <audio id="musicAudio" controls style="width: 100%; height: 36px; border-radius: 8px; outline: none; margin-bottom: 8px;"></audio>
+        <button class="sheet-action-btn" style="margin-top: 4px; background: linear-gradient(135deg, #00c6ff, #0072ff);" onclick="sendFoundMusicToBot()">💬 Отправить в чат Telegram</button>
+      </div>
+
+      <button class="sheet-action-btn" id="directMusicSendBtn" onclick="submitMusic()">💬 Отправить запрос боту</button>
     </div>
   </div>
 
@@ -1408,12 +1446,92 @@
       closeSheet('cheat');
     }
 
+    let currentMusicTrack = null;
+
+    async function searchMusicInApp(query) {
+      const input = document.getElementById('musicInput');
+      const q = (query || input.value || '').trim() || 'Macan';
+      input.value = q;
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+
+      const card = document.getElementById('musicResultCard');
+      const title = document.getElementById('musicTitle');
+      const artist = document.getElementById('musicArtist');
+      const cover = document.getElementById('musicCover');
+      const audio = document.getElementById('musicAudio');
+
+      try {
+        title.textContent = 'Ищу трек...';
+        artist.textContent = 'Подключаюсь к радару...';
+        card.style.display = 'block';
+
+        const res = await fetch(`/api/music-search?q=${encodeURIComponent(q)}`);
+        const json = await res.json();
+        if (json.ok && json.track) {
+          currentMusicTrack = json.track;
+          title.textContent = json.track.trackName;
+          artist.textContent = json.track.artistName;
+          cover.src = json.track.artworkUrl || '/avatar.jpg';
+          if (json.track.previewUrl) {
+            audio.src = json.track.previewUrl;
+            audio.style.display = 'block';
+          } else {
+            audio.style.display = 'none';
+          }
+        } else {
+          title.textContent = 'Трек не найден';
+          artist.textContent = 'Попробуй ввести точнее название';
+          audio.style.display = 'none';
+        }
+      } catch (e) {
+        console.warn('Music search error:', e);
+      }
+    }
+
+    function sendFoundMusicToBot() {
+      if (currentMusicTrack) {
+        sendToBot(`найди трек ${currentMusicTrack.artistName} - ${currentMusicTrack.trackName}`);
+      } else {
+        submitMusic();
+      }
+      closeSheet('music');
+    }
+
+    function setDownloadUrl(url) {
+      const input = document.getElementById('downloadInput');
+      input.value = url;
+      document.getElementById('downloadAlert').style.display = 'none';
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+
+    async function pasteFromClipboard() {
+      try {
+        if (navigator?.clipboard?.readText) {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            document.getElementById('downloadInput').value = text.trim();
+            document.getElementById('downloadAlert').style.display = 'none';
+            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            return;
+          }
+        }
+      } catch (e) {}
+      if (tg?.showAlert) {
+        tg.showAlert('Зажми поле ввода и нажми «Вставить»');
+      }
+    }
+
     function submitDownload() {
-      const val = document.getElementById('downloadInput').value.trim();
+      const input = document.getElementById('downloadInput');
+      const val = input.value.trim();
+      const alertEl = document.getElementById('downloadAlert');
       if (!val) {
-        alert("Вставь ссылку на видео!");
+        alertEl.textContent = 'Вставь ссылку на видео (TikTok, Shorts, Reels)!';
+        alertEl.style.display = 'block';
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         return;
       }
+      alertEl.style.display = 'none';
       sendToBot(val);
       closeSheet('downloader');
     }

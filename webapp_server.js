@@ -11,6 +11,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     recordInteraction,
     getLiveMarketRates,
     getLiveWeather,
+    searchMusicTrack,
   } = context;
   const indexPath = path.join(__dirname, "public", "index.html");
   const avatarPath = path.join(__dirname, "public", "avatar.jpg");
@@ -125,7 +126,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
             await bot.handleUpdate({
               update_id: Math.floor(Math.random() * 10000000) + 1,
               message: {
-                message_id: Math.floor(Math.random() * 10000000) + 1,
+                message_id: 990000000 + Math.floor(Math.random() * 1000000),
                 date: Math.floor(Date.now() / 1000),
                 chat: { id: Number(userId), type: "private" },
                 from: { id: Number(userId), is_bot: false, first_name: userName },
@@ -139,6 +140,24 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         }
       });
       return;
+    }
+
+    // API: Живой поиск музыки для Mini App с превью и обложкой
+    if (pathname === "/api/music-search") {
+      const q = parsedUrl.searchParams.get("q") || "Macan";
+      try {
+        if (searchMusicTrack) {
+          const track = await searchMusicTrack(q);
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, track }));
+          return;
+        }
+      } catch (err) {
+        console.error("Music search API error:", err.message);
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+        return;
+      }
     }
 
     // API: Живые котировки валют и крипты

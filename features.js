@@ -41,19 +41,19 @@ async function generateArtwork(userPrompt) {
  * 2. Музыкальный поиск iTunes (Бесплатно, 200мс, обложка + 30сек аудиопревью)
  */
 async function searchMusicTrack(query) {
-  const cleanQuery = query
+  let cleanQuery = (query || "")
     .replace(/^(найди трек|найди песню|скинь трек|скинь песню|найди музыку|трек|песня|\/music|\/song)\s*/i, "")
     .trim();
 
-  if (!cleanQuery) return null;
+  if (!cleanQuery) cleanQuery = "Macan";
 
   try {
     const res = await fetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=1`
+      `https://itunes.apple.com/search?term=${encodeURIComponent(cleanQuery)}&entity=song&limit=5`
     );
     const data = await res.json();
     if (data.results && data.results.length > 0) {
-      const track = data.results[0];
+      const track = data.results.find((t) => t.previewUrl) || data.results[0];
       return {
         trackName: track.trackName,
         artistName: track.artistName,

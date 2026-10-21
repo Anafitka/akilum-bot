@@ -209,6 +209,13 @@ async function callGroq(messages, maxTokens = 350, timeoutMs = 6000) {
   return null;
 }
 
+const SAFETY_SETTINGS = [
+  { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+  { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+];
+
 /**
  * Вызов Google Gemini с умной ротацией моделей и ключей из пула
  */
@@ -235,6 +242,7 @@ async function callGemini(contents, systemPrompt, maxTokens = 120, timeoutMs = 1
           config: {
             systemInstruction: systemPrompt,
             maxOutputTokens: maxTokens,
+            safetySettings: SAFETY_SETTINGS,
           },
         });
 

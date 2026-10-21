@@ -263,7 +263,36 @@ if (!token) {
   process.exit(1);
 }
 
-const bot = new Bot(token);
+const bot = new Bot(token, {
+  botInfo: {
+    id: 8832807929,
+    is_bot: true,
+    first_name: "Lum",
+    username: "akilum_bot",
+    can_join_groups: true,
+    can_read_all_group_messages: false,
+    supports_inline_queries: false,
+  },
+});
+
+// Автоматический перехват и повтор без reply_to_message_id, если целевое сообщение не найдено
+bot.api.config.use(async (prev, method, payload, signal) => {
+  try {
+    return await prev(method, payload, signal);
+  } catch (err) {
+    const desc = err?.description || "";
+    if (
+      (desc.includes("replied message not found") ||
+        desc.includes("message to be replied not found")) &&
+      payload &&
+      payload.reply_to_message_id
+    ) {
+      delete payload.reply_to_message_id;
+      return await prev(method, payload, signal);
+    }
+    throw err;
+  }
+});
 
 // Защита от спама и блокировок внутри класса (1 запрос за раз на человека)
 const activeUsers = new Set();
@@ -2377,7 +2406,7 @@ if (activeWebAppUrl) {
     .setChatMenuButton({
       menu_button: {
         type: "web_app",
-        text: "✨ Лам",
+        text: "App",
         web_app: { url: activeWebAppUrl },
       },
     })

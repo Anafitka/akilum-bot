@@ -1489,13 +1489,31 @@
       sendToBot('/vip');
     }
 
-    function sendToBot(commandText) {
+    async function sendToBot(commandText) {
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      if (tg?.sendData) {
-        tg.sendData(commandText);
-      } else {
-        alert("Команда для чата: " + commandText);
+
+      // 1. Отправляем запрос на сервер, чтобы бот начал отвечать в чате
+      if (userId) {
+        try {
+          await fetch(`/api/action?userId=${userId}&text=${encodeURIComponent(commandText)}&userName=${encodeURIComponent(firstName)}`, {
+            keepalive: true
+          });
+        } catch (e) {
+          console.warn("Action fetch error:", e);
+        }
       }
+
+      // 2. Если поддерживается tg.sendData (в режиме Reply клавиатуры) - пробуем
+      try {
+        if (tg?.sendData) tg.sendData(commandText);
+      } catch (e) {}
+
+      // 3. Закрываем WebApp и мгновенно перенаправляем пользователя в чат
+      setTimeout(() => {
+        if (tg?.close) {
+          tg.close();
+        }
+      }, 80);
     }
 
     function shareWithFriends() {

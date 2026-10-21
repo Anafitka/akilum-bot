@@ -91,6 +91,56 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
+    // API: Выполнение действия из Mini App с отправкой в чат и закрытием WebApp
+    if (pathname === "/api/action") {
+      const userId = parsedUrl.searchParams.get("userId");
+      const text = parsedUrl.searchParams.get("text") || "";
+      const userName = parsedUrl.searchParams.get("userName") || "Дарлинг";
+
+      if (!userId || !text) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "userId and text are required" }));
+        return;
+      }
+
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true }));
+
+      // Асинхронно передаем обновление боту
+      setImmediate(async () => {
+        try {
+          if (bot) {
+            const entities = [];
+            if (text.startsWith("/")) {
+              const cmdMatch = text.match(/^\/[a-zA-Z0-9_]+/);
+              if (cmdMatch) {
+                entities.push({
+                  type: "bot_command",
+                  offset: 0,
+                  length: cmdMatch[0].length,
+                });
+              }
+            }
+
+            await bot.handleUpdate({
+              update_id: Math.floor(Math.random() * 10000000) + 1,
+              message: {
+                message_id: Math.floor(Math.random() * 10000000) + 1,
+                date: Math.floor(Date.now() / 1000),
+                chat: { id: Number(userId), type: "private" },
+                from: { id: Number(userId), is_bot: false, first_name: userName },
+                text: text,
+                entities: entities.length > 0 ? entities : undefined,
+              },
+            });
+          }
+        } catch (err) {
+          console.error("Ошибка обработки action из WebApp:", err.message);
+        }
+      });
+      return;
+    }
+
     // API: Живые котировки валют и крипты
     if (pathname === "/api/rates") {
       try {

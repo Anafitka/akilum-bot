@@ -55,6 +55,10 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     AI_MODELS,
     getUserModel,
     setUserModel,
+    resolveTargetUser,
+    giveUserBolts,
+    giveUserLove,
+    giveUserCustomTitle,
     botToken,
   } = context;
 
@@ -178,7 +182,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
-    // Выдать VIP пользователю
+    // Выдать VIP пользователю (по ID или по @username)
     if (pathname === "/api/admin/give-vip" && req.method === "POST") {
       if (!checkAdminAuth(req, parsedUrl)) {
         res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
@@ -189,39 +193,52 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         const body = await parseJsonBody(req);
         const { userId, days, stars } = body;
         if (!userId) {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ ok: false, error: "userId is required" }));
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
+        }
+
+        const target = resolveTargetUser ? await resolveTargetUser(userId) : null;
+        const targetId = target ? target.userId : String(userId).replace(/[^\d]/g, "");
+        const targetName = target ? target.name : "Дарлинг";
+        const targetUsername = target ? target.username : "";
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${userId}» не найден!` }));
           return;
         }
 
         if (setUserVip) {
           const numDays = parseInt(days) || 30;
-          setUserVip(userId, numDays, stars || 0, "Дарлинг", "");
+          setUserVip(targetId, numDays, stars || 0, targetName, targetUsername);
 
           // Оповещаем пользователя в Telegram
           if (bot) {
-            const daysText = numDays === -1 ? "Навсегда (Forever)" : `${numDays} дней`;
+            const daysText = numDays === -1 ? "Навсегда (Forever 👑)" : `${numDays} дней`;
             bot.api.sendMessage(
-              Number(userId),
+              Number(targetId),
+              `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
               `🎉 <b>СЮРПРИЗ ОТ СОЗДАТЕЛЯ БОТА!</b> 👑⭐️✨\n\n` +
-              `Тебе выдан статус <b>VIP Дарлинга</b> на <b>${daysText}</b>!\n\n` +
-              `• Полный безлимит на задачи, код и арт-генерацию\n` +
-              `• Золотая корона в твоём профиле (/love)\n` +
+              `Тебе лично выдан статус <b>VIP Дарлинга</b> на <b>${daysText}</b>!\n\n` +
+              `• Полный безлимит на задачи, код и арт-генерацию ⚡\n` +
+              `• Доступ ко всем 4 VIP-моделям нейросетей (/model) 🧠\n` +
+              `• Золотая корона в твоём профиле (/love) и во всех беседах 👑\n` +
               `• Высший приоритет от они-принцессы Лам! 💕`,
               { parse_mode: "HTML" }
             ).catch((e) => console.warn("Notify user error:", e.message));
           }
         }
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, targetId, name: targetName, username: targetUsername }));
       } catch (err) {
-        res.writeHead(500, { "Content-Type": "application/json" });
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, error: err.message }));
       }
       return;
     }
 
-    // Снять VIP у пользователя
+    // Снять VIP у пользователя (по ID или по @username)
     if (pathname === "/api/admin/take-vip" && req.method === "POST") {
       if (!checkAdminAuth(req, parsedUrl)) {
         res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
@@ -231,15 +248,169 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       try {
         const body = await parseJsonBody(req);
         const { userId } = body;
-        if (removeUserVip) {
-          removeUserVip(userId);
+        if (!userId) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
         }
+
+        const target = resolveTargetUser ? await resolveTargetUser(userId) : null;
+        const targetId = target ? target.userId : String(userId).replace(/[^\d]/g, "");
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${userId}» не найден!` }));
+          return;
+        }
+
+        if (removeUserVip) {
+          removeUserVip(targetId);
+        }
+
+        if (bot) {
+          bot.api.sendMessage(
+            Number(targetId),
+            `ℹ️ <b>Уведомление:</b> Ваш VIP-статус был завершён/отозван Создателем бота. Спасибо, что были с нами! 💚`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: true }));
+        res.end(JSON.stringify({ ok: true, targetId }));
       } catch (err) {
-        res.writeHead(500, { "Content-Type": "application/json" });
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, error: err.message }));
       }
+      return;
+    }
+
+    // Наградить пользователя бонусами (VIP, Искорки, Любовь, Титул, Сброс энергии)
+    if (pathname === "/api/admin/give-reward" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { userId, vipDays, bolts, loveLevel, customTitle, resetLimits } = body;
+        if (!userId) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
+        }
+
+        const target = resolveTargetUser ? await resolveTargetUser(userId) : null;
+        const targetId = target ? target.userId : String(userId).replace(/[^\d]/g, "");
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${userId}» не найден!` }));
+          return;
+        }
+
+        const targetName = target ? target.name : "Дарлинг";
+        const targetUsername = target ? target.username : "";
+        const perksAwarded = [];
+
+        // 1. VIP статус
+        if (vipDays !== undefined && vipDays !== null && vipDays !== "") {
+          const vDays = parseInt(vipDays, 10);
+          if (vDays === -999) {
+            if (removeUserVip) removeUserVip(targetId);
+            perksAwarded.push("❌ VIP статус отозван");
+          } else if (!isNaN(vDays)) {
+            if (setUserVip) setUserVip(targetId, vDays, 0, targetName, targetUsername);
+            const dLabel = vDays <= 0 ? "НАВСЕГДА 👑" : `${vDays} дн.`;
+            perksAwarded.push(`👑 VIP-статус (${dLabel})`);
+          }
+        }
+
+        // 2. Искорки / Молнии
+        if (bolts !== undefined && bolts !== null && bolts !== "") {
+          const bAmount = parseInt(bolts, 10);
+          if (!isNaN(bAmount) && bAmount > 0 && giveUserBolts) {
+            const newTotal = giveUserBolts(targetId, bAmount);
+            perksAwarded.push(`⚡ +${bAmount} молний (всего: ${newTotal})`);
+          }
+        }
+
+        // 3. Уровень любви
+        if (loveLevel !== undefined && loveLevel !== null && loveLevel !== "") {
+          const lVal = parseInt(loveLevel, 10);
+          if (!isNaN(lVal) && giveUserLove) {
+            giveUserLove(targetId, lVal);
+            perksAwarded.push(`💖 Связь с Лам: ${lVal}%`);
+          }
+        }
+
+        // 4. Кастомный титул
+        if (customTitle !== undefined && customTitle !== null) {
+          if (giveUserCustomTitle) {
+            const newTitle = giveUserCustomTitle(targetId, customTitle);
+            if (newTitle) perksAwarded.push(`🏷 Титул: «${newTitle}»`);
+            else perksAwarded.push(`🏷 Титул сброшен на стандартный`);
+          }
+        }
+
+        // 5. Сброс лимитов энергии
+        if (resetLimits && resetUserDailyUsage) {
+          resetUserDailyUsage(targetId);
+          perksAwarded.push(`🔋 Полная перезарядка энергии`);
+        }
+
+        // Оповещение в Telegram
+        if (bot && perksAwarded.length > 0) {
+          const perksList = perksAwarded.map(p => `• ${p}`).join("\n");
+          bot.api.sendMessage(
+            Number(targetId),
+            `✧ ─── ･ ｡ﾟ☆: *. 🎁 .* :☆ﾟ. ─── ✧\n` +
+            `🎉 <b>ВАМ ПРИШЕЛ ПОДАРОК ОТ СОЗДАТЕЛЯ!</b> 👑✨\n\n` +
+            `Создатель бота лично даровал вам особые привилегии:\n` +
+            `${perksList}\n\n` +
+            `<i>«Ты просто чудо, мой Дарлинг! Наслаждайся! 💚⚡»</i>`,
+            { parse_mode: "HTML" }
+          ).catch((e) => console.warn("Notify gift error:", e.message));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, targetId, name: targetName, username: targetUsername, perksAwarded }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Поиск пользователя по ID или @username
+    if (pathname === "/api/admin/find-user") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      const query = parsedUrl.searchParams.get("query");
+      const target = resolveTargetUser ? await resolveTargetUser(query) : null;
+      if (!target) {
+        res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: `Пользователь «${query}» не найден` }));
+        return;
+      }
+      const isVip = isUserVip ? isUserVip(target.userId) : false;
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({
+        ok: true,
+        user: {
+          userId: target.userId,
+          name: target.name,
+          username: target.username,
+          isVip,
+          loveLevel: target.stats?.loveLevel || 75,
+          bolts: target.stats?.bolts || 0,
+          customTitle: target.stats?.customTitle || "",
+          count: target.stats?.count || 0,
+        }
+      }));
       return;
     }
 
@@ -522,6 +693,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
           loveLevel: isVip ? 100 : (stats.loveLevel || 85),
           bolts: stats.bolts || 0,
           count: stats.count || 1,
+          customTitle: stats.customTitle || "",
         })
       );
       return;

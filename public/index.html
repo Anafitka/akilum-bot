@@ -1710,11 +1710,16 @@
           document.getElementById('profileEnergy').textContent = energyStr;
           document.getElementById('profileBolts').textContent = `${data.bolts} ⚡`;
 
+          if (data.customTitle) {
+            document.getElementById('profileStatus').textContent = data.customTitle;
+          } else {
+            document.getElementById('profileStatus').textContent = isVip ? "👑 VIP Дарлинг ⭐️" : "Любимый Дарлинг 💕";
+          }
+
           if (isVip) {
             const badge = document.getElementById('badgeEnergy');
             badge.classList.add('vip');
             badge.innerHTML = `<span>👑</span> <span>VIP Дарлинг</span>`;
-            document.getElementById('profileStatus').textContent = "👑 VIP Дарлинг ⭐️";
             document.getElementById('profileVip').textContent = "👑 Активен";
             document.getElementById('profileVip').style.color = "var(--neon-gold)";
           }

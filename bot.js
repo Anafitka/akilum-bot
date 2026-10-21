@@ -26,6 +26,9 @@ const {
   getMorningDigest,
   recordInteraction,
   recordLightningBolt,
+  giveUserBolts,
+  giveUserLove,
+  giveUserCustomTitle,
   renderProgressBar,
   loadUserStats,
 } = require("./features");
@@ -530,6 +533,112 @@ function getAllUsersList() {
   return list;
 }
 
+// Автоматическое сохранение актуальных данных пользователя (имя, юзернейм)
+function trackUser(from) {
+  if (!from || !from.id) return;
+  const id = String(from.id);
+  const fullName = [from.first_name, from.last_name].filter(Boolean).join(" ");
+  recordInteraction(id, {
+    name: fullName || "Дарлинг",
+    username: from.username ? from.username.replace(/^@/, "") : "",
+  });
+}
+
+// Универсальный поиск пользователя по ID или Telegram Username (@username)
+async function resolveTargetUser(identifier) {
+  if (!identifier) return null;
+  const raw = String(identifier).trim().replace(/^https?:\/\/t\.me\//i, "");
+
+  // 1. Поиск по чистому числовому ID
+  if (/^\d+$/.test(raw)) {
+    const id = raw;
+    const stats = loadUserStats ? loadUserStats() : {};
+    const chats = loadChats ? loadChats() : {};
+    const s = stats[id] || {};
+    const c = chats[id] || {};
+    const v = vipsData[id] || {};
+    return {
+      userId: id,
+      name: s.name || c.name || v.name || "Дарлинг",
+      username: s.username || c.username || v.username || "",
+      stats: s,
+    };
+  }
+
+  // 2. Поиск по никнейму (@username или username)
+  const cleanUsername = raw.replace(/^@/, "").toLowerCase();
+  if (!cleanUsername) return null;
+
+  // Ищем в stats (user_stats.json)
+  const stats = loadUserStats ? loadUserStats() : {};
+  for (const [id, s] of Object.entries(stats)) {
+    if (s.username && s.username.toLowerCase() === cleanUsername) {
+      return {
+        userId: id,
+        name: s.name || "Дарлинг",
+        username: s.username,
+        stats: s,
+      };
+    }
+  }
+
+  // Ищем в vipsData (vips.json)
+  for (const [id, v] of Object.entries(vipsData)) {
+    if (v.username && v.username.toLowerCase() === cleanUsername) {
+      return {
+        userId: id,
+        name: v.name || "Дарлинг",
+        username: v.username,
+        stats: stats[id] || {},
+      };
+    }
+  }
+
+  // Ищем в chats (chats.json)
+  const chats = loadChats ? loadChats() : {};
+  for (const [id, c] of Object.entries(chats)) {
+    if (c.username && c.username.toLowerCase() === cleanUsername) {
+      return {
+        userId: id,
+        name: c.name || "Дарлинг",
+        username: c.username,
+        stats: stats[id] || {},
+      };
+    }
+  }
+
+  // Ищем в pending_payments.json
+  const pendingOrders = loadPendingPayments ? loadPendingPayments() : [];
+  for (const o of pendingOrders) {
+    if (o.username && o.username.toLowerCase() === cleanUsername) {
+      return {
+        userId: o.userId,
+        name: o.name || "Дарлинг",
+        username: o.username,
+        stats: stats[o.userId] || {},
+      };
+    }
+  }
+
+  // 3. Запрос напрямую к Telegram Bot API через getChat
+  try {
+    const chat = await bot.api.getChat("@" + cleanUsername);
+    if (chat && chat.id) {
+      const id = String(chat.id);
+      const name = [chat.first_name, chat.last_name].filter(Boolean).join(" ") || chat.title || "Дарлинг";
+      recordInteraction(id, { name, username: cleanUsername });
+      return {
+        userId: id,
+        name,
+        username: cleanUsername,
+        stats: stats[id] || {},
+      };
+    }
+  } catch (err) {}
+
+  return null;
+}
+
 // Рассылка по всем пользователям
 async function broadcastMessage(botInstance, text) {
   const stats = loadUserStats ? loadUserStats() : {};
@@ -784,6 +893,14 @@ bot.api.config.use(async (prev, method, payload, signal) => {
     }
     throw err;
   }
+});
+
+// Автоматический учет активности и сохранение профиля (ID, имя, username) для быстрого поиска
+bot.use(async (ctx, next) => {
+  if (ctx.from) {
+    trackUser(ctx.from);
+  }
+  await next();
 });
 
 // Защита от спама и блокировок внутри класса (1 запрос за раз на человека)
@@ -1461,12 +1578,18 @@ bot.command("admin", async (ctx) => {
       `👑 <b>ДОБРО ПОЖАЛОВАТЬ, СОЗДАТЕЛЬ AKILUM!</b> ⚡✨\n\n` +
       `Ты успешно авторизован с максимальным уровнем доступа <code>ROOT_MASTER</code>.\n\n` +
       `🖥 <b>Веб-панель:</b> Нажми на кнопку ниже, чтобы открыть стильный дашборд управления.\n\n` +
-      `🛠 <b>Быстрые команды в чате:</b>\n` +
-      `• <code>/givevip &lt;id&gt; [дни]</code> — выдать VIP пользователю (например <code>/givevip 12345678 30</code> или <code>-1</code> навсегда)\n` +
-      `• <code>/takevip &lt;id&gt;</code> — забрать VIP статус у пользователя\n` +
-      `• <code>/broadcast &lt;текст&gt;</code> — разослать объявление всем пользователям бота\n` +
+      `🛠 <b>Быстрые команды Создателя в чате:</b>\n` +
+      `• <code>/givevip &lt;id или @username&gt; [дни]</code> — выдать VIP (например <code>/givevip @durov 30</code> или <code>-1</code>)\n` +
+      `• <code>/takevip &lt;id или @username&gt;</code> — забрать/аннулировать VIP\n` +
+      `• <code>/givebolts &lt;id или @username&gt; &lt;кол-во&gt;</code> — начислить искорки/молнии (например <code>/givebolts @durov 500</code>)\n` +
+      `• <code>/givelove &lt;id или @username&gt; [0-100]</code> — установить уровень любви Лам (например <code>/givelove @durov 100</code>)\n` +
+      `• <code>/givetitle &lt;id или @username&gt; &lt;титул&gt;</code> — даровать титул в профиль (например <code>/givetitle @durov 👑 Любимчик</code>)\n` +
+      `• <code>/refill &lt;id или @username&gt;</code> — полностью перезарядить энергию пользователю\n` +
+      `• <code>/gift &lt;id или @username&gt; [дни] [молнии] [титул]</code> — королевский супер-подарок\n` +
+      `• <code>/whois &lt;id или @username&gt;</code> — досье пользователя (VIP, молнии, любовь, активность)\n` +
+      `• <code>/broadcast &lt;текст&gt;</code> — рассылка всем пользователям бота\n` +
       `• <code>/stats</code> — текущий онлайн, доход в звёздах и статистика\n` +
-      `• <code>/setlimit &lt;число&gt;</code> — изменить бесплатный лимит энергии (сейчас: <b>${botSettings.dailyFreeLimit || 30}</b>)\n` +
+      `• <code>/setlimit &lt;число&gt;</code> — изменить бесплатный лимит энергии\n` +
       `• <code>/resetlimit</code> — сбросить свой лимит энергии\n\n` +
       `<i>«Лам полностью подчиняется твоим они-приказам, шеф! 💕⚡»</i>`,
       { parse_mode: "HTML", reply_markup: adminKb, reply_to_message_id: ctx.message.message_id }
@@ -1534,53 +1657,363 @@ bot.command("givevip", async (ctx) => {
 
   const parts = ctx.message.text.trim().split(/\s+/);
   if (parts.length < 2) {
-    return ctx.reply("Формат: <code>/givevip &lt;user_id&gt; [дни]</code>\nПример: <code>/givevip 123456789 30</code> (или <code>-1</code> навсегда)", { parse_mode: "HTML" });
+    return ctx.reply(
+      "👑 <b>Формат:</b> <code>/givevip &lt;id или @username&gt; [дни]</code>\n\n" +
+      "<b>Примеры:</b>\n" +
+      "• <code>/givevip @durov 30</code>\n" +
+      "• <code>/givevip 123456789 3</code>\n" +
+      "• <code>/givevip @durov -1</code> (навсегда)",
+      { parse_mode: "HTML" }
+    );
   }
 
-  const targetId = parts[1].replace(/[^\d]/g, "");
+  const rawTarget = parts[1];
   const days = parts[2] ? parseInt(parts[2], 10) : 30;
 
-  if (!targetId) {
-    return ctx.reply("❌ Неверный ID пользователя!");
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!\n\nУбедись, что никнейм написан правильно (например <code>@username</code>), или используй числовой Telegram ID пользователя.`, { parse_mode: "HTML" });
   }
 
-  setUserVip(targetId, days, 0, "Дарлинг", "");
+  setUserVip(target.userId, days, 0, target.name, target.username);
   const durationLabel = days <= 0 ? "👑 НАВСЕГДА" : `${days} дн.`;
 
-  await ctx.reply(`✅ <b>VIP-статус успешно выдан!</b>\n• ID: <code>${targetId}</code>\n• Срок: <b>${durationLabel}</b>`, { parse_mode: "HTML" });
+  await ctx.reply(
+    `✅ <b>VIP-СТАТУС УСПЕШНО ВЫДАН!</b> 👑⭐️\n\n` +
+    `• Пользователь: <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : "нет_юзернейма"})\n` +
+    `• Telegram ID: <code>${target.userId}</code>\n` +
+    `• Срок: <b>${durationLabel}</b>`,
+    { parse_mode: "HTML" }
+  );
 
-  // Оповещение пользователя
   try {
     await bot.api.sendMessage(
-      Number(targetId),
-      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      Number(target.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
       `👑 <b>ПОЗДРАВЛЯЕМ! ВАМ ВЫДАН СТАТУС VIP ДАРЛИНГА!</b> ⭐️✨\n\n` +
-      `Создатель бота лично даровал вам VIP-статус (${durationLabel})!\n` +
-      `• Безлимитная энергия молний и решений задач\n` +
-      `• Золотая корона VIP в профиле /love\n` +
-      `• Приоритетный отклик от они-принцессы!\n\n` +
+      `Создатель бота лично даровал вам VIP-статус (<b>${durationLabel}</b>)!\n\n` +
+      `• Безлимитная энергия молний и решений задач ⚡\n` +
+      `• Доступ ко всем 4 VIP-моделям нейросетей (/model) 🧠\n` +
+      `• Золотая корона VIP в профиле (/love) и во всех беседах 👑\n` +
+      `• Высший приоритет от они-принцессы Лам! 💕\n\n` +
       `<i>«Приятного пользования, мой VIP Дарлинг! 💚⚡»</i>`,
       { parse_mode: "HTML" }
     );
   } catch (err) {}
 });
 
-bot.command("takevip", async (ctx) => {
+bot.command(["takevip", "removevip", "cancelvip"], async (ctx) => {
   const adminId = ctx.from?.id;
   if (!isSuperAdmin(adminId)) return;
 
   const parts = ctx.message.text.trim().split(/\s+/);
   if (parts.length < 2) {
-    return ctx.reply("Формат: <code>/takevip &lt;user_id&gt;</code>", { parse_mode: "HTML" });
+    return ctx.reply(
+      "❌ <b>Формат:</b> <code>/takevip &lt;id или @username&gt;</code>\n" +
+      "Пример: <code>/takevip @durov</code> или <code>/takevip 123456789</code>",
+      { parse_mode: "HTML" }
+    );
   }
 
-  const targetId = parts[1].replace(/[^\d]/g, "");
-  const ok = removeUserVip(targetId);
-  if (ok) {
-    await ctx.reply(`✅ VIP-статус для пользователя <code>${targetId}</code> успешно аннулирован.`, { parse_mode: "HTML" });
-  } else {
-    await ctx.reply(`❌ Пользователь <code>${targetId}</code> не найден среди VIP.`, { parse_mode: "HTML" });
+  const rawTarget = parts[1];
+  const target = await resolveTargetUser(rawTarget);
+  const targetId = target ? target.userId : rawTarget.replace(/[^\d]/g, "");
+
+  if (!targetId) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
   }
+
+  const ok = removeUserVip(targetId);
+  const userLabel = target
+    ? `<b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : `<code>${targetId}</code>`})`
+    : `<code>${targetId}</code>`;
+
+  if (ok) {
+    await ctx.reply(`✅ <b>VIP-статус успешно снят/аннулирован</b> у ${userLabel}.`, { parse_mode: "HTML" });
+    try {
+      await bot.api.sendMessage(
+        Number(targetId),
+        `ℹ️ <b>Уведомление:</b> Ваш VIP-статус был завершён/отозван Создателем бота. Спасибо, что были с нами! 💚`,
+        { parse_mode: "HTML" }
+      );
+    } catch (e) {}
+  } else {
+    await ctx.reply(`⚠️ У пользователя ${userLabel} сейчас нет активного VIP-статуса.`, { parse_mode: "HTML" });
+  }
+});
+
+bot.command(["givebolts", "givesparks", "bolts", "sparks"], async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 3) {
+    return ctx.reply(
+      "⚡ <b>Формат:</b> <code>/givebolts &lt;id или @username&gt; &lt;кол-во&gt;</code>\n" +
+      "Пример: <code>/givebolts @durov 500</code>",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  const rawTarget = parts[1];
+  const amount = parseInt(parts[2], 10);
+  if (isNaN(amount) || amount <= 0) {
+    return ctx.reply("❌ Количество искорок должно быть положительным числом!");
+  }
+
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  const newTotal = giveUserBolts(target.userId, amount);
+  await ctx.reply(
+    `⚡ <b>ИСКОРКИ НАЧИСЛЕНЫ!</b>\n\n` +
+    `• Пользователь: <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+    `• Начислено: <b>+${amount} ⚡</b>\n` +
+    `• Всего на балансе: <b>${newTotal} ⚡</b>`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `⚡ <b>ВАМ НАЧИСЛЕНЫ ИСКОРКИ!</b> 💥✨\n\n` +
+      `Создатель бота подарил вам <b>+${amount} ⚡ молний</b> на баланс профиля!\n` +
+      `Текущий запас молний: <b>${newTotal} ⚡</b>\n\n` +
+      `<i>Используй их в чате и в играх! Проверь свой профиль через /love 💕</i>`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
+});
+
+bot.command(["givelove", "lovelevel"], async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 3) {
+    return ctx.reply(
+      "💖 <b>Формат:</b> <code>/givelove &lt;id или @username&gt; &lt;процент 0-100&gt;</code>\n" +
+      "Пример: <code>/givelove @durov 100</code>",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  const rawTarget = parts[1];
+  const percent = parseInt(parts[2], 10);
+  if (isNaN(percent) || percent < 0 || percent > 100) {
+    return ctx.reply("❌ Процент должен быть от 0 до 100!");
+  }
+
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  giveUserLove(target.userId, percent);
+  await ctx.reply(
+    `💖 <b>УРОВЕНЬ ЛЮБВИ ОБНОВЛЕН!</b>\n\n` +
+    `• Пользователь: <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+    `• Уровень связи с Лам: <b>${percent}%</b>`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. 💖 .* :☆ﾟ. ─── ✧\n` +
+      `🍓 <b>ЛАМ ТЕПЕРЬ ОБОЖАЕТ ВАС НА ${percent}%!</b> 🥰✨\n\n` +
+      `Создатель лично даровал вам высшую связь с они-принцессой!\n` +
+      `<i>«Дарлинг, мое сердечко бьется только для тебя! Проверь наш статус через /love 💚»</i>`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
+});
+
+bot.command(["givetitle", "title"], async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 3) {
+    return ctx.reply(
+      "🏷 <b>Формат:</b> <code>/givetitle &lt;id или @username&gt; &lt;название титула или reset&gt;</code>\n\n" +
+      "<b>Примеры:</b>\n" +
+      "• <code>/givetitle @durov 👑 Любимчик Создателя</code>\n" +
+      "• <code>/givetitle @durov ⚡ Они-Император</code>\n" +
+      "• <code>/givetitle @durov reset</code> (сбросить титул)",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  const rawTarget = parts[1];
+  const title = parts.slice(2).join(" ");
+
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  const savedTitle = giveUserCustomTitle(target.userId, title);
+  if (savedTitle) {
+    await ctx.reply(
+      `🏷 <b>КАСТОМНЫЙ ТИТУЛ ВЫДАН!</b>\n\n` +
+      `• Пользователь: <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+      `• Титул: <b>${escapeHtml(savedTitle)}</b>`,
+      { parse_mode: "HTML" }
+    );
+    try {
+      await bot.api.sendMessage(
+        Number(target.userId),
+        `👑 <b>ВАМ ДАРОВАН ОСОБЫЙ ТИТУЛ ОТ СОЗДАТЕЛЯ!</b> 🏷✨\n\n` +
+        `Теперь в вашем профиле красуется статус: <b>«${escapeHtml(savedTitle)}»</b>!\n\n` +
+        `<i>Посмотри на свой обновленный профиль: напиши /love 💚</i>`,
+        { parse_mode: "HTML" }
+      );
+    } catch (e) {}
+  } else {
+    await ctx.reply(
+      `🏷 Кастомный титул для <b>${escapeHtml(target.name)}</b> успешно сброшен на стандартный.`,
+      { parse_mode: "HTML" }
+    );
+  }
+});
+
+bot.command("refill", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("🔋 <b>Формат:</b> <code>/refill &lt;id или @username&gt;</code>", { parse_mode: "HTML" });
+  }
+
+  const target = await resolveTargetUser(parts[1]);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(parts[1])}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  resetUserDailyUsage(target.userId);
+  await ctx.reply(
+    `🔋 <b>Энергия перезаряжена!</b> Лимиты для <b>${escapeHtml(target.name)}</b> (${target.userId}) сброшены. Полный запас молний восстановлен!`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `🔋 <b>ПОЛНАЯ ПЕРЕЗАРЯДКА ЭНЕРГИИ!</b> ⚡✨\n\n` +
+      `Создатель обнулил твои лимиты на сегодня! У тебя снова полный запас молний на любые задачи и вопросы к Лам!`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
+});
+
+bot.command("gift", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply(
+      "🎁 <b>Формат:</b> <code>/gift &lt;id или @username&gt; [дни_vip] [молнии] [титул]</code>\n\n" +
+      "<b>Пример:</b>\n" +
+      "• <code>/gift @durov 30 1000 👑 Любимчик Создателя</code>\n" +
+      "• <code>/gift @durov 7 300</code>",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  const rawTarget = parts[1];
+  const days = parts[2] ? parseInt(parts[2], 10) : 7;
+  const bolts = parts[3] ? parseInt(parts[3], 10) : 500;
+  const title = parts.slice(4).join(" ") || "👑 Любимчик Создателя";
+
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  if (days !== 0) setUserVip(target.userId, days, 0, target.name, target.username);
+  if (bolts > 0) giveUserBolts(target.userId, bolts);
+  if (title) giveUserCustomTitle(target.userId, title);
+  giveUserLove(target.userId, 100);
+  resetUserDailyUsage(target.userId);
+
+  const durationLabel = days <= 0 ? "НАВСЕГДА 👑" : `${days} дн.`;
+
+  await ctx.reply(
+    `🎁 <b>СУПЕР-ПОДАРОК ВЫДАН!</b> 🎉✨\n\n` +
+    `• Получатель: <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+    `• VIP-статус: <b>${durationLabel}</b>\n` +
+    `• Искорки: <b>+${bolts} ⚡</b>\n` +
+    `• Связь с Лам: <b>100%</b>\n` +
+    `• Титул: <b>${escapeHtml(title)}</b>`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. 🎁 .* :☆ﾟ. ─── ✧\n` +
+      `🎉 <b>ВАМ ПРИШЕЛ КОРОЛЕВСКИЙ ПОДАРОК ОТ СОЗДАТЕЛЯ!</b> 👑✨\n\n` +
+      `Создатель бота лично одарил вас особыми привилегиями:\n` +
+      `• 👑 <b>VIP-статус:</b> ${durationLabel}\n` +
+      `• ⚡ <b>Искорки:</b> +${bolts} молний\n` +
+      `• 💖 <b>Любовь Лам:</b> 100% (Максимум)\n` +
+      `• 🏷 <b>Особый титул:</b> «${escapeHtml(title)}»\n` +
+      `• 🔋 <b>Энергия:</b> Полный сброс лимитов!\n\n` +
+      `<i>«Ты просто чудо, мой Дарлинг! Наслаждайся! 💚⚡»</i>`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
+});
+
+bot.command(["whois", "user", "finduser"], async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("🔍 <b>Формат:</b> <code>/whois &lt;id или @username&gt;</code>", { parse_mode: "HTML" });
+  }
+
+  const target = await resolveTargetUser(parts[1]);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(parts[1])}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  const v = vipsData[target.userId];
+  let vipLabel = "Нет";
+  if (v) {
+    if (v.permanent) vipLabel = "👑 Навсегда";
+    else if (v.expiresAt && v.expiresAt > Date.now()) {
+      const daysLeft = Math.ceil((v.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+      vipLabel = `👑 Активен (осталось ~${daysLeft} дн., до ${new Date(v.expiresAt).toLocaleDateString("ru-RU")})`;
+    } else {
+      vipLabel = "Истёк";
+    }
+  }
+
+  const s = target.stats || {};
+  const usage = getUserDailyUsage(target.userId);
+  const remaining = Math.max(0, DAILY_FREE_LIMIT - usage);
+
+  await ctx.reply(
+    `🔍 <b>ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ</b>\n\n` +
+    `👤 <b>Имя:</b> <b>${escapeHtml(target.name)}</b>\n` +
+    `🆔 <b>Telegram ID:</b> <code>${target.userId}</code>\n` +
+    `📎 <b>Юзернейм:</b> ${target.username ? `@${target.username}` : "отсутствует"}\n` +
+    `👑 <b>VIP:</b> ${vipLabel}\n` +
+    `🏷 <b>Титул:</b> ${s.customTitle ? `<b>${escapeHtml(s.customTitle)}</b>` : "Обычный"}\n` +
+    `💖 <b>Любовь Лам:</b> <code>${s.loveLevel || 75}%</code>\n` +
+    `⚡ <b>Искорки (молнии):</b> <code>${s.bolts || 0}</code>\n` +
+    `💬 <b>Сообщений:</b> <code>${s.count || 0}</code>\n` +
+    `🔋 <b>Энергия сегодня:</b> <code>${remaining}/${DAILY_FREE_LIMIT}</code>\n` +
+    `🕒 <b>Был в сети:</b> <code>${s.lastSeen ? new Date(s.lastSeen).toLocaleString("ru-RU") : "недавно"}</code>`,
+    { parse_mode: "HTML" }
+  );
 });
 
 bot.command("broadcast", async (ctx) => {
@@ -2419,7 +2852,7 @@ bot.on("message:text", async (ctx) => {
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `💚 <b>ПРОФИЛЬ ДАРЛИНГА • СВЯЗЬ С ЛАМ</b> ✨\n\n` +
-      `⚡ <b>Статус:</b> <code>${isVip ? "👑 VIP Дарлинг ⭐️" : "Любимый Дарлинг 💕"}</code>\n` +
+      `⚡ <b>Статус:</b> <code>${stats.customTitle ? escapeHtml(stats.customTitle) : (isVip ? "👑 VIP Дарлинг ⭐️" : "Любимый Дарлинг 💕")}</code>\n` +
       `🔋 <b>Энергия на сегодня:</b> <code>${isVip ? "∞ Безлимит 👑" : `${remaining}/${DAILY_FREE_LIMIT} молний`}</code>\n` +
       `💖 <b>Уровень связи:</b> [<code>${bar}</code>] <b>${stats.loveLevel}%</b>\n` +
       `💬 <b>Сообщений вместе:</b> <code>${stats.count}</code>\n` +
@@ -3598,6 +4031,10 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   AI_MODELS,
   getUserModel,
   setUserModel,
+  resolveTargetUser,
+  giveUserBolts,
+  giveUserLove,
+  giveUserCustomTitle,
   botToken: token,
 });
 

@@ -583,6 +583,46 @@ function recordLightningBolt(userId) {
   return stats[id].bolts;
 }
 
+function giveUserBolts(userId, amount) {
+  const stats = loadUserStats();
+  const id = String(userId);
+  if (!stats[id]) {
+    stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
+  }
+  const addVal = parseInt(amount, 10) || 0;
+  stats[id].bolts = Math.max(0, (stats[id].bolts || 0) + addVal);
+  saveUserStats();
+  return stats[id].bolts;
+}
+
+function giveUserLove(userId, percent) {
+  const stats = loadUserStats();
+  const id = String(userId);
+  if (!stats[id]) {
+    stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
+  }
+  const val = parseInt(percent, 10);
+  stats[id].loveLevel = Math.max(0, Math.min(100, isNaN(val) ? 100 : val));
+  saveUserStats();
+  return stats[id].loveLevel;
+}
+
+function giveUserCustomTitle(userId, title) {
+  const stats = loadUserStats();
+  const id = String(userId);
+  if (!stats[id]) {
+    stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
+  }
+  const trimmed = (title || "").trim();
+  if (!trimmed || trimmed.toLowerCase() === "reset" || trimmed.toLowerCase() === "clear" || trimmed.toLowerCase() === "удалить") {
+    delete stats[id].customTitle;
+  } else {
+    stats[id].customTitle = trimmed;
+  }
+  saveUserStats();
+  return stats[id].customTitle || null;
+}
+
 function renderProgressBar(percentage) {
   const totalBars = 10;
   const filledBars = Math.round((percentage / 100) * totalBars);
@@ -606,6 +646,9 @@ module.exports = {
   getMorningDigest,
   recordInteraction,
   recordLightningBolt,
+  giveUserBolts,
+  giveUserLove,
+  giveUserCustomTitle,
   renderProgressBar,
   loadUserStats,
   saveUserStats,

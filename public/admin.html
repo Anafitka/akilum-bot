@@ -574,6 +574,7 @@
     <!-- Вкладки -->
     <nav class="tabs-bar">
       <button class="tab-btn active" onclick="switchTab('vips')">👑 Управление VIP</button>
+      <button class="tab-btn" onclick="switchTab('rewards')">🎁 Награды и Бонусы</button>
       <button class="tab-btn" onclick="switchTab('payments')">🧾 Чеки и Платежи <span id="badgePendingCount" style="display:none; background: #ef4444; color: white; padding: 2px 7px; border-radius: 12px; font-size: 11px; margin-left: 5px;">0</span></button>
       <button class="tab-btn" onclick="switchTab('broadcast')">📢 Рассылка (Broadcast)</button>
       <button class="tab-btn" onclick="switchTab('users')">👥 Все пользователи</button>
@@ -582,11 +583,11 @@
 
     <!-- Вкладка 1: Управление VIP -->
     <div id="tab-vips" class="card-panel">
-      <h2 class="panel-title">✨ Выдача VIP статуса</h2>
+      <h2 class="panel-title">✨ Выдача и управление VIP</h2>
       <form id="giveVipForm" onsubmit="handleGiveVip(event)" class="row-form">
         <div class="flex-1">
-          <label class="form-label">Telegram User ID</label>
-          <input type="text" id="vipUserId" class="form-input" placeholder="Например: 123456789" required>
+          <label class="form-label">Telegram ID или @username (никнейм)</label>
+          <input type="text" id="vipUserId" class="form-input" placeholder="Например: @durov или 123456789" required>
         </div>
         <div style="min-width: 190px;">
           <label class="form-label">Тариф / Срок</label>
@@ -600,6 +601,7 @@
           </select>
         </div>
         <button type="submit" class="btn-action">👑 Выдать VIP</button>
+        <button type="button" class="btn-action" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5;" onclick="handleTakeVipFromInput()">❌ Снять VIP</button>
       </form>
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; color:var(--text-secondary);">Быстрый выбор:</span>
@@ -629,6 +631,93 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <!-- Вкладка 2: Награды, Искорки, Любовь, Титулы -->
+    <div id="tab-rewards" class="card-panel" style="display: none;">
+      <h2 class="panel-title">🎁 Королевские Награды и Бонусы</h2>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+        Одари любого пользователя искорками (молниями), максимальной любовью Лам (100%), особым титулом в профиле и сбрось дневной лимит энергии. Пользователь получит красивое королевское уведомление прямо в Telegram!
+      </p>
+
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 18px; margin-bottom: 20px;">
+        <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+          <div class="flex-1" style="min-width: 240px;">
+            <label class="form-label">Получатель (ID или @username)</label>
+            <input type="text" id="rewardTargetUser" class="form-input" placeholder="Например: @durov или 123456789" required>
+          </div>
+          <button type="button" class="btn-sm" style="height: 44px; padding: 0 16px;" onclick="checkRewardTarget()">🔍 Найти и проверить</button>
+        </div>
+
+        <!-- Карточка найденного пользователя -->
+        <div id="rewardUserCard" style="display: none; margin-top: 14px; padding: 12px 16px; background: rgba(0, 255, 136, 0.06); border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 12px;">
+          <div style="font-size: 13px; color: var(--neon-emerald); font-weight: 700;" id="rewardUserName">Пользователь</div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="rewardUserInfo">ID: -- | VIP: -- | Молнии: -- | Любовь: --%</div>
+        </div>
+      </div>
+
+      <!-- Сетка наград -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <!-- 1. VIP статус -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
+          <div style="font-weight: 800; font-size: 14px; color: var(--neon-gold); margin-bottom: 10px;">👑 VIP-статус</div>
+          <select id="rewardVipDays" class="form-input">
+            <option value="">Не менять VIP</option>
+            <option value="1">⚡ 1 день (Импульс)</option>
+            <option value="3">🍓 3 дня (Уикенд с Лам)</option>
+            <option value="7">🎒 7 дней (Неделя зачетов)</option>
+            <option value="30">⭐️ 30 дней (Месяц)</option>
+            <option value="90">💎 90 дней (Квартал)</option>
+            <option value="-1">👑 Навсегда (Forever VIP)</option>
+            <option value="-999">❌ Аннулировать VIP</option>
+          </select>
+        </div>
+
+        <!-- 2. Искорки / Молнии -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
+          <div style="font-weight: 800; font-size: 14px; color: var(--neon-cyan); margin-bottom: 10px;">⚡ Искорки (Молнии)</div>
+          <input type="number" id="rewardBolts" class="form-input" placeholder="Количество молний (например: 500)">
+          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='100'">+100 ⚡</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='500'">+500 ⚡</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='1000'">+1000 ⚡</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='5000'">+5000 ⚡</button>
+          </div>
+        </div>
+
+        <!-- 3. Любовь Лам -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
+          <div style="font-weight: 800; font-size: 14px; color: #f472b6; margin-bottom: 10px;">💖 Связь с Лам</div>
+          <select id="rewardLove" class="form-input">
+            <option value="">Не менять</option>
+            <option value="100">🍓 100% (Максимальная любовь)</option>
+            <option value="90">💚 90% (Очень высокая)</option>
+            <option value="75">✨ 75% (Базовая)</option>
+            <option value="50">⚡ 50% (Легкая обида)</option>
+          </select>
+        </div>
+
+        <!-- 4. Особый титул в профиле -->
+        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
+          <div style="font-weight: 800; font-size: 14px; color: #c084fc; margin-bottom: 10px;">🏷 Особый титул в профиле</div>
+          <input type="text" id="rewardTitle" class="form-input" placeholder="Например: 👑 Любимчик Создателя">
+          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='👑 Любимчик Создателя'">👑 Любимчик</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='⚡ Они-Император'">⚡ Император</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='💎 Топ-Спонсор'">💎 Спонсор</button>
+            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='reset'">Сбросить</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: var(--text-primary);">
+          <input type="checkbox" id="rewardResetEnergy" style="width: 18px; height: 18px; accent-color: var(--neon-emerald);" checked>
+          <span>🔋 Полная перезарядка энергии (сбросить дневной лимит использования)</span>
+        </label>
+      </div>
+
+      <button type="button" class="btn-action" style="width: 100%; padding: 14px; font-size: 15px;" onclick="submitReward()">🎁 Отправить королевский подарок в Telegram</button>
     </div>
 
     <!-- Вкладка: Чеки и Платежи (Карты/СБП) -->
@@ -703,36 +792,6 @@
           </thead>
           <tbody id="usersTableBody">
             <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка базы...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Вкладка: Чеки и Платежи (Карты/СБП) -->
-    <div id="tab-payments" class="card-panel" style="display: none;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 class="panel-title" style="margin-bottom:0;">🧾 Заявки на оплату по картам / СБП</h2>
-        <button class="btn-sm" onclick="loadPaymentsData()">🔄 Обновить чеки</button>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
-        Когда пользователи переводят деньги по номеру карты/СБП и присылают чек в бота, они появляются здесь с фото чека. Одобряйте заявку в 1 клик!
-      </p>
-
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Пользователь</th>
-              <th>Тариф</th>
-              <th>Сумма</th>
-              <th>Чек</th>
-              <th>Статус</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody id="paymentsTableBody">
-            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 24px;">Загрузка заявок...</td></tr>
           </tbody>
         </table>
       </div>
@@ -886,11 +945,15 @@
 
     function switchTab(tabName) {
       document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
-      if (window.event && window.event.target) {
+      if (window.event && window.event.target && window.event.target.classList.contains("tab-btn")) {
         window.event.target.classList.add("active");
+      } else {
+        const activeBtn = document.querySelector(`.tab-btn[onclick*="'${tabName}'"]`);
+        if (activeBtn) activeBtn.classList.add("active");
       }
 
       document.getElementById("tab-vips").style.display = tabName === "vips" ? "block" : "none";
+      document.getElementById("tab-rewards").style.display = tabName === "rewards" ? "block" : "none";
       document.getElementById("tab-payments").style.display = tabName === "payments" ? "block" : "none";
       document.getElementById("tab-broadcast").style.display = tabName === "broadcast" ? "block" : "none";
       document.getElementById("tab-users").style.display = tabName === "users" ? "block" : "none";
@@ -1096,7 +1159,8 @@
       try {
         const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
         if (res.ok) {
-          showToast(`👑 VIP успешно выдан пользователю ${userId}!`);
+          const nameLabel = res.name ? `${res.name} (${res.targetId})` : userId;
+          showToast(`👑 VIP успешно выдан пользователю ${nameLabel}!`);
           document.getElementById("vipUserId").value = "";
           loadDashboardData();
         } else {
@@ -1104,6 +1168,28 @@
         }
       } catch (err) {
         alert("Ошибка сети при выдаче VIP");
+      }
+    }
+
+    async function handleTakeVipFromInput() {
+      const userId = document.getElementById("vipUserId").value.trim();
+      if (!userId) {
+        alert("Введите Telegram ID или @username пользователя для снятия VIP!");
+        return;
+      }
+      if (!confirm(`Вы точно хотите снять VIP-статус у пользователя «${userId}»?`)) return;
+
+      try {
+        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
+        if (res.ok) {
+          showToast(`❌ VIP статус успешно аннулирован у ${userId}`);
+          document.getElementById("vipUserId").value = "";
+          loadDashboardData();
+        } else {
+          alert(res.error || "Ошибка снятия VIP");
+        }
+      } catch (err) {
+        alert("Ошибка сети при снятии VIP");
       }
     }
 
@@ -1128,6 +1214,74 @@
       } catch (e) { alert("Ошибка снятия VIP"); }
     }
 
+    // Поиск и проверка пользователя для вкладки Наград
+    async function checkRewardTarget() {
+      const userQuery = document.getElementById("rewardTargetUser").value.trim();
+      if (!userQuery) {
+        alert("Введите ID или @username пользователя для проверки!");
+        return;
+      }
+      try {
+        const res = await apiRequest(`/api/admin/find-user?query=${encodeURIComponent(userQuery)}`);
+        if (res.ok && res.user) {
+          const u = res.user;
+          document.getElementById("rewardUserCard").style.display = "block";
+          document.getElementById("rewardUserName").innerHTML = `<b>${u.name}</b> ${u.username ? `(@${u.username})` : ""}`;
+          const vipStr = u.isVip ? "👑 Активен" : "Обычный";
+          const titleStr = u.customTitle ? ` | Титул: «${u.customTitle}»` : "";
+          document.getElementById("rewardUserInfo").innerText = `ID: ${u.userId} | VIP: ${vipStr} | Молнии: ${u.bolts} ⚡ | Любовь: ${u.loveLevel}%${titleStr}`;
+          showToast(`✅ Пользователь ${u.name} найден!`);
+        } else {
+          alert(res.error || "Пользователь не найден в базе данных");
+          document.getElementById("rewardUserCard").style.display = "none";
+        }
+      } catch (e) {
+        alert("Пользователь не найден");
+        document.getElementById("rewardUserCard").style.display = "none";
+      }
+    }
+
+    // Отправка подарков и бонусов
+    async function submitReward() {
+      const userId = document.getElementById("rewardTargetUser").value.trim();
+      if (!userId) {
+        alert("Укажите ID или @username пользователя!");
+        return;
+      }
+      const vipDays = document.getElementById("rewardVipDays").value;
+      const bolts = document.getElementById("rewardBolts").value;
+      const loveLevel = document.getElementById("rewardLove").value;
+      const customTitle = document.getElementById("rewardTitle").value;
+      const resetLimits = document.getElementById("rewardResetEnergy").checked;
+
+      try {
+        const res = await apiRequest("/api/admin/give-reward", "POST", {
+          userId,
+          vipDays,
+          bolts,
+          loveLevel,
+          customTitle: customTitle !== "" ? customTitle : undefined,
+          resetLimits,
+        });
+        if (res.ok) {
+          const perks = (res.perksAwarded || []).join(", ") || "Бонусы обновлены";
+          showToast(`🎁 Награды успешно выданы!\n${perks}`);
+          loadDashboardData();
+        } else {
+          alert(res.error || "Ошибка выдачи наград");
+        }
+      } catch (e) {
+        alert("Ошибка сети при выдаче наград");
+      }
+    }
+
+    function openRewardForUser(targetIdentifier) {
+      document.getElementById("rewardTargetUser").value = targetIdentifier;
+      switchTab("rewards");
+      checkRewardTarget();
+      window.scrollTo({ top: 300, behavior: "smooth" });
+    }
+
     async function loadUsersTable() {
       const tbody = document.getElementById("usersTableBody");
       try {
@@ -1148,6 +1302,8 @@
 
       tbody.innerHTML = users.slice(0, 50).map(u => {
         const vipBadge = u.isVip ? `<span class="status-active">VIP 👑</span>` : `<span style="color: var(--text-muted)">Нет</span>`;
+        const targetHandle = u.username ? `@${u.username}` : u.userId;
+        const takeBtn = u.isVip ? `<button class="btn-sm" style="color: #fca5a5" onclick="quickTakeVip('${u.userId}')">Снять</button>` : "";
         return `
           <tr>
             <td><code>${u.userId}</code></td>
@@ -1156,15 +1312,19 @@
             <td>${u.loveLevel || 75}%</td>
             <td>${vipBadge}</td>
             <td>
-              <button class="btn-sm" onclick="setVipInput('${u.userId}')">Выдать VIP</button>
+              <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                <button class="btn-sm" onclick="setVipInput('${targetHandle}')">👑 VIP</button>
+                <button class="btn-sm" style="background: rgba(192, 132, 252, 0.2); color: #c084fc; border-color: rgba(192, 132, 252, 0.4);" onclick="openRewardForUser('${targetHandle}')">🎁 Наградить</button>
+                ${takeBtn}
+              </div>
             </td>
           </tr>
         `;
       }).join("");
     }
 
-    function setVipInput(userId) {
-      document.getElementById("vipUserId").value = userId;
+    function setVipInput(targetHandle) {
+      document.getElementById("vipUserId").value = targetHandle;
       switchTab('vips');
       window.scrollTo({ top: 300, behavior: "smooth" });
     }

@@ -1105,10 +1105,13 @@
       <!-- Currency / Payment Switcher -->
       <div class="pay-method-switcher">
         <button class="pay-toggle-btn active" id="btnMethodMbank" onclick="switchPayMethod('mbank')">
-          🇰🇬 MBANK (Сомы)
+          🇰🇬 Сомы
         </button>
         <button class="pay-toggle-btn" id="btnMethodCard" onclick="switchPayMethod('card')">
-          💳 Карты (Рубли)
+          🇷🇺 Рубли
+        </button>
+        <button class="pay-toggle-btn" id="btnMethodUsd" onclick="switchPayMethod('usd')">
+          🇺🇸 USD ($)
         </button>
         <button class="pay-toggle-btn stars-tab" id="btnMethodStars" onclick="switchPayMethod('stars')">
           ⭐️ Stars
@@ -1594,52 +1597,69 @@
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title" id="cardPayTitle">💳 Оплата тарифа картой / СБП</div>
+        <div class="sheet-title" id="cardPayTitle">💳 Оплата тарифа картой / MBANK</div>
         <button class="sheet-close" onclick="closeSheet('card-pay')">✕</button>
       </div>
 
-      <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 16px; padding: 14px; margin-bottom: 16px; text-align: center;">
+      <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 16px; padding: 14px; margin-bottom: 14px; text-align: center;">
         <div style="font-size: 12px; color: var(--text-secondary);">К оплате:</div>
-        <div style="font-size: 26px; font-weight: 800; color: var(--neon-gold);" id="cardPayAmount">79 ₽</div>
-        <div style="font-size: 12px; color: var(--neon-emerald); font-weight:700;" id="cardPayPlanName">Тариф: Уикенд с Лам (3 дня)</div>
+        <div style="font-size: 26px; font-weight: 800; color: var(--neon-gold);" id="cardPayAmount">40 сом</div>
+        <div style="font-size: 12px; color: var(--neon-emerald); font-weight:700;" id="cardPayPlanName">Тариф: Импульс (1 день)</div>
       </div>
 
       <div class="form-group" style="margin-bottom: 12px;">
         <label class="form-label" style="font-size:11px; color:var(--text-secondary);">Банк / Платежная система</label>
-        <div class="sheet-input" style="font-weight: 700; color:#fff;" id="cardPayBank">Т-Банк / Сбербанк / СБП</div>
+        <div class="sheet-input" style="font-weight: 700; color:#fff;" id="cardPayBank">MasterCard / MBANK / ЭЛКАРТ / Сбербанк</div>
       </div>
 
       <div class="form-group" style="margin-bottom: 12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер карты / счета</label>
+          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер карты (MasterCard)</label>
           <span style="font-size:11px; color:var(--neon-cyan); cursor:pointer; font-weight:700;" onclick="copyCardNumber()">Скопировать 📋</span>
         </div>
-        <input type="text" id="cardPayCardNum" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:700; color:#fff;" readonly value="2200 7000 1234 5678">
+        <input type="text" id="cardPayCardNum" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:700; color:#fff;" readonly value="5302 0009 7083 9639">
       </div>
 
       <div class="form-group" style="margin-bottom: 12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер СБП / MBANK / Телефона</label>
+          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер телефона (MBANK / СБП)</label>
           <span style="font-size:11px; color:var(--neon-cyan); cursor:pointer; font-weight:700;" onclick="copyPhoneNumber()">Скопировать 📋</span>
         </div>
-        <input type="text" id="cardPayPhone" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#fff;" readonly value="+7 (999) 000-00-00">
+        <input type="text" id="cardPayPhone" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#fff;" readonly value="+996 (700) 00-00-00">
       </div>
 
-      <div class="form-group" style="margin-bottom: 16px;">
+      <div class="form-group" style="margin-bottom: 14px;">
         <label class="form-label" style="font-size:11px; color:var(--text-secondary);">Получатель</label>
         <div class="sheet-input" style="color:var(--text-secondary);" id="cardPayRecipient">Akilum (Создатель)</div>
       </div>
 
-      <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
-        📌 <b>Как мгновенно получить VIP:</b><br>
-        1. Переведи сумму по реквизитам выше.<br>
-        2. Сохрани чек или скриншот перевода.<br>
-        3. Нажми кнопку ниже и <b>отправь фото чека в чат с ботом!</b><br>
-        4. Лам сразу передаст чек Создателю, и твой VIP включится! ✨
+      <!-- Verification and Confirmation Block -->
+      <div style="background: rgba(0, 255, 136, 0.05); border: 1px dashed rgba(0, 255, 136, 0.35); border-radius: 14px; padding: 12px; margin-bottom: 12px;">
+        <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 4px;">🧾 Проверка платежа с подтверждением:</div>
+        <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 10px 0; line-height: 1.4;">
+          Переведи сумму по реквизитам выше и загрузи чек прямо сюда. Создатель подтвердит оплату за <b>1–5 минут</b>!
+        </p>
+
+        <!-- Hidden input for file -->
+        <input type="file" id="receiptFileInput" accept="image/*" style="display:none;" onchange="handleReceiptFileSelected(event)">
+
+        <button type="button" class="btn-action" style="width: 100%; margin-bottom: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-subtle); color: #fff; font-size: 12px; font-weight: 600; padding: 10px;" onclick="document.getElementById('receiptFileInput').click()">
+          📁 Выбрать скриншот / фото чека
+        </button>
+
+        <!-- Image preview -->
+        <div id="receiptPreviewBox" style="display:none; margin-bottom: 10px; text-align: center;">
+          <img id="receiptPreviewImg" src="" style="max-height: 110px; border-radius: 10px; border: 1px solid var(--neon-emerald); margin-bottom: 4px; object-fit: contain;">
+          <div style="font-size: 11px; color: var(--neon-emerald); font-weight: 600;" id="receiptFileName">Чек выбран</div>
+        </div>
+
+        <button type="button" class="checkout-btn" id="btnSubmitReceipt" style="width: 100%; display:none; margin-bottom: 4px;" onclick="submitReceiptProof()">
+          🚀 Отправить чек на подтверждение Создателю
+        </button>
       </div>
 
-      <button class="checkout-btn" onclick="submitReceiptToChat()">
-        📸 Я оплатил, отправить чек боту
+      <button type="button" class="checkout-btn" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text-secondary); margin-bottom: 6px;" onclick="submitReceiptToChat()">
+        💬 Или отправить чек в чат с ботом
       </button>
     </div>
   </div>
@@ -1980,24 +2000,28 @@
     // ==========================================
     let currentPayMethod = 'mbank';
     let cachedRequisites = null;
+    let currentSelectedPlan = null;
+    let selectedReceiptBase64 = null;
 
     const VIP_PLANS_FRONT = {
-      vip_1day: { id: "vip_1day", title: "Импульс (1 день)", som: 40, rub: 39, stars: 15 },
-      vip_3days: { id: "vip_3days", title: "Уикенд с Лам (3 дня)", som: 80, rub: 79, stars: 29 },
-      vip_week: { id: "vip_week", title: "Ударная неделя (7 дней)", som: 150, rub: 149, stars: 49 },
-      vip_month: { id: "vip_month", title: "VIP Месяц (30 дней)", som: 300, rub: 299, stars: 99 },
-      vip_quarter: { id: "vip_quarter", title: "Четверть (90 дней)", som: 600, rub: 590, stars: 199 },
-      vip_forever: { id: "vip_forever", title: "Бог Они-Империи (Навсегда)", som: 1000, rub: 990, stars: 299 },
+      vip_1day: { id: "vip_1day", title: "Импульс (1 день)", som: 40, rub: 39, usd: 0.49, stars: 15 },
+      vip_3days: { id: "vip_3days", title: "Уикенд с Лам (3 дня)", som: 80, rub: 79, usd: 0.99, stars: 29 },
+      vip_week: { id: "vip_week", title: "Ударная неделя (7 дней)", som: 150, rub: 149, usd: 1.89, stars: 49 },
+      vip_month: { id: "vip_month", title: "VIP Месяц (30 дней)", som: 300, rub: 299, usd: 3.69, stars: 99 },
+      vip_quarter: { id: "vip_quarter", title: "Четверть (90 дней)", som: 600, rub: 590, usd: 7.49, stars: 199 },
+      vip_forever: { id: "vip_forever", title: "Бог Они-Империи (Навсегда)", som: 1000, rub: 990, usd: 12.49, stars: 299 },
     };
 
     function switchPayMethod(method) {
       currentPayMethod = method;
       const btnMbank = document.getElementById('btnMethodMbank');
       const btnCard = document.getElementById('btnMethodCard');
+      const btnUsd = document.getElementById('btnMethodUsd');
       const btnStars = document.getElementById('btnMethodStars');
 
       if (btnMbank) btnMbank.className = method === 'mbank' ? 'pay-toggle-btn active' : 'pay-toggle-btn';
       if (btnCard) btnCard.className = method === 'card' ? 'pay-toggle-btn active card-mode' : 'pay-toggle-btn';
+      if (btnUsd) btnUsd.className = method === 'usd' ? 'pay-toggle-btn active usd-mode' : 'pay-toggle-btn';
       if (btnStars) btnStars.className = method === 'stars' ? 'pay-toggle-btn active stars-mode' : 'pay-toggle-btn stars-tab';
 
       for (const [key, plan] of Object.entries(VIP_PLANS_FRONT)) {
@@ -2008,6 +2032,8 @@
             priceEl.innerHTML = `${plan.som} сом`;
           } else if (method === 'card') {
             priceEl.innerHTML = `${plan.rub} ₽`;
+          } else if (method === 'usd') {
+            priceEl.innerHTML = `$${plan.usd}`;
           } else {
             priceEl.innerHTML = `${plan.stars} ⭐️`;
           }
@@ -2045,11 +2071,18 @@
     }
 
     async function openCardPayModal(plan) {
+      currentSelectedPlan = plan;
+      selectedReceiptBase64 = null;
+      const previewBox = document.getElementById('receiptPreviewBox');
+      const submitBtn = document.getElementById('btnSubmitReceipt');
+      if (previewBox) previewBox.style.display = 'none';
+      if (submitBtn) submitBtn.style.display = 'none';
+
       if (!cachedRequisites) await loadRequisites();
       const r = cachedRequisites || {
-        bankName: "MBANK / О!Деньги / ЭЛКАРТ (Кыргызстан)",
-        cardNumber: "1180 0000 0000 0000",
-        phoneNumber: "+996 (___) __-__-__",
+        bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк",
+        cardNumber: "5302 0009 7083 9639",
+        phoneNumber: "+996 (700) 00-00-00",
         recipientName: "Akilum (Создатель)",
       };
 
@@ -2057,15 +2090,18 @@
       if (currentPayMethod === 'mbank') {
         if (titleEl) titleEl.innerText = "🇰🇬 Оплата MBANK / ЭЛКАРТ / О!Деньги";
         document.getElementById('cardPayAmount').innerText = `${plan.som} сом`;
+      } else if (currentPayMethod === 'usd') {
+        if (titleEl) titleEl.innerText = "🇺🇸 Оплата картой MasterCard (USD $)";
+        document.getElementById('cardPayAmount').innerText = `$${plan.usd}`;
       } else {
-        if (titleEl) titleEl.innerText = "💳 Оплата картой РФ / СБП";
+        if (titleEl) titleEl.innerText = "🇷🇺 Оплата картой РФ / СБП (Рубли)";
         document.getElementById('cardPayAmount').innerText = `${plan.rub} ₽`;
       }
 
       document.getElementById('cardPayPlanName').innerText = `Тариф: ${plan.title}`;
-      document.getElementById('cardPayBank').innerText = r.bankName || "MBANK / ЭЛКАРТ";
-      document.getElementById('cardPayCardNum').value = r.cardNumber || "1180 0000 0000 0000";
-      document.getElementById('cardPayPhone').value = r.phoneNumber || "+996 (555) 00-00-00";
+      document.getElementById('cardPayBank').innerText = r.bankName || "MasterCard / MBANK / ЭЛКАРТ";
+      document.getElementById('cardPayCardNum').value = r.cardNumber || "5302 0009 7083 9639";
+      document.getElementById('cardPayPhone').value = r.phoneNumber || "+996 (700) 00-00-00";
       document.getElementById('cardPayRecipient').innerText = r.recipientName || "Akilum (Создатель)";
 
       openSheet('card-pay');
@@ -2089,7 +2125,95 @@
       alert("✅ Номер телефона скопирован в буфер обмена!");
     }
 
-    function submitReceiptToChat() {
+    function handleReceiptFileSelected(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        selectedReceiptBase64 = e.target.result;
+        const previewImg = document.getElementById('receiptPreviewImg');
+        const previewBox = document.getElementById('receiptPreviewBox');
+        const submitBtn = document.getElementById('btnSubmitReceipt');
+        const fileNameEl = document.getElementById('receiptFileName');
+
+        if (previewImg) previewImg.src = selectedReceiptBase64;
+        if (fileNameEl) fileNameEl.innerText = file.name || "Чек выбран";
+        if (previewBox) previewBox.style.display = 'block';
+        if (submitBtn) {
+          submitBtn.style.display = 'block';
+          submitBtn.innerText = "🚀 Отправить чек на подтверждение Создателю";
+          submitBtn.disabled = false;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function submitReceiptProof() {
+      if (!selectedReceiptBase64) {
+        alert("Пожалуйста, сначала выбери скриншот или фото чека!");
+        return;
+      }
+      const submitBtn = document.getElementById('btnSubmitReceipt');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerText = "⏳ Отправка чека на проверку...";
+      }
+
+      try {
+        const payload = {
+          userId: userId || 'anonymous',
+          name: tg?.initDataUnsafe?.user?.first_name || 'Дарлинг',
+          username: tg?.initDataUnsafe?.user?.username || '',
+          planId: currentSelectedPlan ? currentSelectedPlan.id : 'vip_month',
+          currency: currentPayMethod,
+          amount: currentSelectedPlan ? (currentPayMethod === 'mbank' ? `${currentSelectedPlan.som} сом` : (currentPayMethod === 'usd' ? `$${currentSelectedPlan.usd}` : `${currentSelectedPlan.rub} ₽`)) : 'VIP',
+          imageBase64: selectedReceiptBase64,
+        };
+
+        const res = await fetch('/api/submit-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          alert(`🎉 ЧЕК ПРИНЯТ НА ПРОВЕРКУ!\nНомер заявки #${data.orderId || ''}.\nСоздатель проверит платёж в течение 1–5 минут и активирует твой VIP-статус! 👑✨`);
+          closeSheet('card-pay');
+        } else {
+          alert(data.error || "Ошибка отправки чека. Попробуй отправить фото в чат с ботом!");
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "🚀 Отправить чек на подтверждение Создателю";
+          }
+        }
+      } catch (err) {
+        alert("Ошибка сети. Попробуй отправить чек прямо в чат с ботом!");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = "🚀 Отправить чек на подтверждение Создателю";
+        }
+      }
+    }
+
+    async function submitReceiptToChat() {
+      try {
+        if (currentSelectedPlan && userId) {
+          await fetch('/api/initiate-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              planId: currentSelectedPlan.id,
+              currency: currentPayMethod,
+              amount: currentPayMethod === 'mbank' ? `${currentSelectedPlan.som} сом` : (currentPayMethod === 'usd' ? `$${currentSelectedPlan.usd}` : `${currentSelectedPlan.rub} ₽`),
+            }),
+          });
+        }
+      } catch (e) {}
+
       closeSheet('card-pay');
       if (tg?.showAlert) {
         tg.showAlert("📸 Отправь фото или скриншот чека прямо в чат с ботом!");

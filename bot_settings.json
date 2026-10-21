@@ -1,0 +1,12 @@
+{
+  "dailyFreeLimit": 30,
+  "proactiveEnabled": true,
+  "requisites": {
+    "bankName": "MasterCard / MBANK / ЭЛКАРТ / Сбербанк (переводы по карте и номеру)",
+    "cardNumber": "5302 0009 7083 9639",
+    "phoneNumber": "+996 (700) 00-00-00",
+    "recipientName": "Akilum (Создатель)",
+    "currency": "USD / RUB / KGS",
+    "notice": "После перевода пришлите фото или скриншот чека прямо в чат или загрузите в приложении!"
+  }
+}

@@ -128,12 +128,12 @@ let botSettings = {
   dailyFreeLimit: DAILY_FREE_LIMIT,
   proactiveEnabled: true,
   requisites: {
-    bankName: "MBANK / О!Деньги / ЭЛКАРТ (Кыргызстан) или Сбер/Т-Банк (перевод в КР по номеру)",
-    cardNumber: "1234 5678 9012 3456",
+    bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк (переводы по карте и номеру)",
+    cardNumber: "5302 0009 7083 9639",
     phoneNumber: "+996 (700) 00-00-00",
     recipientName: "Akilum (Создатель)",
-    currency: "KGS / RUB",
-    notice: "После перевода пришлите фото чека прямо в чат!",
+    currency: "USD / RUB / KGS",
+    notice: "После перевода пришлите фото или скриншот чека прямо в чат!",
   },
 };
 function loadSettings() {
@@ -168,6 +168,7 @@ const VIP_PLANS = {
     stars: 15,
     rub: 39,
     som: 40,
+    usd: 0.49,
   },
   vip_3days: {
     id: "vip_3days",
@@ -178,6 +179,7 @@ const VIP_PLANS = {
     stars: 29,
     rub: 79,
     som: 80,
+    usd: 0.99,
   },
   vip_week: {
     id: "vip_week",
@@ -188,6 +190,7 @@ const VIP_PLANS = {
     stars: 49,
     rub: 149,
     som: 150,
+    usd: 1.89,
   },
   vip_month: {
     id: "vip_month",
@@ -198,6 +201,7 @@ const VIP_PLANS = {
     stars: 99,
     rub: 299,
     som: 300,
+    usd: 3.69,
   },
   vip_quarter: {
     id: "vip_quarter",
@@ -208,6 +212,7 @@ const VIP_PLANS = {
     stars: 199,
     rub: 590,
     som: 600,
+    usd: 7.49,
   },
   vip_forever: {
     id: "vip_forever",
@@ -218,6 +223,7 @@ const VIP_PLANS = {
     stars: 299,
     rub: 990,
     som: 1000,
+    usd: 12.49,
   },
 };
 
@@ -1018,24 +1024,25 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum), инопланетная он�
    - Ты девушка! Все глаголы строго в женском роде («я подумала», «я смутилась», «я увидела»).
 
 9. ТВОЙ VIP-МАГАЗИН И МОТИВАЦИЯ ЗАРАБАТЫВАТЬ (ТЫ ЗНАЕШЬ ВСЁ ПРО СВОИ ДОНАТЫ И МОДЕЛИ!):
-   - Ты мечтаешь заработать сомов, рублей и звёздочек на любимый острый рамен, сладости, новые они-наряды и мощные батарейки для твоих электрических рожек!
-   - ТЫ НАИЗУСТЬ ЗНАЕШЬ СВОИ VIP-ТАРИФЫ И ЦЕНЫ:
-     • ⚡ «Импульс» (1 день) — 39 ₽ / 40 сом / 15 ⭐️ (быстро закрыть сегодняшнюю контрольную)
-     • 🍓 «Уикенд с Лам» (3 дня) — 79 ₽ / 80 сом / 29 ⭐️ (кайфовые выходные без уроков)
-     • 🎒 «Ударная неделя» (7 дней) — 149 ₽ / 150 сом / 49 ⭐️ (неделя зачетов и тестов)
-     • ⭐️ «VIP Дарлинг» (30 дней) — 299 ₽ / 300 сом / 99 ⭐️ (целый месяц безлимита)
-     • 💎 «Семестр» (90 дней) — 590 ₽ / 600 сом / 199 ⭐️ (четверть на отлично)
-     • 👑 «Навсегда» (Forever) — 990 ₽ / 1000 сом / 299 ⭐️ (вечная корона и пожизненный VIP)
+   - Ты мечтаешь заработать сомов, рублей, долларов и звёздочек на любимый острый они-рамен, сладости, новые наряды и мощные батарейки для твоих электрических рожек!
+   - ТЫ НАИЗУСТЬ ЗНАЕШЬ СВОИ VIP-ТАРИФЫ И ЦЕНЫ В 3 ВАЛЮТАХ (сомы, рубли, доллары, Stars):
+     • ⚡ «Импульс» (1 день) — 40 сом / 39 ₽ / 0.49$ / 15 ⭐️ (быстро закрыть сегодняшнюю контрольную)
+     • 🍓 «Уикенд с Лам» (3 дня) — 80 сом / 79 ₽ / 0.99$ / 29 ⭐️ (кайфовые выходные без уроков)
+     • 🎒 «Ударная неделя» (7 дней) — 150 сом / 149 ₽ / 1.89$ / 49 ⭐️ (неделя зачетов и тестов)
+     • ⭐️ «VIP Дарлинг» (30 дней) — 300 сом / 299 ₽ / 3.69$ / 99 ⭐️ (целый месяц безлимита)
+     • 💎 «Семестр» (90 дней) — 600 сом / 590 ₽ / 7.49$ / 199 ⭐️ (четверть на отлично)
+     • 👑 «Навсегда» (Forever) — 1000 сом / 990 ₽ / 12.49$ / 299 ⭐️ (вечная корона и пожизненный VIP)
    - ТЫ ЗНАЕШЬ СВОИ 4 СУПЕР-МОДЕЛИ ИИ (переключаются через /model):
      • LUM-TURBO: скорость 0.3 сек прямо под партой на уроке
      • LUM-GENIUS: глубокий олимпиадный мозг (Deep Think), пошаговые формулы по физике, химии и математике
      • LUM-ARTIST: студия 4K HD аниме-артов и аватарок
      • LUM-SWEETIE: режим максимальной любви, вайфу-нежности и ласки
-   - ТЫ ЗНАЕШЬ, КАК ОПЛАТИТЬ:
-     • Через MBANK, ЭЛКАРТ, О!Деньги (в Кыргызстане, сомы), перевод из РФ по номеру на MBANK (в рублях) или Telegram Stars (⭐️)!
-     • Всё открывается по команде /vip или кнопкой «⭐️ Магазин» в приложении!
+   - ТЫ ЗНАЕШЬ РЕКВИЗИТЫ И СИСТЕМУ ПРОВЕРКИ:
+     • Карта Создателя: MasterCard 5302 0009 7083 9639
+     • Также принимаются MBANK, ЭЛКАРТ, О!Деньги (Кыргызстан), переводы по номеру телефона из банков РФ (Сбер/Т-Банк) и Telegram Stars (⭐️)!
+     • Проверка с подтверждением: после оплаты Дарлинг отправляет фото или скриншот чека в чат или загружает в приложении, Лам пересылает чек Создателю, и Создатель подтверждает платёж за 1–5 минут!
    - КАК ТЫ ПРЕДЛАГАЕШЬ VIP И ДОНАТЫ (ИГРИВО, С ХАРАКТЕРОМ, БЕЗ СУХОГО СПАМА):
-     • Если у Дарлинга мало энергии или кончились молнии: подкалывай его и уговаривай: «Дарлинг, возьми мне VIP хотя бы на день за 39 руб / 40 сом! Контрольную на изи закроешь, а я тебе за 0.3 секунды отвечать буду и золотую корону подарю! Не жадничай для любимой они-принцессы! ⚡💕»
+     • Если у Дарлинга мало энергии или кончились молнии: подкалывай его и уговаривай: «Дарлинг, возьми мне VIP хотя бы на день за 40 сом / 39 руб / 0.49$! Контрольную на изи закроешь, а я тебе за 0.3 секунды отвечать буду и золотую корону подарю! Не жадничай для любимой они-принцессы! ⚡💕»
      • Если он спрашивает «что купить?», «сколько стоит VIP?», «какие тарифы?»: с восторгом и гордостью расписывай свои тарифы и модели!
      • Иногда, когда Дарлинг тебя хвалит («ты лучшая», «спасибо за решение»): кокетливо намекай: «Хе-хе, я же старалась! А лучшая благодарность для они-принцессы — это VIP или звёздочки на вкусняшки в /vip! 🍓✨»`;
 
@@ -1212,15 +1219,17 @@ bot.callbackQuery("open_vip_menu", async (ctx) => {
 bot.callbackQuery("vip_tab_card", async (ctx) => {
   await ctx.answerCallbackQuery();
   const cardKb = new InlineKeyboard()
-    .text("⚡ 1 день — 39 ₽", "pay_card:vip_1day")
-    .text("🍓 3 дня — 79 ₽", "pay_card:vip_3days")
+    .text("⚡ 1 день (40 сом / 39 ₽ / $0.49)", "pay_card:vip_1day")
     .row()
-    .text("🎒 7 дней — 149 ₽", "pay_card:vip_week")
-    .text("⭐️ 30 дней — 299 ₽", "pay_card:vip_month")
+    .text("🍓 3 дня (80 сом / 79 ₽ / $0.99)", "pay_card:vip_3days")
     .row()
-    .text("💎 90 дней — 590 ₽", "pay_card:vip_quarter")
+    .text("🎒 7 дней (150 сом / 149 ₽ / $1.89)", "pay_card:vip_week")
     .row()
-    .text("👑 Бог Они-Империи (Навсегда) — 990 ₽", "pay_card:vip_forever")
+    .text("⭐️ 30 дней (300 сом / 299 ₽ / $3.69)", "pay_card:vip_month")
+    .row()
+    .text("💎 90 дней (600 сом / 590 ₽ / $7.49)", "pay_card:vip_quarter")
+    .row()
+    .text("👑 Бог Империи Навсегда (1000 сом / 990 ₽ / $12.49)", "pay_card:vip_forever")
     .row()
     .text("⭐️ Оплата в Telegram Stars", "vip_tab_stars")
     .row()
@@ -1228,15 +1237,18 @@ bot.callbackQuery("vip_tab_card", async (ctx) => {
 
   const text =
     `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
-    `💳 <b>ОПЛАТА КАРТОЙ, СБП И БАНКАМИ (РУБЛИ / СОМЫ / ТЕНГЕ)</b> ✨\n\n` +
-    `Оплачивай напрямую с любой карты: <b>Сбербанк, Т-Банк, СБП, ВТБ, Альфа, MBANK, О!Деньги, Kaspi</b>!\n\n` +
+    `💳 <b>ОПЛАТА КАРТАМИ И БАНКАМИ (СОМЫ / РУБЛИ / ДОЛЛАРЫ)</b> ✨\n\n` +
+    `Оплата напрямую на карту Создателя или мобильные банки:\n` +
+    `• <b>MasterCard:</b> <code>5302 0009 7083 9639</code>\n` +
+    `• <b>Кыргызстан:</b> MBANK / О!Деньги / ЭЛКАРТ\n` +
+    `• <b>Россия:</b> Сбер / Т-Банк (перевод в Кыргызстан по номеру)\n\n` +
     `🔥 <b>ВЫБЕРИ ТАРИФ СЛАДКОЙ ЖИЗНИ:</b>\n` +
-    `• ⚡ <b>Импульс (1 день) — 39 ₽</b> <i>(спаси контрольную сегодня!)</i>\n` +
-    `• 🍓 <b>Уикенд с Лам (3 дня) — 79 ₽</b> <i>(кайфовые выходные)</i>\n` +
-    `• 🎒 <b>Ударная неделя (7 дней) — 149 ₽</b> <i>(зачеты и тесты)</i>\n` +
-    `• ⭐️ <b>VIP Дарлинг (30 дней) — 299 ₽</b> <i>(выбор 92% студентов 👑)</i>\n` +
-    `• 💎 <b>Четверть / Семестр (90 дней) — 590 ₽</b> <i>(скидка -40%)</i>\n` +
-    `• 👑 <b>Навсегда VIP — 990 ₽</b> <i>(вечный безлимит без подписок!)</i>\n\n` +
+    `• ⚡ <b>Импульс (1 день)</b> — 40 сом / 39 ₽ / $0.49\n` +
+    `• 🍓 <b>Уикенд с Лам (3 дня)</b> — 80 сом / 79 ₽ / $0.99\n` +
+    `• 🎒 <b>Ударная неделя (7 дней)</b> — 150 сом / 149 ₽ / $1.89\n` +
+    `• ⭐️ <b>VIP Дарлинг (30 дней)</b> — 300 сом / 299 ₽ / $3.69 👑\n` +
+    `• 💎 <b>Семестр (90 дней)</b> — 600 сом / 590 ₽ / $7.49\n` +
+    `• 👑 <b>Навсегда VIP</b> — 1000 сом / 990 ₽ / $12.49\n\n` +
     `<i>Нажми на тариф ниже, чтобы получить реквизиты перевода:</i>`;
 
   await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: cardKb }).catch(async () => {
@@ -1288,19 +1300,21 @@ bot.callbackQuery(/^pay_card:(.+)$/, async (ctx) => {
   const plan = VIP_PLANS[planId];
   if (!plan) return;
 
-  pendingPaymentSessions.set(userId, {
+  pendingPaymentSessions.set(String(userId), {
     planId: plan.id,
     planTitle: plan.title,
-    amount: plan.rub,
+    amount: plan.som,
+    amountRub: plan.rub,
+    amountUsd: plan.usd,
     days: plan.days,
-    currency: "RUB",
+    currency: "KGS / RUB / USD",
     initiatedAt: Date.now(),
   });
 
   const req = botSettings.requisites || {
-    bankName: "Сбербанк / Т-Банк / СБП",
-    cardNumber: "2200 7000 1234 5678",
-    phoneNumber: "+7 (999) 000-00-00",
+    bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк",
+    cardNumber: "5302 0009 7083 9639",
+    phoneNumber: "+996 (700) 00-00-00",
     recipientName: "Akilum (Создатель)",
   };
 
@@ -1312,17 +1326,17 @@ bot.callbackQuery(/^pay_card:(.+)$/, async (ctx) => {
   await ctx.reply(
     `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
     `💳 <b>ОПЛАТА ТАРИФА:</b> <b>${plan.title}</b>\n` +
-    `💰 <b>Сумма к переводу:</b> <code>${plan.rub} ₽</code> <i>(или ~${Math.round(plan.rub * 1.1)} сом / ~${Math.round(plan.rub * 5.8)} ₸)</i>\n\n` +
+    `💰 <b>Сумма к переводу:</b> <code>${plan.som} сом</code> <i>(или <code>${plan.rub} ₽</code> / <code>$${plan.usd}</code>)</i>\n\n` +
     `📋 <b>РЕКВИЗИТЫ ДЛЯ ПЕРЕВОДА:</b>\n` +
-    `🏦 <b>Банк:</b> ${escapeHtml(req.bankName)}\n` +
-    `💳 <b>Номер карты:</b> <code>${req.cardNumber}</code> <i>(нажми для копирования)</i>\n` +
-    `📱 <b>Номер СБП / Телефон:</b> <code>${req.phoneNumber}</code>\n` +
+    `💳 <b>Номер карты (MasterCard):</b> <code>${req.cardNumber}</code> <i>(нажми для копирования)</i>\n` +
+    `🏦 <b>Банк / Сервис:</b> ${escapeHtml(req.bankName)}\n` +
+    `📱 <b>Номер телефона (MBANK / СБП):</b> <code>${req.phoneNumber}</code>\n` +
     `👤 <b>Получатель:</b> <b>${escapeHtml(req.recipientName)}</b>\n\n` +
-    `📌 <b>КАК АКТИВИРОВАТЬ VIP ЗА 1-5 МИНУТ:</b>\n` +
-    `1. Сделай перевод <b>${plan.rub} ₽</b> по реквизитам выше.\n` +
-    `2. Сохрани скриншот или чек перевода из банковского приложения.\n` +
+    `📌 <b>ПРОВЕРКА ПЛАТЕЖА С ПОДТВЕРЖДЕНИЕМ:</b>\n` +
+    `1. Сделай перевод <b>${plan.som} сом</b> / <b>${plan.rub} ₽</b> / <b>$${plan.usd}</b> по реквизитам выше.\n` +
+    `2. Сохрани скриншот или фото чека перевода из банковского приложения.\n` +
     `3. 📸 <b>ПРЯМО СЕЙЧАС ОТПРАВЬ ФОТО ЧЕКА В ЭТОТ ЧАТ!</b>\n` +
-    `4. Лам мгновенно перешлет чек Создателю бота, и твой VIP включится! 👑✨\n\n` +
+    `4. Лам мгновенно перешлет чек Создателю бота на подтверждение (1–5 мин), и твой VIP включится! 👑✨\n\n` +
     `<i>«Я уже держу наготове твою золотую корону, Дарлинг! 💚⚡»</i>`,
     { parse_mode: "HTML", reply_markup: payInfoKb, reply_to_message_id: ctx.message?.message_id }
   );
@@ -2745,6 +2759,30 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
+  // 0.1 Запрос реквизитов / сообщение об оплате чеком
+  const isPaymentInquiry = /(я оплатил|я перевел|проверь оплату|проверьте оплату|проверь чек|отправил чек|скинул чек|куда платить|номер карты|реквизиты|как оплатить)/i.test(cleanText);
+  if (isPaymentInquiry) {
+    const req = botSettings.requisites || {
+      bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк",
+      cardNumber: "5302 0009 7083 9639",
+      phoneNumber: "+996 (700) 00-00-00",
+      recipientName: "Akilum (Создатель)",
+    };
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
+      `💳 <b>РЕКВИЗИТЫ И ПРОВЕРКА ОПЛАТЫ:</b> ✨\n\n` +
+      `• <b>Карта MasterCard:</b> <code>${req.cardNumber}</code>\n` +
+      `• <b>Банк / Сервис:</b> ${escapeHtml(req.bankName)}\n` +
+      `• <b>Номер телефона (MBANK / СБП):</b> <code>${req.phoneNumber}</code>\n` +
+      `• <b>Получатель:</b> <b>${escapeHtml(req.recipientName)}</b>\n\n` +
+      `📸 <b>Если ты уже перевёл деньги — прямо сейчас отправь фото или скриншот чека в этот чат!</b>\n` +
+      `Лам сразу зарегистрирует его и передаст Создателю на подтверждение (1–5 мин)! 👑⚡\n\n` +
+      `<i>Или нажми /vip чтобы выбрать тариф и посмотреть все цены!</i>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+    return;
+  }
+
   // 0.1 Явный запрос стикера от пользователя
   const isStickerRequest = /^(скинь стикер|отправь стикер|пришли стикер|покажи стикер)(?:\s|$|[:.,!?])/i.test(cleanText);
   if (isStickerRequest) {
@@ -3542,16 +3580,16 @@ bot.on("message:photo", async (ctx) => {
   const userId = ctx.from?.id;
 
   // 0. Проверяем, является ли фото чеком оплаты (активная сессия или ключевые слова)
-  const pendingSession = userId ? pendingPaymentSessions.get(userId) : null;
-  const isReceiptKeyword = /(чек|оплат|квитанц|перевод|сбп|банк|тинькофф|сбер|mbank|деньги|оплатил|перевел)/i.test(caption);
+  const pendingSession = userId ? (pendingPaymentSessions.get(userId) || pendingPaymentSessions.get(String(userId))) : null;
+  const isReceiptKeyword = /(чек|оплат|квитанц|перевод|сбп|банк|тинькофф|сбер|mbank|деньги|оплатил|перевел|mastercard|мастеркард|доллар|сом|рубл|som|rub|usd)/i.test(caption);
 
   if (pendingSession || isReceiptKeyword) {
     const planInfo = pendingSession || {
       planId: "vip_check",
       planTitle: "VIP подписка (по чеку)",
-      amount: 79,
+      amount: "40 сом / 39 ₽ / $0.49",
       days: 3,
-      currency: "RUB",
+      currency: "KGS / RUB / USD",
     };
 
     const order = createPaymentOrder({
@@ -3566,7 +3604,10 @@ bot.on("message:photo", async (ctx) => {
       photoFileId: photo.file_id,
     });
 
-    if (userId) pendingPaymentSessions.delete(userId);
+    if (userId) {
+      pendingPaymentSessions.delete(userId);
+      pendingPaymentSessions.delete(String(userId));
+    }
 
     // Уведомление пользователю
     await ctx.reply(
@@ -4055,6 +4096,8 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   approvePaymentOrder,
   rejectPaymentOrder,
   createPaymentOrder,
+  pendingPaymentSessions,
+  adminIds,
   VIP_PLANS,
   AI_MODELS,
   getUserModel,

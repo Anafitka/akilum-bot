@@ -1,13 +1,14 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { InputFile, InlineKeyboard } = require("grammy");
 
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
     req.on("data", (chunk) => {
       body += chunk;
-      if (body.length > 2e6) {
+      if (body.length > 12e6) {
         req.destroy();
         reject(new Error("Payload too large"));
       }
@@ -21,6 +22,16 @@ function parseJsonBody(req) {
     });
     req.on("error", reject);
   });
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}) {
@@ -51,6 +62,8 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     approvePaymentOrder,
     rejectPaymentOrder,
     createPaymentOrder,
+    pendingPaymentSessions,
+    adminIds,
     VIP_PLANS,
     AI_MODELS,
     getUserModel,
@@ -865,20 +878,146 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       }
     }
 
-    // API: Публичные реквизиты для оплаты картами / СБП
+    // API: Публичные реквизиты для оплаты картами / СБП / MBANK
     if (pathname === "/api/requisites") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({
         ok: true,
         requisites: botSettings?.requisites || {
-          bankName: "Сбербанк / Т-Банк / СБП (или MBANK / О!Деньги / Kaspi)",
-          cardNumber: "2200 7000 1234 5678",
-          phoneNumber: "+7 (999) 000-00-00",
+          bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк (переводы по карте и номеру)",
+          cardNumber: "5302 0009 7083 9639",
+          phoneNumber: "+996 (700) 00-00-00",
           recipientName: "Akilum (Создатель)",
-          currency: "RUB / KGS",
+          currency: "USD / RUB / KGS",
         },
         plans: VIP_PLANS || {},
       }));
+      return;
+    }
+
+    // API: Фиксация намерения оплаты перед отправкой чека
+    if (pathname === "/api/initiate-payment" && req.method === "POST") {
+      try {
+        const body = await parseJsonBody(req);
+        const { userId, planId, currency, amount } = body;
+        if (userId && planId && pendingPaymentSessions) {
+          const plan = VIP_PLANS ? VIP_PLANS[planId] : null;
+          pendingPaymentSessions.set(String(userId), {
+            planId,
+            planTitle: plan ? plan.title : planId,
+            amount: amount || (plan ? (currency === "som" || currency === "mbank" ? `${plan.som} сом` : (currency === "usd" ? `$${plan.usd}` : `${plan.rub} ₽`)) : 0),
+            days: plan ? plan.days : 30,
+            currency: currency === "som" || currency === "mbank" ? "KGS" : (currency === "usd" ? "USD" : "RUB"),
+            initiatedAt: Date.now(),
+          });
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+      return;
+    }
+
+    // API: Отправка чека/квитанции напрямую из WebApp с фото
+    if (pathname === "/api/submit-receipt" && req.method === "POST") {
+      try {
+        const body = await parseJsonBody(req);
+        const { userId, planId, currency, amount, imageBase64, name, username } = body;
+        if (!userId) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "userId is required" }));
+          return;
+        }
+
+        const plan = VIP_PLANS ? VIP_PLANS[planId] : null;
+        const curLabel = currency === "som" || currency === "mbank" ? "KGS" : (currency === "usd" ? "USD" : "RUB");
+        const formattedAmount = amount || (plan ? (curLabel === "KGS" ? `${plan.som} сом` : (curLabel === "USD" ? `$${plan.usd}` : `${plan.rub} ₽`)) : "VIP");
+
+        const order = createPaymentOrder ? createPaymentOrder({
+          userId,
+          name: name || "Дарлинг",
+          username: username || "",
+          planId: planId || "vip_check",
+          planTitle: plan ? plan.title : "VIP подписка",
+          days: plan ? plan.days : 30,
+          amount: formattedAmount,
+          currency: curLabel,
+          photoFileId: null,
+        }) : null;
+
+        if (!order) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "Failed to create payment order" }));
+          return;
+        }
+
+        if (pendingPaymentSessions) {
+          pendingPaymentSessions.delete(String(userId));
+          pendingPaymentSessions.delete(Number(userId));
+        }
+
+        // Если прикреплен скриншот в Base64 — отправляем в Telegram админам
+        if (imageBase64 && bot) {
+          try {
+            const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+            const imgBuffer = Buffer.from(cleanBase64, "base64");
+            const durationLabel = order.days <= 0 ? "НАВСЕГДА 👑" : `${order.days} дн.`;
+            const adminMsgText =
+              `🔔 <b>НОВЫЙ ЧЕК ИЗ ПРИЛОЖЕНИЯ!</b> 🧾💰\n\n` +
+              `👤 <b>От:</b> ${escapeHtml(order.name)} (@${order.username || "нет_юзернейма"})\n` +
+              `🆔 <b>User ID:</b> <code>${order.userId}</code>\n` +
+              `💎 <b>Тариф:</b> <b>${order.planTitle}</b> (${durationLabel})\n` +
+              `💵 <b>Сумма:</b> <code>${order.amount}</code>\n` +
+              `🕒 <b>Время:</b> <code>${new Date().toLocaleTimeString("ru-RU")}</code>\n\n` +
+              `<i>Проверь квитанцию и нажми кнопку ниже:</i>`;
+
+            const adminNotificationKb = new InlineKeyboard()
+              .text("✅ Подтвердить VIP", `pay_approve:${order.id}`)
+              .text("❌ Отклонить", `pay_reject:${order.id}`);
+
+            const tgAdmins = adminIds ? Array.from(adminIds) : [];
+            for (const admId of tgAdmins) {
+              try {
+                const sentMsg = await bot.api.sendPhoto(admId, new InputFile(imgBuffer, "receipt.jpg"), {
+                  caption: adminMsgText,
+                  parse_mode: "HTML",
+                  reply_markup: adminNotificationKb,
+                });
+                if (sentMsg.photo && sentMsg.photo.length > 0) {
+                  order.photoFileId = sentMsg.photo[sentMsg.photo.length - 1].file_id;
+                }
+              } catch (err) {
+                console.error("sendPhoto to admin error:", err.message);
+              }
+            }
+          } catch (imgErr) {
+            console.error("Receipt image process error:", imgErr.message);
+          }
+        }
+
+        // Отправка личного сообщения в бот пользователю
+        if (bot) {
+          bot.api.sendMessage(
+            Number(order.userId),
+            `✧ ─── ･ ｡ﾟ☆: *. 🧾 .* :☆ﾟ. ─── ✧\n` +
+            `✅ <b>ЧЕК УСПЕШНО ПРИНЯТ НА ПРОВЕРКУ!</b> 💚✨\n\n` +
+            `• Тариф: <b>${order.planTitle}</b>\n` +
+            `• Сумма: <code>${order.amount}</code>\n` +
+            `• Номер заявки: <code>#${order.id}</code>\n\n` +
+            `Лам уже передала твой чек Создателю на подтверждение. Проверка обычно занимает <b>1–5 минут</b>.\n` +
+            `Как только Создатель подтвердит — корона VIP и безлимит включатся мгновенно! 👑⚡`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, orderId: order.id }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
       return;
     }
 

@@ -103,6 +103,54 @@ function setUserVip(userId, days = 30, stars = 75) {
   saveVips();
 }
 
+const DAILY_FREE_LIMIT = 20;
+
+function getUserDailyUsage(userId) {
+  if (!userId) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const user = vipsData[String(userId)];
+  if (!user || user.dailyUsageDate !== today) {
+    return 0;
+  }
+  return user.dailyUsageCount || 0;
+}
+
+function incrementUserDailyUsage(userId) {
+  if (!userId) return;
+  const today = new Date().toISOString().slice(0, 10);
+  if (!vipsData[String(userId)]) {
+    vipsData[String(userId)] = {};
+  }
+  const user = vipsData[String(userId)];
+  if (user.dailyUsageDate !== today) {
+    user.dailyUsageDate = today;
+    user.dailyUsageCount = 1;
+  } else {
+    user.dailyUsageCount = (user.dailyUsageCount || 0) + 1;
+  }
+  saveVips();
+}
+
+function resetUserDailyUsage(userId) {
+  if (!userId) return;
+  if (!vipsData[String(userId)]) vipsData[String(userId)] = {};
+  vipsData[String(userId)].dailyUsageCount = 0;
+  vipsData[String(userId)].dailyUsageDate = new Date().toISOString().slice(0, 10);
+  saveVips();
+}
+
+function checkUserAccess(userId, isGroup = false) {
+  if (isUserVip(userId)) {
+    return { allowed: true, isVip: true, remaining: Infinity, limit: DAILY_FREE_LIMIT };
+  }
+  const usage = getUserDailyUsage(userId);
+  const remaining = Math.max(0, DAILY_FREE_LIMIT - usage);
+  if (!isGroup && usage >= DAILY_FREE_LIMIT) {
+    return { allowed: false, isVip: false, remaining: 0, limit: DAILY_FREE_LIMIT };
+  }
+  return { allowed: true, isVip: false, remaining, limit: DAILY_FREE_LIMIT };
+}
+
 function splitTextSafely(text, maxLen = 3800) {
   if (text.length <= maxLen) return [text];
   const parts = [];
@@ -434,11 +482,11 @@ bot.command("pdf", async (ctx) => {
   );
 });
 
-// МОНЕТИЗАЦИЯ ЧЕРЕЗ TELEGRAM STARS (ЗВЁЗДЫ)
-bot.command(["vip", "premium", "stars", "donate"], async (ctx) => {
-  if (ctx.from) recordInteraction(ctx.from.id);
+async function sendVipMenu(ctx) {
   const userId = ctx.from?.id;
   const isVip = isUserVip(userId);
+  const usage = getUserDailyUsage(userId);
+  const remaining = Math.max(0, DAILY_FREE_LIMIT - usage);
 
   const vipKeyboard = new InlineKeyboard()
     .text("⭐️ VIP на 1 месяц (75 Stars)", "buy_vip_month")
@@ -450,8 +498,8 @@ bot.command(["vip", "premium", "stars", "donate"], async (ctx) => {
   const vipText =
     `✨ <b>ПРЕМИУМ ЛАМ • СТАТУС VIP ДАРЛИНГА</b> ⭐️👑\n\n` +
     (isVip
-      ? `🎉 <b>Твой статус: АКТИВНЫЙ VIP 👑</b>\nУ тебя включен максимальный приоритет движков, безлимиты и корона!\n\n`
-      : `Хочешь особое отношение они-принцессы и максимальные возможности без очередей?\n\n`) +
+      ? `🎉 <b>Твой статус: АКТИВНЫЙ VIP 👑</b>\nУ тебя включен максимальный приоритет движков, бесконечная энергия молний и золотая корона!\n\n`
+      : `🔋 <b>Твоя энергия на сегодня:</b> <code>${remaining}/${DAILY_FREE_LIMIT} запросов</code>\nХочешь снять любые ограничения и получить золотую корону?\n\n`) +
     `💎 <b>Что даёт VIP:</b>\n` +
     `• 🚀 <b>Безлимитные решения задач</b> и разборы сложных заданий\n` +
     `• 💻 <b>Генерация длинного кода и сайтов</b> с кнопкой копирования\n` +
@@ -460,7 +508,37 @@ bot.command(["vip", "premium", "stars", "donate"], async (ctx) => {
     `• 🍓 <b>Личная забота</b> — эксклюзивные стикеры и реакции\n\n` +
     `<i>Оплата моментально прямо в Telegram через Telegram Stars ⭐️:</i>`;
 
-  await safeSendHtml(ctx, vipText, ctx.message.message_id, vipKeyboard);
+  const replyTo = ctx.message ? ctx.message.message_id : undefined;
+  await safeSendHtml(ctx, vipText, replyTo, vipKeyboard);
+}
+
+// МОНЕТИЗАЦИЯ ЧЕРЕЗ TELEGRAM STARS (ЗВЁЗДЫ)
+bot.command(["vip", "premium", "stars", "donate"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  await sendVipMenu(ctx);
+});
+
+bot.callbackQuery("open_vip_menu", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  await sendVipMenu(ctx);
+});
+
+// Тестовая выдача VIP и сброс лимитов для тестирования
+bot.command(["trial", "testvip"], async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+  setUserVip(userId, 3, 0);
+  await ctx.reply(
+    `🎉 <b>Тестовый VIP-статус активирован на 3 дня!</b> 👑⭐️\n\nТеперь у тебя есть золотая корона, безлимитная энергия молний и высший приоритет! Проверь команду /love 💕`,
+    { parse_mode: "HTML" }
+  );
+});
+
+bot.command("resetlimit", async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+  resetUserDailyUsage(userId);
+  await ctx.reply("⚡ Твоя ежедневная энергия сброшена до максимума (20/20)!", { parse_mode: "HTML" });
 });
 
 bot.callbackQuery("buy_vip_month", async (ctx) => {
@@ -631,11 +709,38 @@ async function handleIncoming(
   });
 
   const userId = ctx.from?.id;
+  const isGroup = ctx.chat.type !== "private";
+  let access = { allowed: true, isVip: false, remaining: DAILY_FREE_LIMIT };
+
   if (userId) {
     if (activeUsers.has(userId)) {
       console.log(`[AntiSpam] Пропуск параллельного запроса от пользователя ${userId}`);
       return;
     }
+
+    access = checkUserAccess(userId, isGroup);
+    if (!access.allowed) {
+      const payKb = new InlineKeyboard()
+        .text("⭐️ Взять VIP на месяц (75 ⭐️)", "buy_vip_month")
+        .row()
+        .text("👑 Навсегда VIP (250 ⭐️)", "buy_vip_forever")
+        .row()
+        .text("✨ Все тарифы", "open_vip_menu");
+
+      await ctx.reply(
+        `⚡ <b>Ой, Дарлинг, твоя бесплатная энергия на сегодня закончилась!</b> 🔋\n\n` +
+        `Ты израсходовал все <b>${DAILY_FREE_LIMIT}</b> бесплатных зарядов молний на сегодня. Мои они-рожки немного перегрелись!\n\n` +
+        `👑 <b>Хочешь общаться без ограничений?</b>\n` +
+        `Включи <b>VIP-статус</b> через официальные Telegram Stars ⭐️:\n` +
+        `• Полный безлимит на решения задач, код и генерации\n` +
+        `• Золотая корона VIP в твоем профиле /love\n` +
+        `• Приоритетный отклик нейросети без очередей\n\n` +
+        `<i>(Или бесплатная энергия перезарядится завтра в 00:00!)</i> 💕`,
+        { parse_mode: "HTML", reply_markup: payKb, reply_to_message_id: ctx.message?.message_id }
+      );
+      return;
+    }
+
     activeUsers.add(userId);
   }
 
@@ -956,16 +1061,30 @@ ${userText}
       else if (isEssayHelper) header = `📚 <b>План сочинения от Лам</b> ✨\n\n`;
       else if (isRoast) header = `🔥 <b>Они-прожарка • Лам</b> ⚡\n\n`;
 
-      const fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` + header + rawReply;
+      if (userId && !isGroup && !isUserVip(userId)) {
+        incrementUserDailyUsage(userId);
+      }
+      let fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` + header + rawReply;
+      if (userId && !isGroup && !isUserVip(userId) && access.remaining <= 3 && access.remaining > 0) {
+        fullReply += `\n\n⚡ <i>(Осталось энергии: ${Math.max(0, access.remaining - 1)}/${DAILY_FREE_LIMIT} • Безлимит: /vip ⭐️)</i>`;
+      }
       await safeSendHtml(ctx, fullReply, ctx.message.message_id);
       return;
     }
 
+    if (userId && !isGroup && !isUserVip(userId)) {
+      incrementUserDailyUsage(userId);
+    }
+    let replyToSend = rawReply;
+    if (userId && !isGroup && !isUserVip(userId) && access.remaining <= 3 && access.remaining > 0) {
+      replyToSend += `\n\n⚡ <i>(Осталось энергии: ${Math.max(0, access.remaining - 1)}/${DAILY_FREE_LIMIT} • Безлимит: /vip ⭐️)</i>`;
+    }
+
     // Отправляем ответ единым связным сообщением, не разрывая блоки кода и текст на части
-    if (rawReply.length <= 4000) {
-      await safeSendHtml(ctx, rawReply, ctx.message.message_id);
+    if (replyToSend.length <= 4000) {
+      await safeSendHtml(ctx, replyToSend, ctx.message.message_id);
     } else {
-      const parts = splitTextSafely(rawReply, 3800);
+      const parts = splitTextSafely(replyToSend, 3800);
       for (const part of parts) {
         await safeSendHtml(ctx, part);
       }
@@ -1191,17 +1310,25 @@ bot.on("message:text", async (ctx) => {
     const isVip = isUserVip(userId);
     const stats = recordInteraction(userId);
     const bar = renderProgressBar(stats.loveLevel);
+    const usage = getUserDailyUsage(userId);
+    const remaining = Math.max(0, DAILY_FREE_LIMIT - usage);
+
+    const loveKb = isVip
+      ? null
+      : new InlineKeyboard().text("⭐️ Получить VIP и безлимит", "open_vip_menu");
+
     await ctx.reply(
       `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
       `💚 <b>ПРОФИЛЬ ДАРЛИНГА • СВЯЗЬ С ЛАМ</b> ✨\n\n` +
       `⚡ <b>Статус:</b> <code>${isVip ? "👑 VIP Дарлинг ⭐️" : "Любимый Дарлинг 💕"}</code>\n` +
+      `🔋 <b>Энергия на сегодня:</b> <code>${isVip ? "∞ Безлимит 👑" : `${remaining}/${DAILY_FREE_LIMIT} молний`}</code>\n` +
       `💖 <b>Уровень связи:</b> [<code>${bar}</code>] <b>${stats.loveLevel}%</b>\n` +
       `💬 <b>Сообщений вместе:</b> <code>${stats.count}</code>\n` +
       `⚡ <b>Выпущено молний:</b> <code>${stats.bolts}</code>\n\n` +
       (isVip
-        ? `⭐️ <i>«Мой самый любимый VIP! Для тебя всё самое лучшее!»</i>`
-        : `<i>«Дарлинг, ты для меня самый особенный! Хочешь золотую корону и безлимиты? Пиши /vip ⭐️»</i>`),
-      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+        ? `⭐️ <i>«Мой самый любимый VIP! Для тебя открыты все возможности!»</i>`
+        : `<i>«Дарлинг, ты для меня самый особенный! Хочешь золотую корону и вечные безлимиты? Жми кнопку ниже или пиши /vip ⭐️»</i>`),
+      { parse_mode: "HTML", reply_markup: loveKb || undefined, reply_to_message_id: ctx.message.message_id }
     );
     return;
   }
@@ -2246,6 +2373,20 @@ if (activeWebAppUrl) {
     })
     .catch((e) => console.warn("Menu button notice:", e.message));
 }
+
+// Регистрация списка команд в официальном меню Telegram
+const BOT_COMMANDS = [
+  { command: "start", description: "⚡ Главное меню" },
+  { command: "vip", description: "⭐️ VIP статус и безлимит" },
+  { command: "love", description: "💚 Твой статус и энергия" },
+  { command: "quiz", description: "🎯 Викторина для тебя и группы" },
+  { command: "duel", description: "⚔️ Битва они-молний" },
+  { command: "roulette", description: "🎰 Рулетка наказаний" },
+  { command: "roast", description: "🔥 Забавная они-прожарка" },
+  { command: "pdf", description: "📄 Сборщик домашки в PDF" },
+  { command: "help", description: "📚 Все команды и шпаргалка" },
+];
+bot.api.setMyCommands(BOT_COMMANDS).catch((e) => console.warn("setMyCommands notice:", e.message));
 
 bot.catch((err) => {
   const ctx = err.ctx;

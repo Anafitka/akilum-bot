@@ -128,10 +128,8 @@ let botSettings = {
   dailyFreeLimit: DAILY_FREE_LIMIT,
   proactiveEnabled: true,
   requisites: {
-    bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк (переводы по карте и номеру)",
+    bankName: "MasterCard",
     cardNumber: "5302 0009 7083 9639",
-    phoneNumber: "+996 (700) 00-00-00",
-    recipientName: "Akilum (Создатель)",
     currency: "USD / RUB / KGS",
     notice: "После перевода пришлите фото или скриншот чека прямо в чат!",
   },
@@ -2968,21 +2966,14 @@ bot.on("message:text", async (ctx) => {
   const isPaymentInquiry = /(я оплатил|я перевел|проверь оплату|проверьте оплату|проверь чек|отправил чек|скинул чек|куда платить|номер карты|реквизиты|как оплатить)/i.test(cleanText);
   if (isPaymentInquiry) {
     const req = botSettings.requisites || {
-      bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк",
       cardNumber: "5302 0009 7083 9639",
-      phoneNumber: "+996 (700) 00-00-00",
-      recipientName: "Akilum (Создатель)",
     };
     await ctx.reply(
-      `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
-      `💳 <b>РЕКВИЗИТЫ И ПРОВЕРКА ОПЛАТЫ:</b> ✨\n\n` +
-      `• <b>Карта MasterCard:</b> <code>${req.cardNumber}</code>\n` +
-      `• <b>Банк / Сервис:</b> ${escapeHtml(req.bankName)}\n` +
-      `• <b>Номер телефона (MBANK / СБП):</b> <code>${req.phoneNumber}</code>\n` +
-      `• <b>Получатель:</b> <b>${escapeHtml(req.recipientName)}</b>\n\n` +
-      `📸 <b>Если ты уже перевёл деньги — прямо сейчас отправь фото или скриншот чека в этот чат!</b>\n` +
-      `Лам сразу зарегистрирует его и передаст Создателю на подтверждение (1–5 мин)! 👑⚡\n\n` +
-      `<i>Или нажми /vip чтобы выбрать тариф и посмотреть все цены!</i>`,
+      `💳 <b>Реквизиты для оплаты:</b>\n\n` +
+      `Карта: <code>${req.cardNumber}</code> <i>(нажми, чтобы скопировать)</i>\n\n` +
+      `📸 <b>После перевода отправь фото чека прямо в этот чат!</b>\n` +
+      `VIP включится сразу после проверки ✨\n\n` +
+      `<i>Или открой /vip чтобы выбрать нужный тариф.</i>`,
       { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
     );
     return;

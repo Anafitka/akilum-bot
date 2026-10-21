@@ -1616,12 +1616,6 @@
         </div>
       </div>
 
-      <!-- Hidden fallbacks for script compatibility -->
-      <div style="display:none;">
-        <span id="cardPayBank">MasterCard</span>
-        <input type="hidden" id="cardPayPhone" value="+996 (700) 00-00-00">
-        <span id="cardPayRecipient">Akilum</span>
-      </div>
 
       <!-- Simple Receipt Block -->
       <div style="background: rgba(0, 255, 136, 0.04); border: 1px dashed rgba(0, 255, 136, 0.3); border-radius: 14px; padding: 12px; margin-bottom: 10px; text-align: center;">
@@ -2065,29 +2059,25 @@
 
       if (!cachedRequisites) await loadRequisites();
       const r = cachedRequisites || {
-        bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк",
+        bankName: "MasterCard",
         cardNumber: "5302 0009 7083 9639",
-        phoneNumber: "+996 (700) 00-00-00",
-        recipientName: "Akilum (Создатель)",
       };
 
       const titleEl = document.getElementById('cardPayTitle');
       if (currentPayMethod === 'mbank') {
-        if (titleEl) titleEl.innerText = "🇰🇬 Оплата MBANK / ЭЛКАРТ / О!Деньги";
+        if (titleEl) titleEl.innerText = "🇰🇬 Оплата картой (Сомы)";
         document.getElementById('cardPayAmount').innerText = `${plan.som} сом`;
       } else if (currentPayMethod === 'usd') {
         if (titleEl) titleEl.innerText = "🇺🇸 Оплата картой MasterCard (USD $)";
         document.getElementById('cardPayAmount').innerText = `$${plan.usd}`;
       } else {
-        if (titleEl) titleEl.innerText = "🇷🇺 Оплата картой РФ / СБП (Рубли)";
+        if (titleEl) titleEl.innerText = "🇷🇺 Оплата картой (Рубли)";
         document.getElementById('cardPayAmount').innerText = `${plan.rub} ₽`;
       }
 
       document.getElementById('cardPayPlanName').innerText = `Тариф: ${plan.title}`;
-      document.getElementById('cardPayBank').innerText = r.bankName || "MasterCard / MBANK / ЭЛКАРТ";
+      if (document.getElementById('cardPayBank')) document.getElementById('cardPayBank').innerText = r.bankName || "MasterCard";
       document.getElementById('cardPayCardNum').value = r.cardNumber || "5302 0009 7083 9639";
-      document.getElementById('cardPayPhone').value = r.phoneNumber || "+996 (700) 00-00-00";
-      document.getElementById('cardPayRecipient').innerText = r.recipientName || "Akilum (Создатель)";
 
       openSheet('card-pay');
     }
@@ -2098,16 +2088,7 @@
         navigator.clipboard.writeText(num.replace(/\s+/g, ''));
       }
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      alert("✅ Номер счета/карты скопирован в буфер обмена!");
-    }
-
-    function copyPhoneNumber() {
-      const num = document.getElementById('cardPayPhone').value;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(num.replace(/[^\d+]/g, ''));
-      }
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      alert("✅ Номер телефона скопирован в буфер обмена!");
+      alert("✅ Номер карты скопирован!");
     }
 
     function handleReceiptFileSelected(event) {

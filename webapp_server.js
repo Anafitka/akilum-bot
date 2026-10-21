@@ -1096,10 +1096,8 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       res.end(JSON.stringify({
         ok: true,
         requisites: botSettings?.requisites || {
-          bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк (переводы по карте и номеру)",
+          bankName: "MasterCard",
           cardNumber: "5302 0009 7083 9639",
-          phoneNumber: "+996 (700) 00-00-00",
-          recipientName: "Akilum (Создатель)",
           currency: "USD / RUB / KGS",
         },
         plans: VIP_PLANS || {},

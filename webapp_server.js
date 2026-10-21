@@ -93,13 +93,14 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
 
       try {
         if (!bot) throw new Error("Bot API not initialized");
-        const invoiceLink = await bot.api.createInvoiceLink({
+        const invoiceLink = await bot.api.createInvoiceLink(
           title,
           description,
           payload,
-          currency: "XTR",
-          prices: [{ label: title, amount }],
-        });
+          "",
+          "XTR",
+          [{ label: title, amount }]
+        );
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true, invoiceLink, title, amount }));

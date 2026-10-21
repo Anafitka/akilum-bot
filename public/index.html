@@ -503,146 +503,211 @@
       background: rgba(255, 255, 255, 0.15);
     }
 
-    /* FOMO Banner & Social Proof */
-    .fomo-banner {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(245, 158, 11, 0.25));
-      border: 1px solid rgba(245, 158, 11, 0.45);
-      border-radius: 16px;
-      padding: 12px 14px;
+    /* ==========================================
+       ✨ CLEAN LUXURY SHOP STYLES
+       ========================================== */
+    .shop-hero-card {
+      position: relative;
+      background: linear-gradient(135deg, rgba(20, 24, 40, 0.9), rgba(12, 16, 28, 0.95));
+      border: 1px solid rgba(0, 255, 136, 0.25);
+      border-radius: 20px;
+      padding: 16px 14px;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      box-shadow: 0 0 25px rgba(245, 158, 11, 0.2);
+      gap: 14px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
-    .fomo-icon {
-      font-size: 26px;
-      animation: flamePulse 1.2s infinite alternate;
+    .shop-hero-glow {
+      position: absolute;
+      top: -40px; right: -40px;
+      width: 120px; height: 120px;
+      background: radial-gradient(circle, rgba(0, 255, 136, 0.2), transparent 70%);
+      pointer-events: none;
     }
-    @keyframes flamePulse {
-      from { transform: scale(1); filter: drop-shadow(0 0 4px #f59e0b); }
-      to { transform: scale(1.15); filter: drop-shadow(0 0 12px #ef4444); }
-    }
-    .fomo-title {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.6px;
-      color: #fde68a;
-      text-transform: uppercase;
-    }
-    .fomo-timer {
-      font-size: 19px;
-      font-weight: 900;
-      font-family: 'JetBrains Mono', monospace;
-      color: #fff;
-      letter-spacing: 1px;
-    }
-
-    .social-proof-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(0, 255, 136, 0.06);
-      border: 1px solid rgba(0, 255, 136, 0.2);
-      border-radius: 20px;
-      padding: 6px 12px;
-      font-size: 11.5px;
-      color: var(--neon-emerald);
-      margin-bottom: 16px;
-      font-weight: 600;
-    }
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--neon-emerald);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--neon-emerald);
-      animation: pulseAnim 1.4s infinite;
+    .shop-hero-avatar {
+      position: relative;
+      width: 52px; height: 52px;
       flex-shrink: 0;
     }
-    @keyframes pulseAnim {
-      0% { transform: scale(0.9); opacity: 0.7; }
-      50% { transform: scale(1.3); opacity: 1; }
-      100% { transform: scale(0.9); opacity: 0.7; }
+    .shop-hero-avatar img {
+      width: 100%; height: 100%;
+      border-radius: 16px;
+      border: 2px solid var(--neon-emerald);
+      object-fit: cover;
+    }
+    .shop-hero-crown {
+      position: absolute;
+      top: -8px; right: -8px;
+      font-size: 16px;
+      filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+    }
+    .shop-hero-text h2 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 3px 0;
+    }
+    .shop-hero-text p {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+      margin: 0;
     }
 
-    /* Switcher: Card vs Stars */
+    .perks-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .perks-row::-webkit-scrollbar { display: none; }
+    .perk-pill {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 5px 10px;
+      font-size: 11px;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+
+    /* Switcher: MBANK vs Cards vs Stars */
     .pay-method-switcher {
       display: flex;
-      background: rgba(0, 0, 0, 0.45);
+      background: rgba(0, 0, 0, 0.5);
       border: 1px solid var(--border-subtle);
       border-radius: 14px;
-      padding: 4px;
+      padding: 3px;
       gap: 4px;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
     .pay-toggle-btn {
       flex: 1;
-      padding: 10px 6px;
+      padding: 9px 4px;
       border: none;
-      border-radius: 10px;
-      font-size: 12.5px;
+      border-radius: 11px;
+      font-size: 11.5px;
       font-weight: 700;
       color: var(--text-secondary);
       background: transparent;
       cursor: pointer;
-      transition: all 0.2s;
-    }
-    .pay-toggle-btn.active.card-mode {
-      background: var(--emerald-gradient);
-      color: #060811;
-      box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
-    }
-    .pay-toggle-btn.active.stars-mode {
-      background: var(--gold-gradient);
-      color: #060811;
-      box-shadow: 0 0 16px rgba(255, 215, 0, 0.35);
-    }
-
-    /* Contrast Box */
-    .contrast-box {
-      background: rgba(15, 23, 42, 0.75);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--card-radius);
-      padding: 16px;
-      margin-top: 14px;
-      margin-bottom: 22px;
-    }
-    .contrast-title {
-      font-size: 14px;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 10px;
+      transition: all 0.2s ease;
       text-align: center;
     }
-    .contrast-grid {
+    .pay-toggle-btn.active {
+      background: rgba(0, 255, 136, 0.16);
+      border: 1px solid rgba(0, 255, 136, 0.4);
+      color: var(--neon-emerald);
+      box-shadow: 0 0 14px rgba(0, 255, 136, 0.2);
+    }
+    .pay-toggle-btn.active.stars-tab {
+      background: rgba(255, 215, 0, 0.16);
+      border-color: rgba(255, 215, 0, 0.4);
+      color: var(--neon-gold);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.2);
+    }
+
+    /* 2-column Compact Plans Grid */
+    .plans-grid-clean {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      font-size: 11px;
-      line-height: 1.4;
+      margin-bottom: 20px;
     }
-    .contrast-col {
-      padding: 10px;
-      border-radius: 12px;
-    }
-    .contrast-col.bad {
-      background: rgba(239, 68, 68, 0.08);
-      border: 1px solid rgba(239, 68, 68, 0.25);
-      color: #fca5a5;
-    }
-    .contrast-col.good {
-      background: rgba(0, 255, 136, 0.08);
-      border: 1px solid rgba(0, 255, 136, 0.3);
-      color: #a7f3d0;
-    }
-    .contrast-head {
-      font-weight: 800;
-      font-size: 12px;
-      margin-bottom: 6px;
+    .clean-plan-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 13px 11px;
       display: flex;
-      align-items: center;
-      gap: 4px;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      transition: transform 0.15s, border-color 0.2s;
+    }
+    .clean-plan-card:active {
+      transform: scale(0.98);
+    }
+    .clean-plan-card.featured-card {
+      border-color: rgba(255, 215, 0, 0.45);
+      background: linear-gradient(145deg, rgba(255, 215, 0, 0.05), rgba(15, 23, 42, 0.8));
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+    }
+    .clean-plan-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .clean-plan-icon {
+      font-size: 20px;
+    }
+    .clean-plan-badge {
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .clean-plan-card.featured-card .clean-plan-badge {
+      background: rgba(255, 215, 0, 0.2);
+      color: var(--neon-gold);
+      border: 1px solid rgba(255, 215, 0, 0.35);
+    }
+    .clean-plan-name {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+    .clean-plan-desc {
+      font-size: 10px;
+      color: var(--text-secondary);
+      line-height: 1.3;
+      margin-bottom: 8px;
+      min-height: 26px;
+    }
+    .clean-plan-price {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--neon-emerald);
+      margin-bottom: 8px;
+    }
+    .clean-plan-card.featured-card .clean-plan-price {
+      color: var(--neon-gold);
+    }
+    .clean-plan-btn {
+      width: 100%;
+      padding: 8px 4px;
+      border-radius: 9px;
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.1);
+      color: var(--neon-emerald);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clean-plan-btn:active {
+      background: var(--neon-emerald);
+      color: #060811;
+    }
+    .clean-plan-card.featured-card .clean-plan-btn {
+      background: var(--gold-gradient);
+      border: none;
+      color: #060811;
+      font-weight: 800;
     }
 
     /* Model Showcase Grid */
@@ -1016,183 +1081,141 @@
 
     <!-- ================= TAB 2: МАГАЗИН VIP (SHOP) ================= -->
     <div class="tab-view" id="tab-shop">
-      <!-- FOMO / Urgency Banner -->
-      <div class="fomo-banner">
-        <div class="fomo-icon">🔥</div>
-        <div class="fomo-text">
-          <div class="fomo-title">Скидка до -40% сгорает через:</div>
-          <div class="fomo-timer" id="shopCountdown">01:54:18</div>
+      <!-- Clean Luxury Hero Card -->
+      <div class="shop-hero-card">
+        <div class="shop-hero-glow"></div>
+        <div class="shop-hero-avatar">
+          <img src="/avatar.jpg" alt="Lum" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'" />
+          <div class="shop-hero-crown">👑</div>
+        </div>
+        <div class="shop-hero-text">
+          <h2>Премиум VIP Дарлинг</h2>
+          <p>Безлимитные молнии, 4 интеллектуальные модели и золотая корона во всех чатах ✨</p>
         </div>
       </div>
 
-      <!-- Social Proof Bar -->
-      <div class="social-proof-bar">
-        <span class="pulse-dot"></span>
-        <span id="socialTickerText">🟢 512 Дарлингов уже на VIP • @alex*** взял VIP 4 мин назад</span>
+      <!-- Key Perks Summary -->
+      <div class="perks-row">
+        <div class="perk-pill">⚡ <span>Безлимит молний</span></div>
+        <div class="perk-pill">🧠 <span>4 ИИ-модели</span></div>
+        <div class="perk-pill">👑 <span>Золотая корона</span></div>
+        <div class="perk-pill">🚀 <span>Скорость 0.3с</span></div>
       </div>
 
-      <div class="shop-header">
-        <div class="shop-crown">👑</div>
-        <div class="shop-title">СЛАДКАЯ ЖИЗНЬ VIP ДАРЛИНГА</div>
-        <div class="shop-sub">Легальный чит-код для школы и жизни. Забудь про стресс и двойки: ответы за 0.3с, золотая корона в беседах и личная они-вайфу 24/7! ✨</div>
-      </div>
-
-      <!-- Switcher: Card / SBP vs Telegram Stars -->
+      <!-- Currency / Payment Switcher -->
       <div class="pay-method-switcher">
-        <button class="pay-toggle-btn active card-mode" id="btnMethodCard" onclick="switchPayMethod('card')">
-          💳 Карта / СБП (Рубли / Сомы)
+        <button class="pay-toggle-btn active" id="btnMethodMbank" onclick="switchPayMethod('mbank')">
+          🇰🇬 MBANK (Сомы)
         </button>
-        <button class="pay-toggle-btn" id="btnMethodStars" onclick="switchPayMethod('stars')">
-          ⭐️ Telegram Stars
+        <button class="pay-toggle-btn" id="btnMethodCard" onclick="switchPayMethod('card')">
+          💳 Карты (Рубли)
+        </button>
+        <button class="pay-toggle-btn stars-tab" id="btnMethodStars" onclick="switchPayMethod('stars')">
+          ⭐️ Stars
         </button>
       </div>
 
-      <!-- 1. Plan: 1 Day Impulse (39 RUB / 15 Stars) -->
-      <div class="plan-card">
-        <div class="plan-ribbon green">Спасение сегодня 🔥</div>
-        <div class="plan-head">
-          <div class="plan-icon">⚡</div>
+      <!-- 2-Column Compact Clean Plans Grid -->
+      <div class="plans-grid-clean">
+        <!-- 1. Plan: 1 Day -->
+        <div class="clean-plan-card" onclick="handlePlanBuy('vip_1day')">
           <div>
-            <h3>Импульс на 1 день</h3>
-            <div class="plan-price" id="price-vip_1day">39 ₽ <span>(или 15 ⭐️)</span></div>
+            <div class="clean-plan-top">
+              <span class="clean-plan-icon">⚡</span>
+              <span class="clean-plan-badge">1 день</span>
+            </div>
+            <div class="clean-plan-name">Импульс</div>
+            <div class="clean-plan-desc">Закрыть контрольную или ДЗ на 24 часа</div>
+          </div>
+          <div>
+            <div class="clean-plan-price" id="price-vip_1day">40 сом</div>
+            <button class="clean-plan-btn" id="btn-vip_1day">Выбрать</button>
           </div>
         </div>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Мгновенное спасение сегодняшней контрольной или домашки</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> 24 часа полного безлимита на решения и код</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Доступ к режиму ГЕНИЯ (Deep Think)</li>
-        </ul>
-        <button class="checkout-btn" id="btn-vip_1day" onclick="handlePlanBuy('vip_1day')">
-          💳 Оплатить 39 ₽
-        </button>
-      </div>
 
-      <!-- 2. Plan: 3 Days Weekend (79 RUB / 29 Stars) -->
-      <div class="plan-card">
-        <div class="plan-ribbon cyan">Хит выходных ✨</div>
-        <div class="plan-head">
-          <div class="plan-icon">🍓</div>
+        <!-- 2. Plan: 3 Days -->
+        <div class="clean-plan-card" onclick="handlePlanBuy('vip_3days')">
           <div>
-            <h3>Уикенд с Лам (3 дня)</h3>
-            <div class="plan-price" id="price-vip_3days">79 ₽ <span>(или 29 ⭐️)</span></div>
+            <div class="clean-plan-top">
+              <span class="clean-plan-icon">🍓</span>
+              <span class="clean-plan-badge">3 дня</span>
+            </div>
+            <div class="clean-plan-name">Уикенд с Лам</div>
+            <div class="clean-plan-desc">3 дня отдыха, домашка наперед и тепло</div>
+          </div>
+          <div>
+            <div class="clean-plan-price" id="price-vip_3days">80 сом</div>
+            <button class="clean-plan-btn" id="btn-vip_3days">Выбрать</button>
           </div>
         </div>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> 3 дня беззаботного кайфа и отдыха</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Решай всё домашнее задание наперед за 5 минут</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Золотая корона VIP в профиле /love</li>
-        </ul>
-        <button class="checkout-btn" id="btn-vip_3days" onclick="handlePlanBuy('vip_3days')">
-          💳 Оплатить 79 ₽
-        </button>
-      </div>
 
-      <!-- 3. Plan: 7 Days Week (149 RUB / 49 Stars) -->
-      <div class="plan-card">
-        <div class="plan-ribbon">Для зачетов 📚</div>
-        <div class="plan-head">
-          <div class="plan-icon">🎒</div>
+        <!-- 3. Plan: 7 Days -->
+        <div class="clean-plan-card" onclick="handlePlanBuy('vip_week')">
           <div>
-            <h3>Ударная неделя (7 дней)</h3>
-            <div class="plan-price" id="price-vip_week">149 ₽ <span>(или 49 ⭐️)</span></div>
+            <div class="clean-plan-top">
+              <span class="clean-plan-icon">🎒</span>
+              <span class="clean-plan-badge">7 дней</span>
+            </div>
+            <div class="clean-plan-name">Ударная неделя</div>
+            <div class="clean-plan-desc">Супер-мощь перед зачетами и срезами</div>
+          </div>
+          <div>
+            <div class="clean-plan-price" id="price-vip_week">150 сом</div>
+            <button class="clean-plan-btn" id="btn-vip_week">Выбрать</button>
           </div>
         </div>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> 7 дней супер-мощи перед контрольными и олимпиадами</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Ответы за 0.3 секунды прямо под партой</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Золотая корона VIP во всех чатах и группах</li>
-        </ul>
-        <button class="checkout-btn" id="btn-vip_week" onclick="handlePlanBuy('vip_week')">
-          💳 Оплатить 149 ₽
-        </button>
-      </div>
 
-      <!-- 4. Plan: 1 Month VIP (299 RUB / 99 Stars) -->
-      <div class="plan-card featured">
-        <div class="plan-ribbon gold">Выбор 92% студентов 👑</div>
-        <div class="plan-head">
-          <div class="plan-icon">⭐️</div>
+        <!-- 4. Plan: 30 Days (Featured) -->
+        <div class="clean-plan-card featured-card" onclick="handlePlanBuy('vip_month')">
           <div>
-            <h3>VIP Дарлинг (30 дней)</h3>
-            <div class="plan-price" id="price-vip_month">299 ₽ <span>(или 99 ⭐️)</span></div>
+            <div class="clean-plan-top">
+              <span class="clean-plan-icon">⭐️</span>
+              <span class="clean-plan-badge">Месяц 👑</span>
+            </div>
+            <div class="clean-plan-name">VIP Дарлинг</div>
+            <div class="clean-plan-desc">Месяц без забот, корона и безлимит</div>
+          </div>
+          <div>
+            <div class="clean-plan-price" id="price-vip_month">300 сом</div>
+            <button class="clean-plan-btn" id="btn-vip_month">Выбрать VIP</button>
           </div>
         </div>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Сладкая жизнь на целый месяц без стресса и забот</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Полный безлимит на задачи, код и сочинения</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Высший приоритет ответов №1 даже в пиковые часы</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Неограниченная генерация HD артов и аватарок</li>
-        </ul>
-        <button class="checkout-btn" id="btn-vip_month" onclick="handlePlanBuy('vip_month')">
-          👑 Включить VIP за 299 ₽
-        </button>
-      </div>
 
-      <!-- 5. Plan: Quarter 90 Days (590 RUB / 199 Stars) -->
-      <div class="plan-card">
-        <div class="plan-ribbon cyan">Скидка -40% 🚀</div>
-        <div class="plan-head">
-          <div class="plan-icon">💎</div>
+        <!-- 5. Plan: 90 Days -->
+        <div class="clean-plan-card" onclick="handlePlanBuy('vip_quarter')">
           <div>
-            <h3>Четверть / Семестр (90 дней)</h3>
-            <div class="plan-price" id="price-vip_quarter">590 ₽ <span style="text-decoration:line-through; opacity:0.5; font-size:14px; margin-right:4px;">890 ₽</span></div>
+            <div class="clean-plan-top">
+              <span class="clean-plan-icon">💎</span>
+              <span class="clean-plan-badge">Семестр</span>
+            </div>
+            <div class="clean-plan-name">Четверть</div>
+            <div class="clean-plan-desc">3 месяца спокойствия и оценок 5+</div>
+          </div>
+          <div>
+            <div class="clean-plan-price" id="price-vip_quarter">600 сом</div>
+            <button class="clean-plan-btn" id="btn-vip_quarter">Выбрать</button>
           </div>
         </div>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Все контрольные и домашки четверти закрыты на отлично!</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> 3 месяца спокойствия и высший балл без репетиторов</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Доступ ко всем олимпиадным базам знаний</li>
-        </ul>
-        <button class="checkout-btn" id="btn-vip_quarter" onclick="handlePlanBuy('vip_quarter')">
-          💎 Забрать выгоду за 590 ₽
-        </button>
-      </div>
 
-      <!-- 6. Plan: Lifetime (990 RUB / 299 Stars) -->
-      <div class="plan-card">
-        <div class="plan-ribbon gold">Легендарный статус 💎</div>
-        <div class="plan-head">
-          <div class="plan-icon">👑</div>
+        <!-- 6. Plan: Forever -->
+        <div class="clean-plan-card" onclick="handlePlanBuy('vip_forever')">
           <div>
-            <h3>Бог Они-Империи (Навсегда)</h3>
-            <div class="plan-price" id="price-vip_forever">990 ₽ <span style="text-decoration:line-through; opacity:0.5; font-size:14px; margin-right:4px;">1990 ₽</span></div>
+            <div class="clean-plan-top">
+              <span class="clean-plan-icon">👑</span>
+              <span class="clean-plan-badge">Навсегда</span>
+            </div>
+            <div class="clean-plan-name">Бог Империи</div>
+            <div class="clean-plan-desc">Вечный пожизненный VIP без подписок</div>
           </div>
-        </div>
-        <ul class="plan-features">
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Пожизненный вечный VIP без ежемесячных платежей</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Пожизненный титул «Единственный Дарлинг»</li>
-          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Вечная золотая корона во всех чатах Telegram</li>
-        </ul>
-        <button class="checkout-btn" id="btn-vip_forever" onclick="handlePlanBuy('vip_forever')">
-          👑 Купить навсегда за 990 ₽
-        </button>
-      </div>
-
-      <!-- Contrast Matrix: Обычный vs VIP Дарлинг -->
-      <div class="contrast-box">
-        <div class="contrast-title">⚖️ ЧТО ТЫ ВЫБИРАЕШЬ?</div>
-        <div class="contrast-grid">
-          <div class="contrast-col bad">
-            <div class="contrast-head">❌ БЕЗ VIP</div>
-            • 30 запросов в день<br>
-            • Ожидание в очереди<br>
-            • Стресс перед уроками<br>
-            • Обычные ответы<br>
-            • Без короны в чатах
-          </div>
-          <div class="contrast-col good">
-            <div class="contrast-head">👑 СЛАДКАЯ ЖИЗНЬ</div>
-            • <b>ПОЛНЫЙ БЕЗЛИМИТ</b><br>
-            • Ответ за 0.3с на уроке<br>
-            • Модель ГЕНИЯ (Deep Think)<br>
-            • Золотая корона элиты<br>
-            • Личная они-вайфу 24/7
+          <div>
+            <div class="clean-plan-price" id="price-vip_forever">1000 сом</div>
+            <button class="clean-plan-btn" id="btn-vip_forever">Выбрать</button>
           </div>
         </div>
       </div>
 
       <!-- Showcase of 4 VIP Models -->
-      <div class="section-head">🧠 4 Эксклюзивные VIP Нейро-Модели</div>
+      <div class="section-head">🧠 4 Модели ИИ для VIP</div>
       <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:10px;">Владельцы VIP могут переключать режим мышления Лам в 1 клик:</p>
       <div class="models-showcase">
         <div class="model-box" id="modelBox-turbo" onclick="handleSelectModel('turbo')">
@@ -1205,7 +1228,7 @@
           <div class="model-box-badge">ОЛИМПИАДЫ</div>
           <div class="model-box-icon">🧠</div>
           <h5>LUM-GENIUS</h5>
-          <p>Пошаговый вышмат, физика и глубокие эссе</p>
+          <p>Пошаговый вышмат, физика и доказательства</p>
         </div>
         <div class="model-box" id="modelBox-artist" onclick="handleSelectModel('artist')">
           <div class="model-box-badge">4K HD</div>
@@ -1595,7 +1618,10 @@
       </div>
 
       <div class="form-group" style="margin-bottom: 12px;">
-        <label class="form-label" style="font-size:11px; color:var(--text-secondary);">Номер СБП / Телефон</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер СБП / MBANK / Телефона</label>
+          <span style="font-size:11px; color:var(--neon-cyan); cursor:pointer; font-weight:700;" onclick="copyPhoneNumber()">Скопировать 📋</span>
+        </div>
         <input type="text" id="cardPayPhone" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#fff;" readonly value="+7 (999) 000-00-00">
       </div>
 
@@ -1731,7 +1757,6 @@
     fetchUserStatus();
     loadRequisites();
     fetchActiveModel();
-    startShopCountdown();
 
     // Fetch Live Rates
     async function fetchLiveRates() {
@@ -1953,41 +1978,45 @@
     // ==========================================
     // 💳 VIP SHOP, КАРТЫ, СБП И TELEGRAM STARS
     // ==========================================
-    let currentPayMethod = 'card';
+    let currentPayMethod = 'mbank';
     let cachedRequisites = null;
 
     const VIP_PLANS_FRONT = {
-      vip_1day: { id: "vip_1day", title: "Импульс (1 день)", rub: 39, stars: 15 },
-      vip_3days: { id: "vip_3days", title: "Уикенд с Лам (3 дня)", rub: 79, stars: 29 },
-      vip_week: { id: "vip_week", title: "Ударная неделя (7 дней)", rub: 149, stars: 49 },
-      vip_month: { id: "vip_month", title: "VIP Дарлинг (30 дней)", rub: 299, stars: 99 },
-      vip_quarter: { id: "vip_quarter", title: "Четверть / Семестр (90 дней)", rub: 590, stars: 199 },
-      vip_forever: { id: "vip_forever", title: "Бог Они-Империи (Навсегда)", rub: 990, stars: 299 },
+      vip_1day: { id: "vip_1day", title: "Импульс (1 день)", som: 40, rub: 39, stars: 15 },
+      vip_3days: { id: "vip_3days", title: "Уикенд с Лам (3 дня)", som: 80, rub: 79, stars: 29 },
+      vip_week: { id: "vip_week", title: "Ударная неделя (7 дней)", som: 150, rub: 149, stars: 49 },
+      vip_month: { id: "vip_month", title: "VIP Месяц (30 дней)", som: 300, rub: 299, stars: 99 },
+      vip_quarter: { id: "vip_quarter", title: "Четверть (90 дней)", som: 600, rub: 590, stars: 199 },
+      vip_forever: { id: "vip_forever", title: "Бог Они-Империи (Навсегда)", som: 1000, rub: 990, stars: 299 },
     };
 
     function switchPayMethod(method) {
       currentPayMethod = method;
+      const btnMbank = document.getElementById('btnMethodMbank');
       const btnCard = document.getElementById('btnMethodCard');
       const btnStars = document.getElementById('btnMethodStars');
 
-      if (method === 'card') {
-        if (btnCard) btnCard.className = 'pay-toggle-btn active card-mode';
-        if (btnStars) btnStars.className = 'pay-toggle-btn';
-      } else {
-        if (btnStars) btnStars.className = 'pay-toggle-btn active stars-mode';
-        if (btnCard) btnCard.className = 'pay-toggle-btn';
-      }
+      if (btnMbank) btnMbank.className = method === 'mbank' ? 'pay-toggle-btn active' : 'pay-toggle-btn';
+      if (btnCard) btnCard.className = method === 'card' ? 'pay-toggle-btn active card-mode' : 'pay-toggle-btn';
+      if (btnStars) btnStars.className = method === 'stars' ? 'pay-toggle-btn active stars-mode' : 'pay-toggle-btn stars-tab';
 
       for (const [key, plan] of Object.entries(VIP_PLANS_FRONT)) {
         const priceEl = document.getElementById(`price-${key}`);
         const btnEl = document.getElementById(`btn-${key}`);
-        if (priceEl && btnEl) {
-          if (method === 'card') {
-            priceEl.innerHTML = `${plan.rub} ₽ <span>(или ${plan.stars} ⭐️)</span>`;
-            btnEl.innerHTML = `💳 Оплатить ${plan.rub} ₽`;
+        if (priceEl) {
+          if (method === 'mbank') {
+            priceEl.innerHTML = `${plan.som} сом`;
+          } else if (method === 'card') {
+            priceEl.innerHTML = `${plan.rub} ₽`;
           } else {
-            priceEl.innerHTML = `${plan.stars} ⭐️ <span>(~${(plan.stars * 0.02).toFixed(1)}$)</span>`;
-            btnEl.innerHTML = `⭐️ Оплатить ${plan.stars} Stars`;
+            priceEl.innerHTML = `${plan.stars} ⭐️`;
+          }
+        }
+        if (btnEl) {
+          if (method === 'stars') {
+            btnEl.innerHTML = `⭐️ Оплатить`;
+          } else {
+            btnEl.innerHTML = `Выбрать`;
           }
         }
       }
@@ -2018,17 +2047,25 @@
     async function openCardPayModal(plan) {
       if (!cachedRequisites) await loadRequisites();
       const r = cachedRequisites || {
-        bankName: "Сбербанк / Т-Банк / СБП (или MBANK / О!Деньги)",
-        cardNumber: "2200 7000 1234 5678",
-        phoneNumber: "+7 (999) 000-00-00",
+        bankName: "MBANK / О!Деньги / ЭЛКАРТ (Кыргызстан)",
+        cardNumber: "1180 0000 0000 0000",
+        phoneNumber: "+996 (___) __-__-__",
         recipientName: "Akilum (Создатель)",
       };
 
-      document.getElementById('cardPayAmount').innerText = `${plan.rub} ₽`;
+      const titleEl = document.getElementById('cardPayTitle');
+      if (currentPayMethod === 'mbank') {
+        if (titleEl) titleEl.innerText = "🇰🇬 Оплата MBANK / ЭЛКАРТ / О!Деньги";
+        document.getElementById('cardPayAmount').innerText = `${plan.som} сом`;
+      } else {
+        if (titleEl) titleEl.innerText = "💳 Оплата картой РФ / СБП";
+        document.getElementById('cardPayAmount').innerText = `${plan.rub} ₽`;
+      }
+
       document.getElementById('cardPayPlanName').innerText = `Тариф: ${plan.title}`;
-      document.getElementById('cardPayBank').innerText = r.bankName || "Банковский перевод";
-      document.getElementById('cardPayCardNum').value = r.cardNumber || "2200 7000 1234 5678";
-      document.getElementById('cardPayPhone').value = r.phoneNumber || "+7 (999) 000-00-00";
+      document.getElementById('cardPayBank').innerText = r.bankName || "MBANK / ЭЛКАРТ";
+      document.getElementById('cardPayCardNum').value = r.cardNumber || "1180 0000 0000 0000";
+      document.getElementById('cardPayPhone').value = r.phoneNumber || "+996 (555) 00-00-00";
       document.getElementById('cardPayRecipient').innerText = r.recipientName || "Akilum (Создатель)";
 
       openSheet('card-pay');
@@ -2040,7 +2077,16 @@
         navigator.clipboard.writeText(num.replace(/\s+/g, ''));
       }
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      alert("✅ Номер карты скопирован в буфер обмена!");
+      alert("✅ Номер счета/карты скопирован в буфер обмена!");
+    }
+
+    function copyPhoneNumber() {
+      const num = document.getElementById('cardPayPhone').value;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(num.replace(/[^\d+]/g, ''));
+      }
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      alert("✅ Номер телефона скопирован в буфер обмена!");
     }
 
     function submitReceiptToChat() {
@@ -2096,18 +2142,7 @@
       } catch (e) {}
     }
 
-    function startShopCountdown() {
-      let sec = 6858;
-      const el = document.getElementById('shopCountdown');
-      setInterval(() => {
-        if (sec <= 0) sec = 7200;
-        sec--;
-        const h = String(Math.floor(sec / 3600)).padStart(2, '0');
-        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-        const s = String(sec % 60).padStart(2, '0');
-        if (el) el.innerText = `${h}:${m}:${s}`;
-      }, 1000);
-    }
+
 
     // Telegram Stars Payment
     async function buyStarsItem(itemType, amount, itemName) {

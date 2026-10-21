@@ -118,6 +118,7 @@ async function safeSendHtml(ctx, text, replyToId = null, replyMarkup = null) {
 
 function getWebAppUrl() {
   if (process.env.WEBAPP_URL) return process.env.WEBAPP_URL;
+  if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
   if (process.env.RAILWAY_STATIC_URL) return `https://${process.env.RAILWAY_STATIC_URL}`;
   return null;

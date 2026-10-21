@@ -3,8 +3,17 @@ const fs = require("fs");
 const path = require("path");
 
 function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}) {
-  const { bot, isUserVip, getUserDailyUsage, DAILY_FREE_LIMIT, recordInteraction } = context;
+  const {
+    bot,
+    isUserVip,
+    getUserDailyUsage,
+    DAILY_FREE_LIMIT,
+    recordInteraction,
+    getLiveMarketRates,
+    getLiveWeather,
+  } = context;
   const indexPath = path.join(__dirname, "public", "index.html");
+  const avatarPath = path.join(__dirname, "public", "avatar.jpg");
 
   const server = http.createServer(async (req, res) => {
     // CORS headers
@@ -31,6 +40,23 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     if (pathname === "/health" || pathname === "/ping") {
       res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("OK");
+      return;
+    }
+
+    // Фото бота для WebApp
+    if (pathname === "/avatar.jpg" || pathname === "/avatar.png") {
+      fs.readFile(avatarPath, (err, content) => {
+        if (err) {
+          res.writeHead(404);
+          res.end("Not Found");
+        } else {
+          res.writeHead(200, {
+            "Content-Type": "image/jpeg",
+            "Cache-Control": "public, max-age=86400",
+          });
+          res.end(content);
+        }
+      });
       return;
     }
 
@@ -65,7 +91,42 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
-    // API: Создание ссылки инвойса Telegram Stars для оплаты прямо в Mini App
+    // API: Живые котировки валют и крипты
+    if (pathname === "/api/rates") {
+      try {
+        if (getLiveMarketRates) {
+          const data = await getLiveMarketRates();
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, data }));
+          return;
+        }
+      } catch (err) {
+        console.error("Rates API error:", err.message);
+      }
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: false }));
+      return;
+    }
+
+    // API: Живая погода
+    if (pathname === "/api/weather") {
+      const city = parsedUrl.searchParams.get("city") || "Бишкек";
+      try {
+        if (getLiveWeather) {
+          const data = await getLiveWeather(city);
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, data }));
+          return;
+        }
+      } catch (err) {
+        console.error("Weather API error:", err.message);
+      }
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: false }));
+      return;
+    }
+
+    // API: Создание ссылки инвойса Telegram Stars
     if (pathname === "/api/create-invoice") {
       const type = parsedUrl.searchParams.get("type") || "vip_month";
 

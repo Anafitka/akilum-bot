@@ -3,48 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Лам • Они-Принцесса 💚</title>
+  <title>Akilum • AI Assistant</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #070913;
-      --card-bg: rgba(17, 24, 39, 0.75);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --neon-green: #00ff88;
+      --bg-base: #060811;
+      --bg-surface: rgba(15, 23, 42, 0.72);
+      --bg-surface-elevated: rgba(30, 41, 59, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(0, 255, 136, 0.35);
+      --neon-emerald: #00ff88;
       --neon-cyan: #00f0ff;
       --neon-gold: #ffd700;
-      --neon-pink: #ff2d78;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --gold-gradient: linear-gradient(135deg, #ffd700, #ff8800);
-      --green-gradient: linear-gradient(135deg, #00ff88, #00b4d8);
-      --card-radius: 18px;
+      --neon-purple: #a855f7;
+      --neon-pink: #ec4899;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-tertiary: #64748b;
+      --gold-gradient: linear-gradient(135deg, #ffd700, #ff9100);
+      --emerald-gradient: linear-gradient(135deg, #00ff88, #00d2ff);
+      --purple-gradient: linear-gradient(135deg, #a855f7, #6366f1);
+      --card-radius: 20px;
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg-base);
+      color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
-      padding-bottom: 90px;
+      padding-bottom: 96px;
     }
-    /* Cyberpunk Grid Background */
-    .cyber-bg {
+    /* Dynamic Mesh Gradient Background */
+    .mesh-glow {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: 
+        radial-gradient(circle at 15% 15%, rgba(0, 255, 136, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 85% 25%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 50% 85%, rgba(168, 85, 247, 0.07) 0%, transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .grid-lines {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
       background-image: 
-        radial-gradient(circle at 10% 20%, rgba(0, 255, 136, 0.07) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.07) 0%, transparent 40%),
-        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 32px 32px;
       pointer-events: none;
       z-index: 0;
     }
@@ -52,163 +68,197 @@
       position: relative;
       z-index: 1;
       padding: 16px;
-      max-width: 480px;
+      max-width: 460px;
       margin: 0 auto;
     }
 
-    /* Top User Bar */
+    /* Top Bar */
     .top-bar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
-      padding: 4px 2px;
+      margin-bottom: 16px;
+      padding: 2px;
     }
-    .user-info {
+    .brand-wrap {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
-    .user-avatar {
-      width: 40px;
-      height: 40px;
+    .top-bot-avatar {
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #00ff88, #00f0ff);
+      padding: 2px;
+      background: linear-gradient(135deg, var(--neon-emerald), var(--neon-cyan));
+      box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
+      position: relative;
+    }
+    .top-bot-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+    }
+    .brand-text h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
       display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: -0.3px;
+    }
+    .verified-badge {
+      display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+      width: 16px;
+      height: 16px;
+      background: var(--neon-cyan);
+      color: #060811;
+      border-radius: 50%;
+      font-size: 10px;
+      font-weight: 900;
     }
-    .user-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: #fff;
+    .brand-text span {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
     }
-    .user-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-    .badge-pill {
-      background: rgba(0, 255, 136, 0.12);
-      border: 1px solid rgba(0, 255, 136, 0.3);
-      color: var(--neon-green);
-      font-size: 11px;
+    .energy-pill {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.28);
+      color: var(--neon-emerald);
+      font-size: 12px;
       font-weight: 700;
       padding: 6px 12px;
       border-radius: 20px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
       letter-spacing: 0.3px;
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
+      cursor: pointer;
     }
-    .badge-pill.vip {
-      background: rgba(255, 215, 0, 0.15);
+    .energy-pill.vip {
+      background: rgba(255, 215, 0, 0.12);
       border-color: rgba(255, 215, 0, 0.4);
       color: var(--neon-gold);
-      box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+      box-shadow: 0 0 14px rgba(255, 215, 0, 0.25);
     }
 
-    /* Tab Sections */
-    .tab-content {
+    /* Tab Switcher Logic */
+    .tab-view {
       display: none;
-      animation: fadeIn 0.25s ease-out;
+      animation: tabFadeIn 0.22s ease-out;
     }
-    .tab-content.active {
+    .tab-view.active {
       display: block;
     }
-    @keyframes fadeIn {
+    @keyframes tabFadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     /* Hero / Interactive Clicker Card */
     .hero-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
       border-radius: var(--card-radius);
-      padding: 20px 16px;
+      padding: 22px 18px;
       text-align: center;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
       margin-bottom: 16px;
-      backdrop-filter: blur(16px);
+      backdrop-filter: blur(20px);
       position: relative;
       overflow: hidden;
     }
-    .hero-card::before {
-      content: '';
-      position: absolute;
-      top: -50%; left: -50%;
-      width: 200%; height: 200%;
-      background: radial-gradient(circle, rgba(0, 255, 136, 0.08) 0%, transparent 60%);
-      pointer-events: none;
-    }
-    .lum-avatar {
-      width: 96px;
-      height: 96px;
+    .hero-avatar-wrap {
+      width: 108px;
+      height: 108px;
       border-radius: 50%;
-      border: 3px solid var(--neon-green);
-      box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
-      margin: 0 auto 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 46px;
-      background: radial-gradient(circle, #1e3a8a, #0b1329);
+      padding: 3.5px;
+      background: linear-gradient(135deg, var(--neon-emerald), var(--neon-cyan), var(--neon-gold));
+      box-shadow: 0 0 28px rgba(0, 255, 136, 0.45);
+      margin: 0 auto 14px;
       cursor: pointer;
+      position: relative;
       transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    .lum-avatar:active {
-      transform: scale(0.9);
-      box-shadow: 0 0 35px var(--neon-green);
+    .hero-avatar-wrap:active {
+      transform: scale(0.92);
+      box-shadow: 0 0 38px var(--neon-emerald);
     }
-    .hero-title {
-      font-size: 20px;
+    .hero-avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      display: block;
+    }
+    .avatar-status-dot {
+      position: absolute;
+      bottom: 4px;
+      right: 6px;
+      width: 18px;
+      height: 18px;
+      background: var(--neon-emerald);
+      border: 3px solid #0f172a;
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--neon-emerald);
+    }
+    .hero-name {
+      font-size: 22px;
       font-weight: 800;
       color: #fff;
-      letter-spacing: 0.5px;
+      letter-spacing: -0.4px;
     }
-    .hero-quote {
+    .hero-quote-box {
+      margin-top: 8px;
       font-size: 13px;
       color: var(--neon-cyan);
-      margin-top: 5px;
       min-height: 20px;
-      font-style: italic;
+      font-weight: 500;
+      padding: 0 10px;
     }
-    .stat-row {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 16px;
+    .stat-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      margin-top: 18px;
       padding-top: 14px;
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-top: 1px solid var(--border-subtle);
     }
-    .stat-box {
+    .stat-col {
       text-align: center;
     }
     .stat-val {
-      font-size: 17px;
+      font-size: 18px;
       font-weight: 800;
       color: var(--neon-gold);
     }
     .stat-lbl {
       font-size: 11px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    /* VIP Banner on Home Tab */
+    /* VIP Promo Banner */
     .vip-banner {
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 136, 0, 0.1));
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 145, 0, 0.08));
       border: 1px solid rgba(255, 215, 0, 0.35);
       border-radius: var(--card-radius);
-      padding: 14px 16px;
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
       cursor: pointer;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
       transition: transform 0.15s ease;
     }
     .vip-banner:active {
@@ -220,138 +270,150 @@
       gap: 12px;
     }
     .vip-banner-icon {
-      font-size: 28px;
+      font-size: 32px;
+      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
     }
-    .vip-banner-title {
+    .vip-banner-text h3 {
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 800;
       color: #fff;
     }
-    .vip-banner-desc {
+    .vip-banner-text p {
       font-size: 11px;
       color: var(--neon-gold);
       margin-top: 2px;
     }
-    .vip-banner-btn {
+    .vip-banner-cta {
       background: var(--gold-gradient);
-      color: #070913;
+      color: #060811;
       font-size: 12px;
       font-weight: 800;
       padding: 8px 14px;
       border-radius: 12px;
       white-space: nowrap;
-      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+      box-shadow: 0 4px 14px rgba(255, 215, 0, 0.35);
     }
 
-    /* Section Titles */
-    .section-title {
+    /* Section Header */
+    .section-head {
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 1.2px;
-      color: var(--neon-cyan);
-      margin: 18px 0 10px;
+      color: var(--text-secondary);
+      margin: 20px 0 12px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .section-title::after {
+    .section-head::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: linear-gradient(to right, rgba(0, 240, 255, 0.3), transparent);
+      background: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
     }
 
-    /* Grid Action Cards */
-    .grid-2 {
+    /* Interactive Tool Grid */
+    .tool-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 12px;
     }
-    .action-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 14px 12px;
+    .tool-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 16px 14px;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 6px;
+      gap: 8px;
       cursor: pointer;
-      transition: all 0.15s ease;
-      backdrop-filter: blur(12px);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(14px);
+      position: relative;
+      overflow: hidden;
     }
-    .action-card:active {
+    .tool-card:active {
       transform: scale(0.96);
-      border-color: var(--neon-green);
+      border-color: var(--neon-emerald);
       background: rgba(0, 255, 136, 0.08);
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
     }
-    .action-card .icon {
-      font-size: 26px;
-      margin-bottom: 2px;
+    .tool-icon-wrap {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .action-card .title {
-      font-size: 13px;
+    .tool-card h4 {
+      font-size: 13.5px;
       font-weight: 700;
       color: #fff;
+      letter-spacing: -0.2px;
     }
-    .action-card .desc {
+    .tool-card p {
       font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.3;
+      color: var(--text-secondary);
+      line-height: 1.35;
     }
 
-    /* ================= SHOP TAB STYLES ================= */
+    /* ================= SHOP TAB ================= */
     .shop-header {
       text-align: center;
-      margin-bottom: 18px;
+      margin-bottom: 22px;
       padding: 10px 0;
     }
     .shop-crown {
-      font-size: 42px;
-      filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
-      animation: floatCrown 2.5s ease-in-out infinite alternate;
+      font-size: 46px;
+      filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.7));
+      animation: crownBounce 3s ease-in-out infinite alternate;
     }
-    @keyframes floatCrown {
+    @keyframes crownBounce {
       from { transform: translateY(0); }
-      to { transform: translateY(-6px); }
+      to { transform: translateY(-7px); }
     }
     .shop-title {
-      font-size: 22px;
+      font-size: 23px;
       font-weight: 800;
       color: #fff;
-      margin-top: 6px;
+      letter-spacing: -0.4px;
+      margin-top: 8px;
     }
-    .shop-subtitle {
+    .shop-sub {
       font-size: 12px;
-      color: var(--text-muted);
+      color: var(--text-secondary);
       margin-top: 4px;
-      line-height: 1.4;
+      line-height: 1.45;
     }
 
-    /* Pricing Cards */
-    .price-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
+    .plan-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
       border-radius: var(--card-radius);
-      padding: 18px;
+      padding: 20px 18px;
       margin-bottom: 14px;
       position: relative;
-      backdrop-filter: blur(16px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
       overflow: hidden;
       transition: transform 0.15s ease;
     }
-    .price-card.featured {
-      border: 1.5px solid rgba(255, 215, 0, 0.5);
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(17, 24, 39, 0.85));
-      box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+    .plan-card.featured {
+      border: 1.5px solid rgba(255, 215, 0, 0.55);
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.09), rgba(15, 23, 42, 0.9));
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.22);
     }
-    .ribbon {
+    .plan-ribbon {
       position: absolute;
       top: 14px; right: 14px;
       background: var(--gold-gradient);
-      color: #070913;
+      color: #060811;
       font-size: 10px;
       font-weight: 800;
       padding: 4px 10px;
@@ -359,114 +421,247 @@
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
-    .ribbon.cyan {
-      background: var(--green-gradient);
+    .plan-ribbon.cyan {
+      background: var(--emerald-gradient);
     }
-    .price-card-header {
+    .plan-head {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
-    .price-card-icon {
-      font-size: 32px;
+    .plan-icon {
+      font-size: 34px;
     }
-    .price-card-title {
-      font-size: 16px;
+    .plan-head h3 {
+      font-size: 17px;
       font-weight: 800;
       color: #fff;
     }
-    .price-card-amount {
-      font-size: 20px;
+    .plan-price {
+      font-size: 22px;
       font-weight: 900;
       color: var(--neon-gold);
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 5px;
       margin-top: 2px;
     }
-    .price-features {
+    .plan-price span {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    .plan-features {
       list-style: none;
-      margin: 12px 0 16px;
+      margin: 14px 0 18px;
       display: flex;
       flex-direction: column;
-      gap: 7px;
-    }
-    .price-features li {
-      font-size: 12px;
-      color: var(--text);
-      display: flex;
-      align-items: center;
       gap: 8px;
     }
-    .price-features li span {
-      color: var(--neon-green);
-      font-weight: 800;
+    .plan-features li {
+      font-size: 12.5px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 9px;
     }
-    .buy-btn {
+    .plan-features li svg {
+      width: 15px;
+      height: 15px;
+      color: var(--neon-emerald);
+      flex-shrink: 0;
+    }
+    .checkout-btn {
       width: 100%;
       background: var(--gold-gradient);
       border: none;
-      color: #070913;
-      font-size: 14px;
+      color: #060811;
+      font-size: 14.5px;
       font-weight: 800;
-      padding: 13px;
+      padding: 14px;
       border-radius: 14px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      box-shadow: 0 4px 18px rgba(255, 215, 0, 0.35);
+      gap: 7px;
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
       transition: all 0.15s ease;
     }
-    .buy-btn:active {
+    .checkout-btn:active {
       transform: scale(0.97);
       filter: brightness(1.1);
     }
-    .buy-btn.secondary {
-      background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 240, 255, 0.2));
-      border: 1px solid rgba(0, 255, 136, 0.4);
+    .checkout-btn.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       color: #fff;
       box-shadow: none;
     }
-    .buy-btn.secondary:active {
-      background: rgba(0, 255, 136, 0.3);
+    .checkout-btn.secondary:active {
+      background: rgba(255, 255, 255, 0.15);
     }
 
-    /* Profile Card */
-    .profile-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: var(--card-radius);
-      padding: 18px;
-      margin-bottom: 14px;
-      backdrop-filter: blur(16px);
+    /* ================= MODAL ACTION SHEETS ================= */
+    .sheet-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(14px);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 1000;
     }
-    .profile-row {
+    .sheet-overlay.open {
+      display: flex;
+      animation: sheetBackdrop 0.2s ease-out;
+    }
+    @keyframes sheetBackdrop {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .sheet-card {
+      background: #0f172a;
+      border: 1px solid var(--border-subtle);
+      border-bottom: none;
+      border-radius: 26px 26px 0 0;
+      padding: 22px 20px 34px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+      animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    @keyframes sheetSlideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .sheet-handle {
+      width: 38px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      margin: 0 auto 16px;
+    }
+    .sheet-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      font-size: 13px;
+      margin-bottom: 16px;
     }
-    .profile-row:last-child {
-      border-bottom: none;
-    }
-    .profile-row-label {
-      color: var(--text-muted);
-    }
-    .profile-row-val {
-      font-weight: 700;
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 800;
       color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sheet-close {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .sheet-input {
+      width: 100%;
+      background: rgba(2, 6, 23, 0.8);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 13px 14px;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .sheet-input:focus {
+      border-color: var(--neon-emerald);
+      box-shadow: 0 0 14px rgba(0, 255, 136, 0.25);
+    }
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 16px;
+    }
+    .chip {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .chip:active, .chip.active {
+      background: rgba(0, 255, 136, 0.18);
+      border-color: var(--neon-emerald);
+      color: #fff;
+    }
+    .sheet-action-btn {
+      width: 100%;
+      background: var(--emerald-gradient);
+      border: none;
+      color: #060811;
+      font-size: 14.5px;
+      font-weight: 800;
+      padding: 14px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+    }
+    .sheet-action-btn:active {
+      transform: scale(0.97);
+    }
+
+    /* Live Rates Table in Sheet */
+    .rates-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .rate-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+    }
+    .rate-title {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .rate-val {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--neon-cyan);
+      font-family: 'JetBrains Mono', monospace;
     }
 
     /* Floating sparks on tap */
     .spark {
       position: absolute;
       pointer-events: none;
-      animation: flySpark 0.7s forwards ease-out;
+      animation: flySpark 0.75s forwards ease-out;
       font-size: 22px;
       z-index: 999;
     }
@@ -475,83 +670,31 @@
       100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
     }
 
-    /* Modal / Alert Notification */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(8px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: 20px;
-    }
-    .modal-overlay.open {
-      display: flex;
-    }
-    .modal-box {
-      background: #0f172a;
-      border: 1px solid var(--neon-green);
-      border-radius: 20px;
-      padding: 24px;
-      max-width: 340px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
-    }
-    .modal-icon {
-      font-size: 48px;
-      margin-bottom: 10px;
-    }
-    .modal-title {
-      font-size: 18px;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 8px;
-    }
-    .modal-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.4;
-      margin-bottom: 18px;
-    }
-    .modal-btn {
-      width: 100%;
-      background: var(--green-gradient);
-      border: none;
-      color: #070913;
-      font-size: 14px;
-      font-weight: 800;
-      padding: 12px;
-      border-radius: 12px;
-      cursor: pointer;
-    }
-
     /* Bottom Navigation Bar */
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; width: 100%;
-      height: 68px;
-      background: rgba(11, 15, 25, 0.95);
+      height: 72px;
+      background: rgba(9, 14, 26, 0.94);
       border-top: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(20px);
+      backdrop-filter: blur(25px);
       display: flex;
       justify-content: space-around;
       align-items: center;
       z-index: 100;
-      padding-bottom: env(safe-area-inset-bottom, 6px);
+      padding-bottom: env(safe-area-inset-bottom, 8px);
     }
     .nav-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-size: 10px;
-      color: var(--text-muted);
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
       background: none;
       border: none;
       cursor: pointer;
-      gap: 3px;
+      gap: 4px;
       transition: all 0.2s ease;
       position: relative;
       flex: 1;
@@ -561,14 +704,15 @@
       transition: transform 0.15s ease;
     }
     .nav-btn.active {
-      color: var(--neon-green);
+      color: var(--neon-emerald);
     }
     .nav-btn.active .nav-icon {
       transform: scale(1.15);
+      filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
     }
     .nav-badge {
       position: absolute;
-      top: -2px;
+      top: -3px;
       right: 22%;
       background: var(--neon-pink);
       color: #fff;
@@ -580,278 +724,494 @@
   </style>
 </head>
 <body>
-  <div class="cyber-bg"></div>
+  <div class="mesh-glow"></div>
+  <div class="grid-lines"></div>
 
   <div class="container">
-    <!-- Top Header Bar -->
+    <!-- Top Bar -->
     <div class="top-bar">
-      <div class="user-info">
-        <div class="user-avatar" id="topAvatar">⚡</div>
-        <div>
-          <div class="user-name" id="userName">Дарлинг</div>
-          <div class="user-sub" id="userSub">Связь с планетой они ⚡</div>
+      <div class="brand-wrap">
+        <div class="top-bot-avatar">
+          <img src="/avatar.jpg" alt="Akilum" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'" />
+        </div>
+        <div class="brand-text">
+          <h1>Akilum <span class="verified-badge">✓</span></h1>
+          <span>@akilum_bot</span>
         </div>
       </div>
-      <div class="badge-pill" id="userBadge">
+      <div class="energy-pill" id="badgeEnergy" onclick="switchTab('shop')">
         <span>🔋</span>
-        <span id="badgeEnergy">30/30</span>
+        <span id="badgeEnergyText">30/30</span>
       </div>
     </div>
 
     <!-- ================= TAB 1: ГЛАВНАЯ (HOME) ================= -->
-    <div class="tab-content active" id="tab-home">
-      <!-- Hero / Clicker Card -->
+    <div class="tab-view active" id="tab-home">
+      <!-- Hero Interactive Card -->
       <div class="hero-card">
-        <div class="lum-avatar" id="lumAvatar">⚡</div>
-        <div class="hero-title">ЛАМ 💚</div>
-        <div class="hero-quote" id="lumQuote">«Тапни по мне, Дарлинг, поделюсь зарядом!»</div>
+        <div class="hero-avatar-wrap" id="heroAvatar">
+          <img src="/avatar.jpg" alt="Akilum" class="hero-avatar-img" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'" />
+          <div class="avatar-status-dot"></div>
+        </div>
+        <div class="hero-name">Akilum</div>
+        <div class="hero-quote-box" id="heroQuote">«Тапни по мне, Дарлинг, поделюсь зарядом!»</div>
         
-        <div class="stat-row">
-          <div class="stat-box">
+        <div class="stat-bar">
+          <div class="stat-col">
             <div class="stat-val" id="clickCounter">0</div>
             <div class="stat-lbl">Искорок</div>
           </div>
-          <div class="stat-box">
+          <div class="stat-col">
             <div class="stat-val" id="loveCounter">85%</div>
             <div class="stat-lbl">Связь</div>
           </div>
-          <div class="stat-box">
+          <div class="stat-col">
             <div class="stat-val" id="energyCounter">30/30</div>
             <div class="stat-lbl">Энергия</div>
           </div>
         </div>
       </div>
 
-      <!-- VIP Teaser Banner -->
+      <!-- VIP Banner -->
       <div class="vip-banner" onclick="switchTab('shop')">
         <div class="vip-banner-left">
           <div class="vip-banner-icon">👑</div>
-          <div>
-            <div class="vip-banner-title">Стань VIP Дарлингом</div>
-            <div class="vip-banner-desc">Безлимит молний + корона</div>
+          <div class="vip-banner-text">
+            <h3>Стань VIP Дарлингом</h3>
+            <p>Безлимитные молнии + Золотая корона</p>
           </div>
         </div>
-        <div class="vip-banner-btn">В магазин ⭐️</div>
+        <div class="vip-banner-cta">В магазин ⭐️</div>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="section-title">🎒 Учёба и задачи</div>
-      <div class="grid-2">
-        <div class="action-card" onclick="sendAction('Реши задачу по фото')">
-          <div class="icon">📚</div>
-          <div class="title">АнтиГДЗ Решебник</div>
-          <div class="desc">Пошаговый разбор задач</div>
+      <!-- Interactive Tools Grid -->
+      <div class="section-head">📚 Учёба и Инструменты</div>
+      <div class="tool-grid">
+        <div class="tool-card" onclick="openSheet('solver')">
+          <div class="tool-icon-wrap">📚</div>
+          <h4>АнтиГДЗ Решебник</h4>
+          <p>Пошаговый разбор любых задач и тестов</p>
         </div>
-        <div class="action-card" onclick="sendAction('код: калькулятор на python')">
-          <div class="icon">💻</div>
-          <div class="title">Информатика & Код</div>
-          <div class="desc">С окном копирования</div>
+        <div class="tool-card" onclick="openSheet('code')">
+          <div class="tool-icon-wrap">💻</div>
+          <h4>Информатика & Код</h4>
+          <p>Код с окном копирования в 1 тап</p>
         </div>
-        <div class="action-card" onclick="sendAction('шпора: формулы по физике')">
-          <div class="icon">📝</div>
-          <div class="title">Шпаргалка</div>
-          <div class="desc">Краткая выжимка формул</div>
+        <div class="tool-card" onclick="openSheet('cheat')">
+          <div class="tool-icon-wrap">📝</div>
+          <h4>Шпаргалка</h4>
+          <p>Ультра-выжимка формул для урока</p>
         </div>
-        <div class="action-card" onclick="sendAction('/pdf')">
-          <div class="icon">📄</div>
-          <div class="title">Сборщик PDF</div>
-          <div class="desc">Фото тетрадей в 1 файл</div>
+        <div class="tool-card" onclick="openSheet('pdf')">
+          <div class="tool-icon-wrap">📄</div>
+          <h4>Сборщик в PDF</h4>
+          <p>Собрать фото тетрадей в файл</p>
         </div>
       </div>
 
-      <div class="section-title">✨ Медиа & Музыка</div>
-      <div class="grid-2">
-        <div class="action-card" onclick="sendAction('Как скачать видео с TikTok или Reels?')">
-          <div class="icon">🎬</div>
-          <div class="title">Скачать видео</div>
-          <div class="desc">TikTok, YouTube, Reels</div>
+      <div class="section-head">🎬 Медиа & Загрузки</div>
+      <div class="tool-grid">
+        <div class="tool-card" onclick="openSheet('downloader')">
+          <div class="tool-icon-wrap">🎬</div>
+          <h4>Скачать видео</h4>
+          <p>TikTok, YouTube, Reels без водяных знаков</p>
         </div>
-        <div class="action-card" onclick="sendAction('найди трек')">
-          <div class="icon">🎵</div>
-          <div class="title">Поиск треков</div>
-          <div class="desc">Слушать MP3 превью</div>
+        <div class="tool-card" onclick="openSheet('music')">
+          <div class="tool-icon-wrap">🎵</div>
+          <h4>Поиск музыки</h4>
+          <p>Найти трек и слушать MP3 превью</p>
         </div>
       </div>
     </div>
 
     <!-- ================= TAB 2: МАГАЗИН VIP (SHOP) ================= -->
-    <div class="tab-content" id="tab-shop">
+    <div class="tab-view" id="tab-shop">
       <div class="shop-header">
         <div class="shop-crown">👑</div>
-        <div class="shop-title">МАГАЗИН VIP ДАРЛИНГА</div>
-        <div class="shop-subtitle">Оплата в 1 клик через официальные Telegram Stars ⭐️ без банковских карт и комиссий</div>
+        <div class="shop-title">МАГАЗИН AKILUM VIP</div>
+        <div class="shop-sub">Официальная оплата прямо в Telegram через Telegram Stars ⭐️ без банковских реквизитов и комиссий</div>
       </div>
 
-      <!-- Plan 1: 1 Month VIP (Popular) -->
-      <div class="price-card featured">
-        <div class="ribbon">Хит продаж</div>
-        <div class="price-card-header">
-          <div class="price-card-icon">👑</div>
+      <!-- 1 Month Plan -->
+      <div class="plan-card featured">
+        <div class="plan-ribbon">Хит продаж</div>
+        <div class="plan-head">
+          <div class="plan-icon">👑</div>
           <div>
-            <div class="price-card-title">VIP Дарлинг (1 месяц)</div>
-            <div class="price-card-amount">75 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~1.5$)</span></div>
+            <h3>VIP Дарлинг (1 месяц)</h3>
+            <div class="plan-price">75 ⭐️ <span>(~1.5$)</span></div>
           </div>
         </div>
-        <ul class="price-features">
-          <li><span>⚡</span> Полный безлимит на все решения и задачи</li>
-          <li><span>💻</span> Генерация длинного кода без ограничений</li>
-          <li><span>👑</span> Золотая корона VIP в профиле /love</li>
-          <li><span>🚀</span> Наивысший приоритет ответов нейросети</li>
-          <li><span>💬</span> Приоритет в группах на тысячи людей</li>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Полный безлимит на решение задач и чат</li>
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Золотая корона VIP во всех чатах и в /love</li>
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Наивысший приоритет ответов нейросети</li>
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Приоритет в группах на тысячи людей</li>
         </ul>
-        <button class="buy-btn" id="btn-vip-month" onclick="buyItem('vip_month', 75, 'VIP на 1 месяц')">
+        <button class="checkout-btn" id="btn-vip_month" onclick="buyStarsItem('vip_month', 75, 'VIP на 1 месяц')">
           ⭐️ Получить VIP за 75 Stars
         </button>
       </div>
 
-      <!-- Plan 2: Lifetime VIP -->
-      <div class="price-card">
-        <div class="ribbon cyan">Выгода</div>
-        <div class="price-card-header">
-          <div class="price-card-icon">💎</div>
+      <!-- Lifetime Plan -->
+      <div class="plan-card">
+        <div class="plan-ribbon cyan">Выгода</div>
+        <div class="plan-head">
+          <div class="plan-icon">💎</div>
           <div>
-            <div class="price-card-title">Навсегда VIP (Lifetime)</div>
-            <div class="price-card-amount">250 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~5.0$)</span></div>
+            <h3>Навсегда VIP (Lifetime)</h3>
+            <div class="plan-price">250 ⭐️ <span>(~5.0$)</span></div>
           </div>
         </div>
-        <ul class="price-features">
-          <li><span>♾️</span> Вечный VIP статус навсегда</li>
-          <li><span>👑</span> Эксклюзивный статус Легенды у Лам</li>
-          <li><span>⚡</span> Пожизненная безлимитная энергия</li>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Вечный VIP-статус без ежемесячных платежей</li>
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Статус Легенды у Akilum</li>
         </ul>
-        <button class="buy-btn" id="btn-vip-forever" onclick="buyItem('vip_forever', 250, 'Вечный VIP')">
+        <button class="checkout-btn" id="btn-vip_forever" onclick="buyStarsItem('vip_forever', 250, 'Вечный VIP')">
           👑 Купить навсегда за 250 Stars
         </button>
       </div>
 
-      <!-- Plan 3: Energy Pack -->
-      <div class="price-card">
-        <div class="price-card-header">
-          <div class="price-card-icon">⚡</div>
+      <!-- Energy Boost Plan -->
+      <div class="plan-card">
+        <div class="plan-head">
+          <div class="plan-icon">⚡</div>
           <div>
-            <div class="price-card-title">+50 Молний энергии</div>
-            <div class="price-card-amount">15 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~0.3$)</span></div>
+            <h3>+50 Молний энергии</h3>
+            <div class="plan-price">15 ⭐️ <span>(~0.3$)</span></div>
           </div>
         </div>
-        <ul class="price-features">
-          <li><span>🔋</span> 50 дополнительных запросов без подписки</li>
-          <li><span>🚀</span> Снятие дневного лимита</li>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Быстрое пополнение без подписки</li>
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Снятие суточного лимита на сегодня</li>
         </ul>
-        <button class="buy-btn secondary" id="btn-energy-50" onclick="buyItem('energy_50', 15, '+50 Молний')">
+        <button class="checkout-btn secondary" id="btn-energy_50" onclick="buyStarsItem('energy_50', 15, '+50 Молний')">
           ⚡ Пополнить за 15 Stars
         </button>
       </div>
 
-      <!-- Plan 4: Milk Tip -->
-      <div class="price-card">
-        <div class="price-card-header">
-          <div class="price-card-icon">🍓</div>
+      <!-- Tip Plan -->
+      <div class="plan-card">
+        <div class="plan-head">
+          <div class="plan-icon">🍓</div>
           <div>
-            <div class="price-card-title">Клубничное молоко для Лам</div>
-            <div class="price-card-amount">25 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~0.5$)</span></div>
+            <h3>Клубничное молоко для Лам</h3>
+            <div class="plan-price">25 ⭐️ <span>(~0.5$)</span></div>
           </div>
         </div>
-        <ul class="price-features">
-          <li><span>💕</span> Угости они-принцессу её любимым лакомством</li>
-          <li><span>💥</span> Получи заряд искр 100 000 Вольт и любовь</li>
+        <ul class="plan-features">
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Угости они-принцессу её любимым лакомством</li>
+          <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg> Заряд 100 000 Вольт любви и особая реакция</li>
         </ul>
-        <button class="buy-btn secondary" id="btn-tip-25" onclick="buyItem('tip_25', 25, 'Клубничное молоко')">
+        <button class="checkout-btn secondary" id="btn-tip_25" onclick="buyStarsItem('tip_25', 25, 'Клубничное молоко')">
           🍓 Угостить за 25 Stars
         </button>
       </div>
     </div>
 
     <!-- ================= TAB 3: ИГРЫ И ГРУППА (GAMES) ================= -->
-    <div class="tab-content" id="tab-games">
-      <div class="section-title">🎮 Игры для компании и друзей</div>
-      <div class="grid-2">
-        <div class="action-card" onclick="sendAction('/quiz общие школьные знания')">
-          <div class="icon">🎯</div>
-          <div class="title">Викторина (Quiz)</div>
-          <div class="desc">Опрос-тест с баллами</div>
+    <div class="tab-view" id="tab-games">
+      <div class="section-head">🎮 Интерактивные Игры</div>
+      <div class="tool-grid">
+        <div class="tool-card" onclick="openSheet('quiz')">
+          <div class="tool-icon-wrap">🎯</div>
+          <h4>Викторина Quiz</h4>
+          <p>Интерактивный тест с выбором темы и баллами</p>
         </div>
-        <div class="action-card" onclick="sendAction('/duel')">
-          <div class="icon">⚔️</div>
-          <div class="title">Дуэль молний</div>
-          <div class="desc">Битва HP между игроками</div>
+        <div class="tool-card" onclick="openSheet('duel')">
+          <div class="tool-icon-wrap">⚔️</div>
+          <h4>Дуэль молний</h4>
+          <p>Битва HP и вольт между игроками чата</p>
         </div>
-        <div class="action-card" onclick="sendAction('/roulette')">
-          <div class="icon">🎰</div>
-          <div class="title">Они-Рулетка</div>
-          <div class="desc">Забавные наказания</div>
+        <div class="tool-card" onclick="openSheet('roulette')">
+          <div class="tool-icon-wrap">🎰</div>
+          <h4>Они-Рулетка</h4>
+          <p>Кто дежурный или учит стих</p>
         </div>
-        <div class="action-card" onclick="sendAction('/roast')">
-          <div class="icon">🔥</div>
-          <div class="title">Они-Прожарка</div>
-          <div class="desc">Юморной подкол друга</div>
+        <div class="tool-card" onclick="openSheet('roast')">
+          <div class="tool-icon-wrap">🔥</div>
+          <h4>Они-Прожарка</h4>
+          <p>Юморной подкол одноклассника</p>
         </div>
-        <div class="action-card" onclick="sendAction('шар судьбы: получу ли я пять?')">
-          <div class="icon">🔮</div>
-          <div class="title">Шар судьбы</div>
-          <div class="desc">Ответ на любой вопрос</div>
+        <div class="tool-card" onclick="openSheet('rates')">
+          <div class="tool-icon-wrap">💎</div>
+          <h4>Курсы валют</h4>
+          <p>Живые котировки доллара, сомов и крипты</p>
         </div>
-        <div class="action-card" onclick="sendAction('нарисуй красивый неоновый арт')">
-          <div class="icon">🎨</div>
-          <div class="title">Нейро-Арт</div>
-          <div class="desc">Создание картинок и аватарок</div>
+        <div class="tool-card" onclick="openSheet('weather')">
+          <div class="tool-icon-wrap">⛅</div>
+          <h4>Метео-радар</h4>
+          <p>Живая погода и совет от они-принцессы</p>
         </div>
-        <div class="action-card" onclick="sendAction('курс')">
-          <div class="icon">💎</div>
-          <div class="title">Курс валют</div>
-          <div class="desc">Доллар, сомы, TON, BTC</div>
+        <div class="tool-card" onclick="openSheet('art')">
+          <div class="tool-icon-wrap">🎨</div>
+          <h4>Нейро-Арт</h4>
+          <p>Генерация стикеров и аватарок</p>
         </div>
-        <div class="action-card" onclick="sendAction('погода')">
-          <div class="icon">⛅</div>
-          <div class="title">Погода</div>
-          <div class="desc">Живой метео-радар</div>
+        <div class="tool-card" onclick="sendToBot('шар судьбы: ждет ли меня сегодня удача?')">
+          <div class="tool-icon-wrap">🔮</div>
+          <h4>Шар 8-Ball</h4>
+          <p>Космический шар судьбы от Лам</p>
         </div>
       </div>
     </div>
 
     <!-- ================= TAB 4: ПРОФИЛЬ (PROFILE) ================= -->
-    <div class="tab-content" id="tab-profile">
-      <div class="profile-card">
-        <div style="text-align: center; margin-bottom: 14px;">
-          <div class="lum-avatar" style="width: 72px; height: 72px; font-size: 34px;">💚</div>
-          <div style="font-size: 18px; font-weight: 800;" id="profName">Дарлинг</div>
-          <div style="font-size: 12px; color: var(--neon-cyan); margin-top: 2px;" id="profStatus">Любимый Дарлинг 💕</div>
-        </div>
+    <div class="tab-view" id="tab-profile">
+      <div class="hero-card" style="margin-bottom: 14px;">
+        <div style="font-size: 19px; font-weight: 800;" id="profileName">Дарлинг</div>
+        <div style="font-size: 13px; color: var(--neon-cyan); margin-top: 4px;" id="profileStatus">Любимый Дарлинг 💕</div>
 
-        <div class="profile-row">
-          <span class="profile-row-label">VIP Статус</span>
-          <span class="profile-row-val" id="profVip">Не активен</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Заряды энергии на сегодня</span>
-          <span class="profile-row-val" id="profEnergy">30 / 30</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Уровень связи</span>
-          <span class="profile-row-val" id="profLove">85%</span>
-        </div>
-        <div class="profile-row">
-          <span class="profile-row-label">Выпущено молний</span>
-          <span class="profile-row-val" id="profBolts">0 ⚡</span>
+        <div style="margin-top: 18px; text-align: left; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span style="color: var(--text-secondary);">Статус VIP:</span>
+            <span style="font-weight: 700; color: #fff;" id="profileVip">Не активен</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span style="color: var(--text-secondary);">Энергия молний:</span>
+            <span style="font-weight: 700; color: var(--neon-emerald);" id="profileEnergy">30 / 30</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span style="color: var(--text-secondary);">Уровень связи:</span>
+            <span style="font-weight: 700; color: var(--neon-gold);" id="profileLove">85%</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px;">
+            <span style="color: var(--text-secondary);">Выпущено молний:</span>
+            <span style="font-weight: 700; color: #fff;" id="profileBolts">0 ⚡</span>
+          </div>
         </div>
       </div>
 
-      <button class="buy-btn" onclick="switchTab('shop')" style="margin-bottom: 12px;">
+      <button class="checkout-btn" onclick="switchTab('shop')" style="margin-bottom: 10px;">
         ⭐️ Открыть магазин VIP
       </button>
 
-      <button class="buy-btn secondary" onclick="shareBot()">
+      <button class="checkout-btn secondary" onclick="shareWithFriends()">
         💌 Поделиться ботом с друзьями
       </button>
     </div>
   </div>
 
-  <!-- Modal / Purchase Notification -->
-  <div class="modal-overlay" id="modalOverlay">
-    <div class="modal-box">
-      <div class="modal-icon" id="modalIcon">🎉</div>
-      <div class="modal-title" id="modalTitle">Успешно!</div>
-      <div class="modal-desc" id="modalDesc">Твой VIP-статус активирован!</div>
-      <button class="modal-btn" onclick="closeModal()">Отлично! 💚</button>
+  <!-- ================= ACTION SHEETS ================= -->
+  
+  <!-- Sheet: Solver -->
+  <div class="sheet-overlay" id="sheet-solver">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">📚 АнтиГДЗ • Решебник задач</div>
+        <button class="sheet-close" onclick="closeSheet('solver')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери предмет или введи условие задачи для пошагового решения:</p>
+      <div class="chips-row">
+        <span class="chip" onclick="setSolverPrompt('Алгебра: реши уравнение ')">➗ Алгебра</span>
+        <span class="chip" onclick="setSolverPrompt('Геометрия: найди площадь ')">📐 Геометрия</span>
+        <span class="chip" onclick="setSolverPrompt('Физика: найди скорость ')">⚛️ Физика</span>
+        <span class="chip" onclick="setSolverPrompt('Химия: расставь коэффициенты ')">🧪 Химия</span>
+      </div>
+      <input type="text" class="sheet-input" id="solverInput" placeholder="Введи уравнение или задачу..." />
+      <button class="sheet-action-btn" onclick="submitSolver()">⚡ Решить задачу</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Code -->
+  <div class="sheet-overlay" id="sheet-code">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">💻 Информатика & Код</div>
+        <button class="sheet-close" onclick="closeSheet('code')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери язык и задачу (код будет в окне с кнопкой копирования):</p>
+      <div class="chips-row" id="codeLangChips">
+        <span class="chip active" onclick="selectCodeLang(this, 'Python')">Python</span>
+        <span class="chip" onclick="selectCodeLang(this, 'C++')">C++</span>
+        <span class="chip" onclick="selectCodeLang(this, 'JavaScript')">JavaScript</span>
+        <span class="chip" onclick="selectCodeLang(this, 'HTML/CSS')">HTML/CSS</span>
+        <span class="chip" onclick="selectCodeLang(this, 'Pascal')">Pascal</span>
+      </div>
+      <input type="text" class="sheet-input" id="codeInput" placeholder="Что запрограммировать? (напр. калькулятор, бот)" />
+      <button class="sheet-action-btn" onclick="submitCode()">⚡ Сгенерировать код</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Cheat -->
+  <div class="sheet-overlay" id="sheet-cheat">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">📝 Экспресс-Шпаргалка</div>
+        <button class="sheet-close" onclick="closeSheet('cheat')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери тему для быстрой подсказки перед уроком:</p>
+      <div class="chips-row">
+        <span class="chip" onclick="setCheatPrompt('формулы по физике 8 класс')">⚛️ Физика</span>
+        <span class="chip" onclick="setCheatPrompt('тригонометрические формулы')">📐 Тригонометрия</span>
+        <span class="chip" onclick="setCheatPrompt('даты Вторая мировая война')">🌍 История</span>
+        <span class="chip" onclick="setCheatPrompt('правила правописания Н и НН')">🇷🇺 Русский</span>
+      </div>
+      <input type="text" class="sheet-input" id="cheatInput" placeholder="Или напиши свою тему шпоры..." />
+      <button class="sheet-action-btn" onclick="submitCheat()">⚡ Собрать шпору</button>
+    </div>
+  </div>
+
+  <!-- Sheet: PDF -->
+  <div class="sheet-overlay" id="sheet-pdf">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">📄 Сборщик домашки в PDF</div>
+        <button class="sheet-close" onclick="closeSheet('pdf')">✕</button>
+      </div>
+      <p style="font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-bottom: 16px;">
+        1. Отправляй боту фото страниц тетрадей с подписью <code>pdf</code>.<br>
+        2. Akilum аккуратно скрепит все страницы своими они-лучами.<br>
+        3. Напиши «собери в pdf» — и получи единый файл для отправки учителю! 🎓
+      </p>
+      <button class="sheet-action-btn" onclick="sendToBot('/pdf')">📸 Открыть сборщик в чате</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Downloader -->
+  <div class="sheet-overlay" id="sheet-downloader">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">🎬 Скачать видео или звук</div>
+        <button class="sheet-close" onclick="closeSheet('downloader')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Вставь ссылку на TikTok, Instagram Reels или YouTube Shorts:</p>
+      <input type="text" class="sheet-input" id="downloadInput" placeholder="https://vt.tiktok.com/... или reels..." />
+      <button class="sheet-action-btn" onclick="submitDownload()">⚡ Скачать видео без водяных знаков</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Music -->
+  <div class="sheet-overlay" id="sheet-music">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">🎵 Поиск музыки</div>
+        <button class="sheet-close" onclick="closeSheet('music')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Введи название трека или исполнителя:</p>
+      <input type="text" class="sheet-input" id="musicInput" placeholder="Macan, Miyagi, Queen..." />
+      <button class="sheet-action-btn" onclick="submitMusic()">🔍 Найти трек и превью</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Live Rates -->
+  <div class="sheet-overlay" id="sheet-rates">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">💎 Курсы валют & Криптовалют</div>
+        <button class="sheet-close" onclick="closeSheet('rates')">✕</button>
+      </div>
+      <div class="rates-grid" id="liveRatesContainer">
+        <div class="rate-card"><div class="rate-title">USD → KGS (сом)</div><div class="rate-val" id="rateUsdKgs">~87.5</div></div>
+        <div class="rate-card"><div class="rate-title">USD → RUB (руб)</div><div class="rate-val" id="rateUsdRub">~92.0</div></div>
+        <div class="rate-card"><div class="rate-title">Toncoin (TON)</div><div class="rate-val" id="rateTon">~$5.20</div></div>
+        <div class="rate-card"><div class="rate-title">Bitcoin (BTC)</div><div class="rate-val" id="rateBtc">~$65,000</div></div>
+      </div>
+      <button class="sheet-action-btn" onclick="sendToBot('курс')">💬 Отправить полный радар в чат</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Weather -->
+  <div class="sheet-overlay" id="sheet-weather">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">⛅ Метео-радар</div>
+        <button class="sheet-close" onclick="closeSheet('weather')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Введи город для живого прогноза:</p>
+      <div class="chips-row">
+        <span class="chip" onclick="document.getElementById('weatherInput').value='Бишкек'">Бишкек</span>
+        <span class="chip" onclick="document.getElementById('weatherInput').value='Москва'">Москва</span>
+        <span class="chip" onclick="document.getElementById('weatherInput').value='Алматы'">Алматы</span>
+        <span class="chip" onclick="document.getElementById('weatherInput').value='Ош'">Ош</span>
+      </div>
+      <input type="text" class="sheet-input" id="weatherInput" placeholder="Город..." value="Бишкек" />
+      <button class="sheet-action-btn" onclick="submitWeather()">⛅ Узнать погоду</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Quiz -->
+  <div class="sheet-overlay" id="sheet-quiz">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">🎯 Викторина (Quiz)</div>
+        <button class="sheet-close" onclick="closeSheet('quiz')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери тему для запуска интерактивного Telegram-опроса:</p>
+      <div class="chips-row">
+        <span class="chip" onclick="document.getElementById('quizInput').value='школьная программа'">📚 Школа</span>
+        <span class="chip" onclick="document.getElementById('quizInput').value='IT и программирование'">💻 IT</span>
+        <span class="chip" onclick="document.getElementById('quizInput').value='логика и эрудиция'">🧠 Логика</span>
+        <span class="chip" onclick="document.getElementById('quizInput').value='история и география'">🌍 История</span>
+      </div>
+      <input type="text" class="sheet-input" id="quizInput" placeholder="Тема викторины..." value="школьная программа" />
+      <button class="sheet-action-btn" onclick="submitQuiz()">🚀 Запустить опрос</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Duel -->
+  <div class="sheet-overlay" id="sheet-duel">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">⚔️ Дуэль молний</div>
+        <button class="sheet-close" onclick="closeSheet('duel')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Кого вызвать на они-битву молний? (имя или ник):</p>
+      <input type="text" class="sheet-input" id="duelInput" placeholder="Имя соперника (или оставь пустым)..." />
+      <button class="sheet-action-btn" onclick="submitDuel()">⚡ В бой!</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Roulette -->
+  <div class="sheet-overlay" id="sheet-roulette">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">🎰 Они-Рулетка наказаний</div>
+        <button class="sheet-close" onclick="closeSheet('roulette')">✕</button>
+      </div>
+      <p style="font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-bottom: 16px;">
+        Рулетка выберет случайного участника чата и шутливое задание (кто пойдёт к доске, кто дежурный, кто принесет шоколадку Лам)! ⚡
+      </p>
+      <button class="sheet-action-btn" onclick="sendToBot('/roulette')">🎲 Крутить рулетку в чате</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Roast -->
+  <div class="sheet-overlay" id="sheet-roast">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">🔥 Они-Прожарка</div>
+        <button class="sheet-close" onclick="closeSheet('roast')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Кого прожарить с добрым школьным юмором без мата?</p>
+      <input type="text" class="sheet-input" id="roastInput" placeholder="Имя друга или одноклассника..." />
+      <button class="sheet-action-btn" onclick="submitRoast()">🔥 Прожарить молнией!</button>
+    </div>
+  </div>
+
+  <!-- Sheet: Art -->
+  <div class="sheet-overlay" id="sheet-art">
+    <div class="sheet-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-title">🎨 Нейро-Арт генератор</div>
+        <button class="sheet-close" onclick="closeSheet('art')">✕</button>
+      </div>
+      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Опиши картинку, аватарку или стикер:</p>
+      <input type="text" class="sheet-input" id="artInput" placeholder="Киберпанк кот, неоновый арт..." />
+      <button class="sheet-action-btn" onclick="submitArt()">🎨 Нарисовать шедевр</button>
     </div>
   </div>
 
@@ -880,8 +1240,8 @@
     const tg = window.Telegram?.WebApp;
     if (tg) {
       tg.expand();
-      tg.setHeaderColor('#070913');
-      tg.setBackgroundColor('#070913');
+      tg.setHeaderColor('#060811');
+      tg.setBackgroundColor('#060811');
       tg.enableClosingConfirmation?.();
     }
 
@@ -889,15 +1249,11 @@
     const userId = user?.id || null;
     const firstName = user?.first_name || "Дарлинг";
 
-    document.getElementById('userName').textContent = firstName;
-    document.getElementById('profName').textContent = firstName;
-    if (firstName && firstName.length > 0) {
-      document.getElementById('topAvatar').textContent = firstName[0].toUpperCase();
-    }
+    document.getElementById('profileName').textContent = firstName;
 
     // Tab Switching
     function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
 
       const targetTab = document.getElementById('tab-' + tabId);
@@ -905,13 +1261,31 @@
       if (targetTab) targetTab.classList.add('active');
       if (targetNav) targetNav.classList.add('active');
 
-      if (tg?.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('light');
-      }
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Load real-time status from bot backend
+    // Modal Sheet Management
+    function openSheet(id) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      const sheet = document.getElementById('sheet-' + id);
+      if (sheet) sheet.classList.add('open');
+
+      if (id === 'rates') fetchLiveRates();
+    }
+
+    function closeSheet(id) {
+      const sheet = document.getElementById('sheet-' + id);
+      if (sheet) sheet.classList.remove('open');
+    }
+
+    document.querySelectorAll('.sheet-overlay').forEach(sheet => {
+      sheet.addEventListener('click', (e) => {
+        if (e.target === sheet) sheet.classList.remove('open');
+      });
+    });
+
+    // Real-time Status Loader
     async function fetchUserStatus() {
       if (!userId) return;
       try {
@@ -921,20 +1295,20 @@
           const isVip = data.isVip;
           const energyStr = isVip ? "∞ Безлимит" : `${data.remainingEnergy}/${data.maxEnergy}`;
           
-          document.getElementById('badgeEnergy').textContent = isVip ? "VIP 👑" : `${data.remainingEnergy}/${data.maxEnergy}`;
+          document.getElementById('badgeEnergyText').textContent = isVip ? "VIP 👑" : `${data.remainingEnergy}/${data.maxEnergy}`;
           document.getElementById('energyCounter').textContent = energyStr;
           document.getElementById('loveCounter').textContent = `${data.loveLevel}%`;
-          document.getElementById('profLove').textContent = `${data.loveLevel}%`;
-          document.getElementById('profEnergy').textContent = energyStr;
-          document.getElementById('profBolts').textContent = `${data.bolts} ⚡`;
+          document.getElementById('profileLove').textContent = `${data.loveLevel}%`;
+          document.getElementById('profileEnergy').textContent = energyStr;
+          document.getElementById('profileBolts').textContent = `${data.bolts} ⚡`;
 
           if (isVip) {
-            const badge = document.getElementById('userBadge');
+            const badge = document.getElementById('badgeEnergy');
             badge.classList.add('vip');
             badge.innerHTML = `<span>👑</span> <span>VIP Дарлинг</span>`;
-            document.getElementById('profStatus').textContent = "👑 VIP Дарлинг ⭐️";
-            document.getElementById('profVip').textContent = "👑 Активен";
-            document.getElementById('profVip').style.color = "var(--neon-gold)";
+            document.getElementById('profileStatus').textContent = "👑 VIP Дарлинг ⭐️";
+            document.getElementById('profileVip').textContent = "👑 Активен";
+            document.getElementById('profileVip').style.color = "var(--neon-gold)";
           }
         }
       } catch (err) {
@@ -943,6 +1317,21 @@
     }
     fetchUserStatus();
 
+    // Fetch Live Rates
+    async function fetchLiveRates() {
+      try {
+        const res = await fetch('/api/rates');
+        const json = await res.json();
+        if (json.ok && json.data) {
+          const { crypto: c, rates: r } = json.data;
+          if (r.KGS) document.getElementById('rateUsdKgs').textContent = `${r.KGS.toFixed(2)} сом`;
+          if (r.RUB) document.getElementById('rateUsdRub').textContent = `${r.RUB.toFixed(2)} ₽`;
+          if (c.TON) document.getElementById('rateTon').textContent = `$${c.TON.toFixed(2)}`;
+          if (c.BTC) document.getElementById('rateBtc').textContent = `$${Math.round(c.BTC).toLocaleString('en-US')}`;
+        }
+      } catch (e) {}
+    }
+
     // Clicker functionality
     let clicks = 0;
     const quotes = [
@@ -950,21 +1339,19 @@
       "Дарлинг, ты самый классный! 💕",
       "Учи уроки, а то током ударю! ⚡",
       "Заряд 100 000 Вольт получен! ⚡✨",
-      "Я рядом с тобой в Telegram! 🥰",
+      "Akilum всегда рядом с тобой в Telegram! 🥰",
       "Никому тебя не отдам! 💚"
     ];
 
-    const avatar = document.getElementById('lumAvatar');
-    const quoteEl = document.getElementById('lumQuote');
+    const avatarWrap = document.getElementById('heroAvatar');
+    const quoteEl = document.getElementById('heroQuote');
     const counterEl = document.getElementById('clickCounter');
 
-    avatar.addEventListener('click', (e) => {
+    avatarWrap.addEventListener('click', (e) => {
       clicks++;
       counterEl.textContent = clicks;
 
-      if (tg?.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('medium');
-      }
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
       quoteEl.textContent = `«${quotes[Math.floor(Math.random() * quotes.length)]}»`;
       createSpark(e.clientX, e.clientY);
     });
@@ -982,17 +1369,96 @@
       spark.style.setProperty('--dy', dy);
 
       document.body.appendChild(spark);
-      setTimeout(() => spark.remove(), 700);
+      setTimeout(() => spark.remove(), 750);
     }
 
-    // Telegram Stars Payment Function
-    async function buyItem(itemType, amount, itemName) {
-      if (tg?.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('heavy');
-      }
+    // Code language selection
+    let selectedCodeLang = 'Python';
+    function selectCodeLang(el, lang) {
+      selectedCodeLang = lang;
+      document.querySelectorAll('#codeLangChips .chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
 
-      const btn = document.getElementById(`btn-${itemType.replace('_', '-')}`);
-      const oldText = btn ? btn.innerHTML : "";
+    function setSolverPrompt(text) {
+      document.getElementById('solverInput').value = text;
+      document.getElementById('solverInput').focus();
+    }
+    function setCheatPrompt(text) {
+      document.getElementById('cheatInput').value = text;
+      document.getElementById('cheatInput').focus();
+    }
+
+    // Action Submissions to Bot
+    function submitSolver() {
+      const val = document.getElementById('solverInput').value.trim();
+      sendToBot(val ? `реши: ${val}` : "Реши задачу");
+      closeSheet('solver');
+    }
+
+    function submitCode() {
+      const val = document.getElementById('codeInput').value.trim();
+      sendToBot(`код: ${val || "быстрая сортировка"} на ${selectedCodeLang}`);
+      closeSheet('code');
+    }
+
+    function submitCheat() {
+      const val = document.getElementById('cheatInput').value.trim();
+      sendToBot(`шпора: ${val || "физика 8 класс"}`);
+      closeSheet('cheat');
+    }
+
+    function submitDownload() {
+      const val = document.getElementById('downloadInput').value.trim();
+      if (!val) {
+        alert("Вставь ссылку на видео!");
+        return;
+      }
+      sendToBot(val);
+      closeSheet('downloader');
+    }
+
+    function submitMusic() {
+      const val = document.getElementById('musicInput').value.trim();
+      sendToBot(`найди трек ${val || "Macan"}`);
+      closeSheet('music');
+    }
+
+    function submitWeather() {
+      const val = document.getElementById('weatherInput').value.trim();
+      sendToBot(`погода в ${val || "Бишкек"}`);
+      closeSheet('weather');
+    }
+
+    function submitQuiz() {
+      const val = document.getElementById('quizInput').value.trim();
+      sendToBot(`/quiz ${val || "школьная программа"}`);
+      closeSheet('quiz');
+    }
+
+    function submitDuel() {
+      const val = document.getElementById('duelInput').value.trim();
+      sendToBot(`/duel ${val}`);
+      closeSheet('duel');
+    }
+
+    function submitRoast() {
+      const val = document.getElementById('roastInput').value.trim();
+      sendToBot(`/roast ${val}`);
+      closeSheet('roast');
+    }
+
+    function submitArt() {
+      const val = document.getElementById('artInput').value.trim();
+      sendToBot(`нарисуй ${val || "красивый киберпанк арт"}`);
+      closeSheet('art');
+    }
+
+    // Telegram Stars Payment
+    async function buyStarsItem(itemType, amount, itemName) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+      const btn = document.getElementById(`btn-${itemType}`);
+      const originalText = btn ? btn.innerHTML : "";
       if (btn) btn.innerHTML = `⏳ Создаю чек на ${amount} ⭐️...`;
 
       try {
@@ -1000,65 +1466,45 @@
         const data = await res.json();
 
         if (data.ok && data.invoiceLink) {
-          if (btn) btn.innerHTML = oldText;
+          if (btn) btn.innerHTML = originalText;
 
-          // Native Telegram WebApp Stars Invoice sheet
           if (tg?.openInvoice) {
             tg.openInvoice(data.invoiceLink, (status) => {
               if (status === 'paid') {
                 if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                showModal("🎉 ОПЛАТА ПРОШЛА!", `Спасибо, мой Дарлинг! Твой ${itemName} успешно активирован! 👑✨`);
+                alert(`🎉 ОПЛАТА УСПЕШНА!\nТвой ${itemName} активирован! Спасибо, мой VIP Дарлинг! 👑✨`);
                 fetchUserStatus();
-              } else if (status === 'cancelled') {
-                console.log("Оплата отменена пользователем");
               } else if (status === 'failed') {
-                showModal("❌ Ошибка", "Не удалось провести платеж. Попробуй ещё раз!");
+                alert("❌ Ошибка при проведении оплаты Stars. Попробуй ещё раз!");
               }
             });
             return;
           }
         }
-      } catch (err) {
-        console.warn("Invoice creation failed, fallback to chat:", err.message);
+      } catch (e) {
+        console.warn("Invoice creation error:", e.message);
       }
 
-      if (btn) btn.innerHTML = oldText;
-
-      // Fallback: send command to bot chat
-      if (tg?.sendData) {
-        tg.sendData(`/vip`);
-      } else {
-        showModal("⭐️ Оплата Stars", `Для покупки ${itemName} напиши боту команду /vip!`);
-      }
+      if (btn) btn.innerHTML = originalText;
+      sendToBot('/vip');
     }
 
-    function sendAction(commandText) {
-      if (tg?.HapticFeedback) {
-        tg.HapticFeedback.notificationOccurred('success');
-      }
+    function sendToBot(commandText) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
       if (tg?.sendData) {
         tg.sendData(commandText);
       } else {
-        alert("Команда скопирована для чата: " + commandText);
+        alert("Команда для чата: " + commandText);
       }
     }
 
-    function shareBot() {
-      const shareUrl = `https://t.me/share/url?url=https://t.me/akilum_bot&text=${encodeURIComponent('Смотри, какой крутой ИИ-бот Лам! Решает домашку, пишет код и развлекает в группах ⚡')}`;
+    function shareWithFriends() {
+      const shareUrl = `https://t.me/share/url?url=https://t.me/akilum_bot&text=${encodeURIComponent('Смотри, какой крутой ИИ-бот Akilum! Решает домашку, пишет код и развлекает в чате ⚡')}`;
       if (tg?.openTelegramLink) {
         tg.openTelegramLink(shareUrl);
       } else {
         window.open(shareUrl, '_blank');
       }
-    }
-
-    function showModal(title, desc) {
-      document.getElementById('modalTitle').textContent = title;
-      document.getElementById('modalDesc').textContent = desc;
-      document.getElementById('modalOverlay').classList.add('open');
-    }
-    function closeModal() {
-      document.getElementById('modalOverlay').classList.remove('open');
     }
   </script>
 </body>

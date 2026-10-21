@@ -2366,6 +2366,8 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   getUserDailyUsage,
   DAILY_FREE_LIMIT,
   recordInteraction,
+  getLiveMarketRates,
+  getLiveWeather,
 });
 
 // Установка кнопки меню WebApp (если URL сконфигурирован)

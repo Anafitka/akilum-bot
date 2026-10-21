@@ -39,7 +39,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       const userId = parsedUrl.searchParams.get("userId");
       const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
       const usage = (getUserDailyUsage && userId) ? getUserDailyUsage(userId) : 0;
-      const maxEnergy = DAILY_FREE_LIMIT || 20;
+      const maxEnergy = DAILY_FREE_LIMIT || 30;
       const remainingEnergy = Math.max(0, maxEnergy - usage);
 
       let stats = { count: 1, loveLevel: 75, bolts: 0 };

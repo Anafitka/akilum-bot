@@ -103,7 +103,7 @@ function setUserVip(userId, days = 30, stars = 75) {
   saveVips();
 }
 
-const DAILY_FREE_LIMIT = 20;
+const DAILY_FREE_LIMIT = 30;
 
 function getUserDailyUsage(userId) {
   if (!userId) return 0;
@@ -538,7 +538,7 @@ bot.command("resetlimit", async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
   resetUserDailyUsage(userId);
-  await ctx.reply("⚡ Твоя ежедневная энергия сброшена до максимума (20/20)!", { parse_mode: "HTML" });
+  await ctx.reply("⚡ Твоя ежедневная энергия сброшена до максимума (30/30)!", { parse_mode: "HTML" });
 });
 
 bot.callbackQuery("buy_vip_month", async (ctx) => {

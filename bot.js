@@ -1,6 +1,7 @@
 const { Bot, InputFile, InlineKeyboard } = require("grammy");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const {
   extractUrl,
   isVideoUrl,
@@ -26,6 +27,7 @@ const {
   recordInteraction,
   recordLightningBolt,
   renderProgressBar,
+  loadUserStats,
 } = require("./features");
 const {
   generateLumResponse,
@@ -39,6 +41,7 @@ const {
   toggleProactive,
   getProactiveStatus,
   initProactiveScheduler,
+  loadChats,
 } = require("./proactive");
 const { startWebAppServer } = require("./webapp_server");
 const { fetchLiveSearchResults } = require("./web_search");
@@ -57,6 +60,84 @@ function sanitizeTelegramHtml(html) {
   if (!html) return "";
   return String(html).replace(/<(?!\/?(?:b|strong|i|em|u|ins|s|strike|del|span|tg-spoiler|a|code|pre|blockquote|tg-emoji)(?:[\s>]))/gi, "&lt;");
 }
+
+// ==========================================
+// 👑 СИСТЕМА УПРАВЛЕНИЯ, VIP И АДМИНИСТРАЦИИ
+// ==========================================
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "Akilum";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Clearson0078912";
+const ADMINS_FILE = path.join(__dirname, "admins.json");
+let adminIds = new Set();
+
+function loadAdmins() {
+  try {
+    if (fs.existsSync(ADMINS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(ADMINS_FILE, "utf-8"));
+      adminIds = new Set((data || []).map(Number));
+    }
+  } catch (e) {
+    adminIds = new Set();
+  }
+}
+function saveAdmins() {
+  try {
+    fs.writeFileSync(ADMINS_FILE, JSON.stringify(Array.from(adminIds), null, 2), "utf-8");
+  } catch (e) {}
+}
+loadAdmins();
+
+function isSuperAdmin(userId) {
+  if (!userId) return false;
+  return adminIds.has(Number(userId));
+}
+
+function addSuperAdmin(userId) {
+  if (!userId) return;
+  adminIds.add(Number(userId));
+  saveAdmins();
+}
+
+// Сессии для веб-панели админки
+const adminSessions = new Map();
+function createAdminSession() {
+  const token = crypto.randomBytes(32).toString("hex");
+  adminSessions.set(token, {
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 дней
+  });
+  return token;
+}
+function isValidAdminSession(token) {
+  if (!token) return false;
+  const session = adminSessions.get(token);
+  if (!session) return false;
+  if (session.expiresAt < Date.now()) {
+    adminSessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+// Глобальные настройки бота
+const DAILY_FREE_LIMIT = 30;
+const SETTINGS_FILE = path.join(__dirname, "bot_settings.json");
+let botSettings = {
+  dailyFreeLimit: DAILY_FREE_LIMIT,
+  proactiveEnabled: true,
+};
+function loadSettings() {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      botSettings = { ...botSettings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8")) };
+    }
+  } catch (e) {}
+}
+function saveSettings() {
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(botSettings, null, 2), "utf-8");
+  } catch (e) {}
+}
+loadSettings();
 
 // Хранилище VIP-пользователей (монетизация через Telegram Stars)
 const VIPS_FILE = path.join(__dirname, "vips.json");
@@ -89,7 +170,7 @@ function isUserVip(userId) {
   return Boolean(user.expiresAt && user.expiresAt > Date.now());
 }
 
-function setUserVip(userId, days = 30, stars = 75) {
+function setUserVip(userId, days = 30, stars = 75, name = "", username = "") {
   const now = Date.now();
   const current = vipsData[String(userId)];
   const baseTime = current && current.expiresAt && current.expiresAt > now ? current.expiresAt : now;
@@ -99,11 +180,44 @@ function setUserVip(userId, days = 30, stars = 75) {
     permanent: days <= 0,
     starsPaid: (current?.starsPaid || 0) + stars,
     updatedAt: new Date().toISOString(),
+    name: name || current?.name || "Дарлинг",
+    username: username || current?.username || "",
   };
   saveVips();
 }
 
-const DAILY_FREE_LIMIT = 30;
+function removeUserVip(userId) {
+  if (!userId) return false;
+  const id = String(userId);
+  if (vipsData[id]) {
+    vipsData[id].isVip = false;
+    vipsData[id].permanent = false;
+    vipsData[id].expiresAt = null;
+    vipsData[id].updatedAt = new Date().toISOString();
+    saveVips();
+    return true;
+  }
+  return false;
+}
+
+function getAllVips() {
+  const list = [];
+  for (const [userId, u] of Object.entries(vipsData)) {
+    if (u.isVip || u.permanent || (u.expiresAt && u.expiresAt > Date.now())) {
+      list.push({
+        userId,
+        name: u.name || "Дарлинг",
+        username: u.username || "",
+        isVip: true,
+        permanent: Boolean(u.permanent),
+        expiresAt: u.expiresAt,
+        starsPaid: u.starsPaid || 0,
+        updatedAt: u.updatedAt,
+      });
+    }
+  }
+  return list;
+}
 
 function getUserDailyUsage(userId) {
   if (!userId) return 0;
@@ -139,16 +253,121 @@ function resetUserDailyUsage(userId) {
   saveVips();
 }
 
+function resetAllDailyUsages() {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const id of Object.keys(vipsData)) {
+    vipsData[id].dailyUsageCount = 0;
+    vipsData[id].dailyUsageDate = today;
+  }
+  saveVips();
+}
+
 function checkUserAccess(userId, isGroup = false) {
+  const limit = botSettings.dailyFreeLimit || 30;
   if (isUserVip(userId)) {
-    return { allowed: true, isVip: true, remaining: Infinity, limit: DAILY_FREE_LIMIT };
+    return { allowed: true, isVip: true, remaining: Infinity, limit };
   }
   const usage = getUserDailyUsage(userId);
-  const remaining = Math.max(0, DAILY_FREE_LIMIT - usage);
-  if (!isGroup && usage >= DAILY_FREE_LIMIT) {
-    return { allowed: false, isVip: false, remaining: 0, limit: DAILY_FREE_LIMIT };
+  const remaining = Math.max(0, limit - usage);
+  if (!isGroup && usage >= limit) {
+    return { allowed: false, isVip: false, remaining: 0, limit };
   }
-  return { allowed: true, isVip: false, remaining, limit: DAILY_FREE_LIMIT };
+  return { allowed: true, isVip: false, remaining, limit };
+}
+
+// Полная статистика для панели Создателя
+function getFullAdminStats() {
+  const stats = loadUserStats ? loadUserStats() : {};
+  const chats = loadChats ? loadChats() : {};
+  const allIds = new Set([
+    ...Object.keys(stats),
+    ...Object.keys(chats),
+    ...Object.keys(vipsData),
+  ]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  let activeToday = 0;
+  for (const u of Object.values(vipsData)) {
+    if (u.dailyUsageDate === today && u.dailyUsageCount > 0) activeToday++;
+  }
+  for (const u of Object.values(stats)) {
+    if (u.lastSeen && Date.now() - u.lastSeen < 24 * 60 * 60 * 1000) activeToday++;
+  }
+
+  let totalStars = 0;
+  let vipCount = 0;
+  for (const u of Object.values(vipsData)) {
+    if (u.starsPaid) totalStars += u.starsPaid;
+    if (u.permanent || (u.expiresAt && u.expiresAt > Date.now())) vipCount++;
+  }
+
+  return {
+    totalUsers: allIds.size || 1,
+    activeToday: Math.max(1, activeToday),
+    vipCount,
+    totalStarsEarned: totalStars,
+    dailyFreeLimit: botSettings.dailyFreeLimit || 30,
+    uptimeSeconds: Math.floor(process.uptime()),
+  };
+}
+
+// Список пользователей для таблицы админки
+function getAllUsersList() {
+  const stats = loadUserStats ? loadUserStats() : {};
+  const chats = loadChats ? loadChats() : {};
+  const allIds = new Set([
+    ...Object.keys(stats),
+    ...Object.keys(chats),
+    ...Object.keys(vipsData),
+  ]);
+
+  const list = [];
+  for (const id of allIds) {
+    const s = stats[id] || {};
+    const c = chats[id] || {};
+    const v = vipsData[id] || {};
+    list.push({
+      userId: id,
+      name: s.name || c.name || v.name || "Дарлинг",
+      username: s.username || v.username || "",
+      count: s.count || 0,
+      loveLevel: s.loveLevel || 75,
+      isVip: Boolean(v.permanent || (v.expiresAt && v.expiresAt > Date.now())),
+      lastSeen: s.lastSeen || c.lastActive || 0,
+    });
+  }
+  list.sort((a, b) => (b.count || 0) - (a.count || 0));
+  return list;
+}
+
+// Рассылка по всем пользователям
+async function broadcastMessage(botInstance, text) {
+  const stats = loadUserStats ? loadUserStats() : {};
+  const chats = loadChats ? loadChats() : {};
+  const allIds = new Set([
+    ...Object.keys(stats),
+    ...Object.keys(chats),
+    ...Object.keys(vipsData),
+  ]);
+
+  let sent = 0;
+  let failed = 0;
+  const list = Array.from(allIds);
+
+  for (const id of list) {
+    try {
+      await botInstance.api.sendMessage(Number(id), text, {
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      });
+      sent++;
+      await new Promise((r) => setTimeout(r, 40));
+    } catch (e) {
+      failed++;
+    }
+  }
+
+  return { total: list.length, sent, failed };
 }
 
 function splitTextSafely(text, maxLen = 3800) {
@@ -607,27 +826,29 @@ async function sendVipMenu(ctx) {
   const userId = ctx.from?.id;
   const isVip = isUserVip(userId);
   const usage = getUserDailyUsage(userId);
-  const remaining = Math.max(0, DAILY_FREE_LIMIT - usage);
+  const limit = botSettings.dailyFreeLimit || DAILY_FREE_LIMIT;
+  const remaining = Math.max(0, limit - usage);
 
   const vipKeyboard = new InlineKeyboard()
-    .text("⭐️ VIP на 1 месяц (75 Stars)", "buy_vip_month")
+    .text("🍜 Рамен с чили (15 ⭐️)", "buy_tip_15")
+    .text("⚡ VIP 7 дней (25 ⭐️)", "buy_vip_week")
     .row()
-    .text("🍓 Угостить Лам молоком (25 Stars)", "buy_tip_25")
+    .text("⭐️ VIP на 1 месяц (75 ⭐️)", "buy_vip_month")
     .row()
-    .text("👑 Навсегда VIP (250 Stars)", "buy_vip_forever");
+    .text("👑 Навсегда VIP (-20% • 199 ⭐️)", "buy_vip_forever");
 
   const vipText =
     `✨ <b>ПРЕМИУМ ЛАМ • СТАТУС VIP ДАРЛИНГА</b> ⭐️👑\n\n` +
     (isVip
       ? `🎉 <b>Твой статус: АКТИВНЫЙ VIP 👑</b>\nУ тебя включен максимальный приоритет движков, бесконечная энергия молний и золотая корона!\n\n`
-      : `🔋 <b>Твоя энергия на сегодня:</b> <code>${remaining}/${DAILY_FREE_LIMIT} запросов</code>\nХочешь снять любые ограничения и получить золотую корону?\n\n`) +
+      : `🔋 <b>Твоя энергия на сегодня:</b> <code>${remaining}/${limit} запросов</code>\nХочешь снять любые ограничения и получить золотую корону?\n\n`) +
     `💎 <b>Что даёт VIP:</b>\n` +
     `• 🚀 <b>Безлимитные решения задач</b> и разборы сложных заданий\n` +
     `• 💻 <b>Генерация длинного кода и сайтов</b> с кнопкой копирования\n` +
     `• 👑 <b>Золотая корона VIP</b> в твоём профиле /love и в чатах\n` +
     `• ⚡ <b>Приоритет в группах</b> — Лам отвечает тебе в первую очередь даже среди 10 000 человек!\n` +
-    `• 🍓 <b>Личная забота</b> — эксклюзивные стикеры и реакции\n\n` +
-    `<i>Оплата моментально прямо в Telegram через Telegram Stars ⭐️:</i>`;
+    `• 🍓 <b>Личная забота</b> — эксклюзивные стикеры, аудио и реакции\n\n` +
+    `<i>Оплата моментально прямо в Telegram через официальные Telegram Stars ⭐️:</i>`;
 
   const replyTo = ctx.message ? ctx.message.message_id : undefined;
   await safeSendHtml(ctx, vipText, replyTo, vipKeyboard);
@@ -644,11 +865,14 @@ bot.callbackQuery("open_vip_menu", async (ctx) => {
   await sendVipMenu(ctx);
 });
 
-// Тестовая выдача VIP и сброс лимитов для тестирования
+// Тестовая выдача VIP и сброс лимитов (доступно только Создателю Akilum)
 bot.command(["trial", "testvip"], async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
-  setUserVip(userId, 3, 0);
+  if (!isSuperAdmin(userId)) {
+    return ctx.reply("❌ Эта команда доступна только Создателю бота. Для оформления VIP используй /vip ⭐️", { parse_mode: "HTML" });
+  }
+  setUserVip(userId, 3, 0, ctx.from.first_name, ctx.from.username);
   await ctx.reply(
     `🎉 <b>Тестовый VIP-статус активирован на 3 дня!</b> 👑⭐️\n\nТеперь у тебя есть золотая корона, безлимитная энергия молний и высший приоритет! Проверь команду /love 💕`,
     { parse_mode: "HTML" }
@@ -658,15 +882,50 @@ bot.command(["trial", "testvip"], async (ctx) => {
 bot.command("resetlimit", async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
+  if (!isSuperAdmin(userId)) {
+    return ctx.reply("❌ Эта команда доступна только Создателю бота. Энергия восстанавливается каждый день в 00:00 или через /vip ⚡", { parse_mode: "HTML" });
+  }
   resetUserDailyUsage(userId);
-  await ctx.reply("⚡ Твоя ежедневная энергия сброшена до максимума (30/30)!", { parse_mode: "HTML" });
+  await ctx.reply("⚡ Твоя ежедневная энергия сброшена до максимума!", { parse_mode: "HTML" });
+});
+
+bot.callbackQuery("buy_tip_15", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  try {
+    await ctx.replyWithInvoice(
+      "🍜 Острый рамен с чили для Лам",
+      "Угости они-принцессу горячим раменом! Мгновенная перезарядка энергии и +1 день VIP-статуса!",
+      "payload_tip_15",
+      "XTR",
+      [{ label: "Острый рамен с чили", amount: 15 }]
+    );
+  } catch (err) {
+    console.error("Invoice error:", err.message);
+    await ctx.reply("Не удалось создать счет для Telegram Stars( Попробуй чуть позже!");
+  }
+});
+
+bot.callbackQuery("buy_vip_week", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  try {
+    await ctx.replyWithInvoice(
+      "⚡ Тест-драйв VIP (7 дней)",
+      "Неделя безлимитных решений задач, золотая корона в профиле и приоритетный отклик от Лам!",
+      "payload_vip_week",
+      "XTR",
+      [{ label: "VIP подписка на 7 дней", amount: 25 }]
+    );
+  } catch (err) {
+    console.error("Invoice error:", err.message);
+    await ctx.reply("Не удалось создать счет для Telegram Stars( Попробуй чуть позже!");
+  }
 });
 
 bot.callbackQuery("buy_vip_month", async (ctx) => {
   await ctx.answerCallbackQuery();
   try {
     await ctx.replyWithInvoice(
-      "👑 VIP Дарлинг (1 месяц)",
+      "⭐️ VIP Дарлинг (1 месяц)",
       "30 дней безлимитных решений задач, золотая корона в профиле и максимальный приоритет от Лам!",
       "payload_vip_month",
       "XTR",
@@ -697,11 +956,11 @@ bot.callbackQuery("buy_vip_forever", async (ctx) => {
   await ctx.answerCallbackQuery();
   try {
     await ctx.replyWithInvoice(
-      "👑 Навсегда VIP Дарлинг",
-      "Вечный VIP статус, максимальное уважение в чатах и безлимит ко всем возможностям Лам!",
+      "👑 Навсегда VIP Дарлинг (Скидка -20%)",
+      "Вечный VIP статус навсегда, титул «Единственный Дарлинг», золотая корона во всех чатах и пожизненный безлимит!",
       "payload_vip_forever",
       "XTR",
-      [{ label: "Вечный VIP статус", amount: 250 }]
+      [{ label: "Вечный VIP навсегда", amount: 199 }]
     );
   } catch (err) {
     console.error("Invoice error:", err.message);
@@ -716,23 +975,241 @@ bot.on("message:successful_payment", async (ctx) => {
   const payment = ctx.message.successful_payment;
   const payload = payment.invoice_payload;
   const userId = ctx.from.id;
+  const name = ctx.from.first_name || "Дарлинг";
+  const username = ctx.from.username || "";
 
-  if (payload === "payload_vip_month") {
-    setUserVip(userId, 30, 75);
-  } else if (payload === "payload_vip_forever") {
-    setUserVip(userId, -1, 250);
-  } else if (payload === "payload_energy_50") {
+  if (payload === "payload_tip_15") {
     resetUserDailyUsage(userId);
+    setUserVip(userId, 1, 15, name, username);
+  } else if (payload === "payload_vip_week") {
+    setUserVip(userId, 7, 25, name, username);
+  } else if (payload === "payload_vip_month") {
+    setUserVip(userId, 30, 75, name, username);
+  } else if (payload === "payload_vip_forever") {
+    setUserVip(userId, -1, 199, name, username);
+  } else if (payload === "payload_tip_25") {
+    setUserVip(userId, 7, 25, name, username);
   } else {
-    setUserVip(userId, 7, 25);
+    setUserVip(userId, 7, payment.total_amount || 25, name, username);
   }
 
   await ctx.reply(
     `🎉 <b>СПАСИБО, МОЙ VIP ДАРЛИНГ!</b> 👑⭐️✨\n\n` +
-    `Оплата ${payment.total_amount} Stars успешно прошла! Я активировала твой VIP-статус на полную катушку!\n\n` +
+    `Оплата ${payment.total_amount} Stars успешно прошла! Я активировала твои привилегии на полную катушку!\n\n` +
     `Теперь у тебя золотая корона в профиле (/love) и высший приоритет от они-принцессы! 💚⚡`,
     { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
   );
+});
+
+// ==========================================
+// 👑 КОМАНДЫ АДМИНИСТРАТОРА (ТОЛЬКО ДЛЯ СОЗДАТЕЛЯ)
+// ==========================================
+
+bot.command("admin", async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+
+  const rawText = ctx.message.text.trim();
+  const parts = rawText.split(/\s+/);
+  const passwordProvided = parts[1];
+
+  // Проверка пароля или уже сохраненного ID
+  if (passwordProvided === ADMIN_PASSWORD || isSuperAdmin(userId)) {
+    addSuperAdmin(userId);
+    const sessionToken = createAdminSession();
+    const webAppUrl = getWebAppUrl();
+    const adminWebLink = webAppUrl ? `${webAppUrl}/admin?token=${sessionToken}` : "";
+
+    const adminKb = new InlineKeyboard();
+    if (adminWebLink) {
+      adminKb.webApp("⚡ Открыть Панель Управления", adminWebLink).row();
+      adminKb.url("🌐 Открыть в браузере", adminWebLink).row();
+    }
+    adminKb.text("📊 Статистика", "admin:cmd_stats")
+      .text("👑 Список VIP", "admin:cmd_vips")
+      .row()
+      .text("🔄 Сбросить лимиты всем", "admin:cmd_reset_all");
+
+    await ctx.reply(
+      `👑 <b>ДОБРО ПОЖАЛОВАТЬ, СОЗДАТЕЛЬ AKILUM!</b> ⚡✨\n\n` +
+      `Ты успешно авторизован с максимальным уровнем доступа <code>ROOT_MASTER</code>.\n\n` +
+      `🖥 <b>Веб-панель:</b> Нажми на кнопку ниже, чтобы открыть стильный дашборд управления.\n\n` +
+      `🛠 <b>Быстрые команды в чате:</b>\n` +
+      `• <code>/givevip &lt;id&gt; [дни]</code> — выдать VIP пользователю (например <code>/givevip 12345678 30</code> или <code>-1</code> навсегда)\n` +
+      `• <code>/takevip &lt;id&gt;</code> — забрать VIP статус у пользователя\n` +
+      `• <code>/broadcast &lt;текст&gt;</code> — разослать объявление всем пользователям бота\n` +
+      `• <code>/stats</code> — текущий онлайн, доход в звёздах и статистика\n` +
+      `• <code>/setlimit &lt;число&gt;</code> — изменить бесплатный лимит энергии (сейчас: <b>${botSettings.dailyFreeLimit || 30}</b>)\n` +
+      `• <code>/resetlimit</code> — сбросить свой лимит энергии\n\n` +
+      `<i>«Лам полностью подчиняется твоим они-приказам, шеф! 💕⚡»</i>`,
+      { parse_mode: "HTML", reply_markup: adminKb, reply_to_message_id: ctx.message.message_id }
+    );
+  } else {
+    await ctx.reply(
+      `🔒 <b>Вход в Панель Создателя:</b>\n` +
+      `Используй: <code>/admin &lt;пароль&gt;</code>`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+  }
+});
+
+bot.callbackQuery("admin:cmd_stats", async (ctx) => {
+  if (!isSuperAdmin(ctx.from?.id)) {
+    return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
+  }
+  await ctx.answerCallbackQuery();
+  const stats = getFullAdminStats();
+  const uptimeH = Math.floor(stats.uptimeSeconds / 3600);
+  const uptimeM = Math.floor((stats.uptimeSeconds % 3600) / 60);
+
+  await ctx.reply(
+    `📊 <b>СТАТИСТИКА БОТА • ПАНЕЛЬ AKILUM</b> ⚡\n\n` +
+    `👥 Всего пользователей: <code>${stats.totalUsers}</code>\n` +
+    `🔥 Активных за 24ч: <code>${stats.activeToday}</code>\n` +
+    `👑 VIP подписчиков: <code>${stats.vipCount}</code>\n` +
+    `⭐️ Заработано Stars: <code>${stats.totalStarsEarned} ⭐️</code>\n` +
+    `⚡ Дневной лимит энергии: <code>${stats.dailyFreeLimit}</code>\n` +
+    `⏱ Аптайм сервера: <code>${uptimeH}ч ${uptimeM}мин</code>`,
+    { parse_mode: "HTML" }
+  );
+});
+
+bot.callbackQuery("admin:cmd_vips", async (ctx) => {
+  if (!isSuperAdmin(ctx.from?.id)) {
+    return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
+  }
+  await ctx.answerCallbackQuery();
+  const list = getAllVips();
+  if (list.length === 0) {
+    return ctx.reply("👑 В базе пока нет активных VIP-пользователей.");
+  }
+  let msg = `👑 <b>АКТИВНЫЕ VIP ПОЛЬЗОВАТЕЛИ (${list.length}):</b>\n\n`;
+  list.slice(0, 20).forEach((u, i) => {
+    const exp = u.permanent ? "👑 НАВСЕГДА" : new Date(u.expiresAt).toLocaleDateString("ru-RU");
+    msg += `${i + 1}. <b>${escapeHtml(u.name)}</b> (<code>${u.userId}</code>)${u.username ? ` @${u.username}` : ""}\n`;
+    msg += `   └ Срок: <code>${exp}</code> | Оплачено: <code>${u.starsPaid || 0} ⭐️</code>\n`;
+  });
+  await ctx.reply(msg, { parse_mode: "HTML" });
+});
+
+bot.callbackQuery("admin:cmd_reset_all", async (ctx) => {
+  if (!isSuperAdmin(ctx.from?.id)) {
+    return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
+  }
+  await ctx.answerCallbackQuery({ text: "Лимиты всех пользователей сброшены!" });
+  resetAllDailyUsages();
+  await ctx.reply("🔄 <b>Все счетчики энергии успешно сброшены!</b> Все пользователи получили полный запас молний на сегодня.", { parse_mode: "HTML" });
+});
+
+bot.command("givevip", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("Формат: <code>/givevip &lt;user_id&gt; [дни]</code>\nПример: <code>/givevip 123456789 30</code> (или <code>-1</code> навсегда)", { parse_mode: "HTML" });
+  }
+
+  const targetId = parts[1].replace(/[^\d]/g, "");
+  const days = parts[2] ? parseInt(parts[2], 10) : 30;
+
+  if (!targetId) {
+    return ctx.reply("❌ Неверный ID пользователя!");
+  }
+
+  setUserVip(targetId, days, 0, "Дарлинг", "");
+  const durationLabel = days <= 0 ? "👑 НАВСЕГДА" : `${days} дн.`;
+
+  await ctx.reply(`✅ <b>VIP-статус успешно выдан!</b>\n• ID: <code>${targetId}</code>\n• Срок: <b>${durationLabel}</b>`, { parse_mode: "HTML" });
+
+  // Оповещение пользователя
+  try {
+    await bot.api.sendMessage(
+      Number(targetId),
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `👑 <b>ПОЗДРАВЛЯЕМ! ВАМ ВЫДАН СТАТУС VIP ДАРЛИНГА!</b> ⭐️✨\n\n` +
+      `Создатель бота лично даровал вам VIP-статус (${durationLabel})!\n` +
+      `• Безлимитная энергия молний и решений задач\n` +
+      `• Золотая корона VIP в профиле /love\n` +
+      `• Приоритетный отклик от они-принцессы!\n\n` +
+      `<i>«Приятного пользования, мой VIP Дарлинг! 💚⚡»</i>`,
+      { parse_mode: "HTML" }
+    );
+  } catch (err) {}
+});
+
+bot.command("takevip", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("Формат: <code>/takevip &lt;user_id&gt;</code>", { parse_mode: "HTML" });
+  }
+
+  const targetId = parts[1].replace(/[^\d]/g, "");
+  const ok = removeUserVip(targetId);
+  if (ok) {
+    await ctx.reply(`✅ VIP-статус для пользователя <code>${targetId}</code> успешно аннулирован.`, { parse_mode: "HTML" });
+  } else {
+    await ctx.reply(`❌ Пользователь <code>${targetId}</code> не найден среди VIP.`, { parse_mode: "HTML" });
+  }
+});
+
+bot.command("broadcast", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const text = ctx.message.text.replace(/^\/broadcast(\s+)?/i, "").trim();
+  if (!text) {
+    return ctx.reply("Формат: <code>/broadcast &lt;текст сообщения&gt;</code>\nПоддерживается HTML разметка.", { parse_mode: "HTML" });
+  }
+
+  await ctx.reply("🚀 <b>Запуск массовой рассылки...</b> Пожалуйста, подождите.", { parse_mode: "HTML" });
+
+  const result = await broadcastMessage(bot, text);
+  await ctx.reply(
+    `📢 <b>РАССЫЛКА ЗАВЕРШЕНА!</b>\n\n` +
+    `• Всего пользователей: <code>${result.total}</code>\n` +
+    `• Успешно доставлено: <code>${result.sent}</code> ✅\n` +
+    `• Ошибок (заблокировали бота): <code>${result.failed}</code> ❌`,
+    { parse_mode: "HTML" }
+  );
+});
+
+bot.command("stats", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const stats = getFullAdminStats();
+  const uptimeH = Math.floor(stats.uptimeSeconds / 3600);
+  const uptimeM = Math.floor((stats.uptimeSeconds % 3600) / 60);
+
+  await ctx.reply(
+    `📊 <b>СТАТИСТИКА БОТА • ПАНЕЛЬ AKILUM</b> ⚡\n\n` +
+    `👥 Всего пользователей: <code>${stats.totalUsers}</code>\n` +
+    `🔥 Активных за 24ч: <code>${stats.activeToday}</code>\n` +
+    `👑 VIP подписчиков: <code>${stats.vipCount}</code>\n` +
+    `⭐️ Заработано Stars: <code>${stats.totalStarsEarned} ⭐️</code>\n` +
+    `⚡ Дневной лимит энергии: <code>${stats.dailyFreeLimit}</code>\n` +
+    `⏱ Аптайм сервера: <code>${uptimeH}ч ${uptimeM}мин</code>`,
+    { parse_mode: "HTML" }
+  );
+});
+
+bot.command("setlimit", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  const num = parseInt(parts[1], 10);
+  if (isNaN(num) || num < 1 || num > 500) {
+    return ctx.reply("Укажи число от 1 до 500. Пример: <code>/setlimit 30</code>", { parse_mode: "HTML" });
+  }
+
+  botSettings.dailyFreeLimit = num;
+  saveSettings();
+  await ctx.reply(`⚡ <b>Дневной лимит бесплатной энергии изменен на ${num} запросов!</b>`, { parse_mode: "HTML" });
 });
 
 // Мониторинг нейро-движков и емкости для класса
@@ -835,7 +1312,8 @@ async function handleIncoming(
 
   const userId = ctx.from?.id;
   const isGroup = ctx.chat.type !== "private";
-  let access = { allowed: true, isVip: false, remaining: DAILY_FREE_LIMIT };
+  const currentDailyLimit = botSettings.dailyFreeLimit || DAILY_FREE_LIMIT;
+  let access = { allowed: true, isVip: false, remaining: currentDailyLimit, limit: currentDailyLimit };
 
   if (userId) {
     if (activeUsers.has(userId)) {
@@ -846,15 +1324,18 @@ async function handleIncoming(
     access = checkUserAccess(userId, isGroup);
     if (!access.allowed) {
       const payKb = new InlineKeyboard()
+        .text("🍜 Рамен с чили (15 ⭐️)", "buy_tip_15")
+        .text("⚡ VIP 7 дней (25 ⭐️)", "buy_vip_week")
+        .row()
         .text("⭐️ Взять VIP на месяц (75 ⭐️)", "buy_vip_month")
         .row()
-        .text("👑 Навсегда VIP (250 ⭐️)", "buy_vip_forever")
+        .text("👑 Навсегда VIP (-20% • 199 ⭐️)", "buy_vip_forever")
         .row()
         .text("✨ Все тарифы", "open_vip_menu");
 
       await ctx.reply(
         `⚡ <b>Ой, Дарлинг, твоя бесплатная энергия на сегодня закончилась!</b> 🔋\n\n` +
-        `Ты израсходовал все <b>${DAILY_FREE_LIMIT}</b> бесплатных зарядов молний на сегодня. Мои они-рожки немного перегрелись!\n\n` +
+        `Ты израсходовал все <b>${access.limit || currentDailyLimit}</b> бесплатных зарядов молний на сегодня. Мои они-рожки немного перегрелись!\n\n` +
         `👑 <b>Хочешь общаться без ограничений?</b>\n` +
         `Включи <b>VIP-статус</b> через официальные Telegram Stars ⭐️:\n` +
         `• Полный безлимит на решения задач, код и генерации\n` +
@@ -2575,16 +3056,30 @@ bot.on("message:new_chat_members", async (ctx) => {
 
 initProactiveScheduler(bot, getSmartSticker);
 
-// Запуск WebApp сервера для Telegram Mini App
+// Запуск WebApp сервера для Telegram Mini App & Admin Panel
 startWebAppServer(Number(process.env.PORT) || 3000, {
   bot,
   isUserVip,
+  setUserVip,
+  removeUserVip,
+  getAllVips,
   getUserDailyUsage,
-  DAILY_FREE_LIMIT,
+  resetUserDailyUsage,
+  resetAllDailyUsages,
+  DAILY_FREE_LIMIT: botSettings.dailyFreeLimit || DAILY_FREE_LIMIT,
   recordInteraction,
   getLiveMarketRates,
   getLiveWeather,
   searchMusicTrack,
+  ADMIN_USERNAME,
+  ADMIN_PASSWORD,
+  createAdminSession,
+  isValidAdminSession,
+  getFullAdminStats,
+  getAllUsersList,
+  broadcastMessage,
+  botSettings,
+  saveSettings,
 });
 
 // Установка кнопки меню WebApp (если URL сконфигурирован)

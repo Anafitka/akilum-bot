@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akilum • Master Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #060811;
+      --bg-surface: rgba(15, 23, 42, 0.75);
+      --bg-card: rgba(22, 32, 54, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(0, 255, 136, 0.35);
+      --neon-emerald: #00ff88;
+      --neon-cyan: #00f0ff;
+      --neon-gold: #ffd700;
+      --neon-purple: #a855f7;
+      --neon-pink: #ec4899;
+      --neon-red: #ef4444;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --gold-gradient: linear-gradient(135deg, #ffd700, #ff9100);
+      --emerald-gradient: linear-gradient(135deg, #00ff88, #00d2ff);
+      --purple-gradient: linear-gradient(135deg, #a855f7, #6366f1);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding-bottom: 40px;
+    }
+    .mesh-glow {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: 
+        radial-gradient(circle at 10% 20%, rgba(0, 255, 136, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 90% 15%, rgba(168, 85, 247, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 50% 85%, rgba(0, 240, 255, 0.06) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .grid-lines {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* Login Box */
+    .login-container {
+      max-width: 420px;
+      margin: 80px auto;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glow);
+      border-radius: 24px;
+      padding: 36px 28px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 50px rgba(0, 255, 136, 0.12);
+      text-align: center;
+    }
+    .login-logo {
+      font-size: 48px;
+      margin-bottom: 12px;
+      display: inline-block;
+      filter: drop-shadow(0 0 16px rgba(0, 255, 136, 0.6));
+    }
+    .login-title {
+      font-size: 24px;
+      font-weight: 800;
+      background: var(--emerald-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .login-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 26px;
+    }
+    .form-group {
+      text-align: left;
+      margin-bottom: 18px;
+    }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--neon-emerald);
+      box-shadow: 0 0 14px rgba(0, 255, 136, 0.25);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: var(--emerald-gradient);
+      color: #060811;
+      font-size: 15px;
+      font-weight: 800;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+    }
+    .error-msg {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--neon-red);
+      color: #fca5a5;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* Dashboard Header */
+    .dash-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(16px);
+    }
+    .dash-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .dash-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--emerald-gradient);
+      padding: 2px;
+      box-shadow: 0 0 16px rgba(0, 255, 136, 0.4);
+    }
+    .dash-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .dash-title-wrap h1 {
+      font-size: 20px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-online {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(0, 255, 136, 0.15);
+      border: 1px solid var(--neon-emerald);
+      color: var(--neon-emerald);
+      font-weight: 700;
+    }
+    .badge-admin {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(255, 215, 0, 0.15);
+      border: 1px solid var(--neon-gold);
+      color: var(--neon-gold);
+      font-weight: 700;
+    }
+    .btn-logout {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--neon-red);
+      color: #fca5a5;
+    }
+
+    /* Metric Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 20px;
+      backdrop-filter: blur(12px);
+      position: relative;
+      overflow: hidden;
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 3px;
+    }
+    .metric-card.green::before { background: var(--emerald-gradient); }
+    .metric-card.purple::before { background: var(--purple-gradient); }
+    .metric-card.gold::before { background: var(--gold-gradient); }
+    .metric-card.cyan::before { background: linear-gradient(135deg, #00f0ff, #3b82f6); }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .metric-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .metric-icon {
+      font-size: 20px;
+    }
+    .metric-val {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .metric-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Tabs Bar */
+    .tabs-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .tab-btn {
+      padding: 10px 18px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+    }
+    .tab-btn.active {
+      background: var(--emerald-gradient);
+      color: #060811;
+      border-color: transparent;
+      box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
+    }
+
+    /* Content Cards */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      margin-bottom: 24px;
+    }
+    .panel-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Form Controls */
+    .row-form {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 20px;
+    }
+    .flex-1 { flex: 1; min-width: 200px; }
+    .btn-action {
+      padding: 12px 20px;
+      background: var(--emerald-gradient);
+      color: #060811;
+      font-weight: 800;
+      font-size: 14px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-action:hover {
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--neon-red);
+      color: #fca5a5;
+    }
+    .btn-danger:hover {
+      background: var(--neon-red);
+      color: #fff;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    th {
+      padding: 12px 14px;
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--text-secondary);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+    }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .status-active {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: rgba(0, 255, 136, 0.15);
+      color: var(--neon-emerald);
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .status-forever {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: rgba(255, 215, 0, 0.15);
+      color: var(--neon-gold);
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .status-expired {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 8px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      margin-right: 4px;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Broadcast Tab */
+    .template-chips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .chip {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      background: rgba(0, 255, 136, 0.1);
+      border-color: var(--neon-emerald);
+      color: var(--neon-emerald);
+    }
+    textarea.form-input {
+      min-height: 120px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      border: 1px solid var(--neon-emerald);
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="mesh-glow"></div>
+  <div class="grid-lines"></div>
+
+  <!-- Экран авторизации -->
+  <div id="loginSection" class="login-container">
+    <div class="login-logo">👑⚡</div>
+    <h1 class="login-title">Akilum Master Hub</h1>
+    <p class="login-subtitle">Центр управления они-принцессой Лам</p>
+
+    <div id="loginError" class="error-msg">Неверный логин или пароль</div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Логин Создателя</label>
+        <input type="text" id="loginUser" class="form-input" placeholder="Akilum" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Секретный пароль</label>
+        <input type="password" id="loginPass" class="form-input" placeholder="••••••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login">⚡ Войти в панель</button>
+    </form>
+  </div>
+
+  <!-- Главный Дашборд -->
+  <div id="dashSection" class="wrapper" style="display: none;">
+    <!-- Шапка -->
+    <header class="dash-header">
+      <div class="dash-brand">
+        <div class="dash-avatar">
+          <img src="/avatar.jpg" alt="Akilum">
+        </div>
+        <div class="dash-title-wrap">
+          <h1>
+            Akilum Admin
+            <span class="badge-online">● Онлайн</span>
+            <span class="badge-admin">👑 Создатель</span>
+          </h1>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+            Полный контроль над базой, VIP-подписками и рассылками
+          </p>
+        </div>
+      </div>
+      <div>
+        <button class="btn-logout" onclick="handleLogout()">🚪 Выйти</button>
+      </div>
+    </header>
+
+    <!-- Метрики -->
+    <div class="metrics-grid">
+      <div class="metric-card green">
+        <div class="metric-header">
+          <span class="metric-label">Пользователей</span>
+          <span class="metric-icon">👥</span>
+        </div>
+        <div class="metric-val" id="statUsers">--</div>
+        <div class="metric-sub">Уникальных диалогов в базе</div>
+      </div>
+      <div class="metric-card cyan">
+        <div class="metric-header">
+          <span class="metric-label">Активно за 24ч</span>
+          <span class="metric-icon">⚡</span>
+        </div>
+        <div class="metric-val" id="statActive">--</div>
+        <div class="metric-sub">Пользователей сегодня</div>
+      </div>
+      <div class="metric-card gold">
+        <div class="metric-header">
+          <span class="metric-label">VIP Дарлингов</span>
+          <span class="metric-icon">👑</span>
+        </div>
+        <div class="metric-val" id="statVips">--</div>
+        <div class="metric-sub">С безлимитом и короной</div>
+      </div>
+      <div class="metric-card purple">
+        <div class="metric-header">
+          <span class="metric-label">Заработано Stars</span>
+          <span class="metric-icon">⭐️</span>
+        </div>
+        <div class="metric-val" id="statStars">--</div>
+        <div class="metric-sub">Telegram Stars доход</div>
+      </div>
+    </div>
+
+    <!-- Вкладки -->
+    <nav class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('vips')">👑 Управление VIP</button>
+      <button class="tab-btn" onclick="switchTab('broadcast')">📢 Рассылка (Broadcast)</button>
+      <button class="tab-btn" onclick="switchTab('users')">👥 Все пользователи</button>
+      <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки бота</button>
+    </nav>
+
+    <!-- Вкладка 1: Управление VIP -->
+    <div id="tab-vips" class="card-panel">
+      <h2 class="panel-title">✨ Выдача VIP статуса</h2>
+      <form id="giveVipForm" onsubmit="handleGiveVip(event)" class="row-form">
+        <div class="flex-1">
+          <label class="form-label">Telegram User ID</label>
+          <input type="text" id="vipUserId" class="form-input" placeholder="Например: 123456789" required>
+        </div>
+        <div style="min-width: 170px;">
+          <label class="form-label">Тариф / Срок</label>
+          <select id="vipDays" class="form-input">
+            <option value="7">⚡ 7 дней (Пробный)</option>
+            <option value="30" selected>⭐️ 30 дней (Месяц)</option>
+            <option value="90">💎 90 дней (Квартал)</option>
+            <option value="-1">👑 Навсегда (Forever)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-action">👑 Выдать VIP</button>
+      </form>
+
+      <h2 class="panel-title" style="margin-top: 28px;">📋 Список активных VIP-пользователей</h2>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Имя / Username</th>
+              <th>Статус</th>
+              <th>Срок окончания</th>
+              <th>Оплачено Stars</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="vipsTableBody">
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка VIP пользователей...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Вкладка 2: Рассылка (Broadcast) -->
+    <div id="tab-broadcast" class="card-panel" style="display: none;">
+      <h2 class="panel-title">📢 Массовая рассылка всем пользователям</h2>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+        Сообщение будет отправлено каждому пользователю, который хоть раз запускал бота. Поддерживается форматирование Telegram HTML (&lt;b&gt;, &lt;i&gt;, &lt;code&gt;, ссылки).
+      </p>
+
+      <div class="template-chips">
+        <span class="chip" onclick="applyTemplate('promo')">🎁 Скидка на VIP</span>
+        <span class="chip" onclick="applyTemplate('feature')">✨ Новая возможность</span>
+        <span class="chip" onclick="applyTemplate('morning')">☀️ Утренний привет от Лам</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Текст сообщения</label>
+        <textarea id="broadcastText" class="form-input" placeholder="Привет, Дарлинг! ✨ У меня для тебя классная новость..."></textarea>
+      </div>
+
+      <button type="button" class="btn-action" onclick="handleSendBroadcast()">🚀 Запустить рассылку</button>
+      <div id="broadcastResult" style="margin-top: 14px; font-size: 13px; color: var(--neon-emerald); display: none;"></div>
+    </div>
+
+    <!-- Вкладка 3: База пользователей -->
+    <div id="tab-users" class="card-panel" style="display: none;">
+      <h2 class="panel-title">👥 Недавние пользователи бота</h2>
+      <div class="form-group" style="max-width: 320px; margin-bottom: 16px;">
+        <input type="text" id="searchUser" class="form-input" placeholder="🔍 Поиск по ID или имени..." oninput="filterUsersTable()">
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Имя / Контакт</th>
+              <th>Запросов</th>
+              <th>Любовь</th>
+              <th>VIP</th>
+              <th>Действие</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка базы...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Вкладка 4: Настройки бота -->
+    <div id="tab-settings" class="card-panel" style="display: none;">
+      <h2 class="panel-title">⚙️ Глобальные настройки системы</h2>
+      <div class="row-form">
+        <div class="flex-1">
+          <label class="form-label">Бесплатный лимит энергии в день</label>
+          <input type="number" id="settingFreeLimit" class="form-input" min="5" max="500" value="30">
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Сколько бесплатных запросов получают обычные пользователи каждые 24 часа.</p>
+        </div>
+        <button class="btn-action" onclick="saveSettings()">💾 Сохранить лимит</button>
+      </div>
+
+      <h2 class="panel-title" style="margin-top: 24px;">🔧 Быстрые действия</h2>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn-action btn-danger" onclick="handleResetAllLimits()">⚡ Сбросить дневные лимиты всем</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast-msg">✨ Сохранено!</div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let allUsersData = [];
+
+    function showToast(text) {
+      const t = document.getElementById("toast");
+      t.innerText = text;
+      t.style.display = "flex";
+      setTimeout(() => { t.style.display = "none"; }, 3000);
+    }
+
+    function getToken() {
+      // Поддерживаем токен из URL параметра ?token=... или из localStorage
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get("token");
+      if (urlToken) {
+        localStorage.setItem("akilum_token", urlToken);
+        return urlToken;
+      }
+      return localStorage.getItem("akilum_token");
+    }
+
+    async function apiRequest(path, method = "GET", body = null) {
+      const token = getToken();
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(`${API_BASE}${path}`, opts);
+      if (res.status === 401) {
+        localStorage.removeItem("akilum_token");
+        showLogin();
+        throw new Error("Unauthorized");
+      }
+      return res.json();
+    }
+
+    async function checkAuth() {
+      const token = getToken();
+      if (!token) {
+        showLogin();
+        return;
+      }
+      try {
+        const res = await apiRequest("/api/admin/check-auth");
+        if (res && res.ok) {
+          showDashboard();
+          loadDashboardData();
+        } else {
+          showLogin();
+        }
+      } catch (e) {
+        showLogin();
+      }
+    }
+
+    function showLogin() {
+      document.getElementById("loginSection").style.display = "block";
+      document.getElementById("dashSection").style.display = "none";
+    }
+
+    function showDashboard() {
+      document.getElementById("loginSection").style.display = "none";
+      document.getElementById("dashSection").style.display = "block";
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const user = document.getElementById("loginUser").value.trim();
+      const pass = document.getElementById("loginPass").value.trim();
+      const errEl = document.getElementById("loginError");
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const data = await res.json();
+        if (data.ok && data.token) {
+          localStorage.setItem("akilum_token", data.token);
+          errEl.style.display = "none";
+          showDashboard();
+          loadDashboardData();
+        } else {
+          errEl.innerText = data.error || "Неверный логин или пароль";
+          errEl.style.display = "block";
+        }
+      } catch (err) {
+        errEl.innerText = "Ошибка соединения с сервером";
+        errEl.style.display = "block";
+      }
+    }
+
+    function handleLogout() {
+      localStorage.removeItem("akilum_token");
+      showLogin();
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      event.target.classList.add("active");
+
+      document.getElementById("tab-vips").style.display = tabName === "vips" ? "block" : "none";
+      document.getElementById("tab-broadcast").style.display = tabName === "broadcast" ? "block" : "none";
+      document.getElementById("tab-users").style.display = tabName === "users" ? "block" : "none";
+      document.getElementById("tab-settings").style.display = tabName === "settings" ? "block" : "none";
+    }
+
+    async function loadDashboardData() {
+      try {
+        const stats = await apiRequest("/api/admin/stats");
+        if (stats) {
+          document.getElementById("statUsers").innerText = stats.totalUsers || 0;
+          document.getElementById("statActive").innerText = stats.activeToday || 0;
+          document.getElementById("statVips").innerText = stats.vipCount || 0;
+          document.getElementById("statStars").innerText = (stats.totalStarsEarned || 0) + " ⭐️";
+          if (stats.dailyFreeLimit) {
+            document.getElementById("settingFreeLimit").value = stats.dailyFreeLimit;
+          }
+        }
+        loadVipsTable();
+        loadUsersTable();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function loadVipsTable() {
+      const tbody = document.getElementById("vipsTableBody");
+      try {
+        const data = await apiRequest("/api/admin/vips");
+        if (!data || !data.vips || data.vips.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Активных VIP пока нет. Выдайте первый VIP через форму выше!</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.vips.map(v => {
+          let statusBadge = "";
+          let expireText = "";
+          if (v.permanent) {
+            statusBadge = `<span class="status-forever">👑 Навсегда</span>`;
+            expireText = "Бессрочно";
+          } else if (v.expiresAt && v.expiresAt > Date.now()) {
+            statusBadge = `<span class="status-active">Активен</span>`;
+            expireText = new Date(v.expiresAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+          } else {
+            statusBadge = `<span class="status-expired">Истёк</span>`;
+            expireText = "Срок вышел";
+          }
+
+          const name = v.name || v.username || "Дарлинг";
+          const stars = v.starsPaid ? `${v.starsPaid} ⭐️` : "Подарок Создателя";
+
+          return `
+            <tr>
+              <td><code>${v.userId}</code></td>
+              <td><b>${name}</b> ${v.username ? `<span style="color: var(--text-muted)">(@${v.username})</span>` : ""}</td>
+              <td>${statusBadge}</td>
+              <td>${expireText}</td>
+              <td>${stars}</td>
+              <td>
+                <button class="btn-sm" onclick="quickExtendVip('${v.userId}', 30)">+30 дней</button>
+                <button class="btn-sm" style="color: #fca5a5" onclick="quickTakeVip('${v.userId}')">Снять</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--neon-red);">Ошибка загрузки данных VIP</td></tr>`;
+      }
+    }
+
+    async function handleGiveVip(e) {
+      e.preventDefault();
+      const userId = document.getElementById("vipUserId").value.trim();
+      const days = parseInt(document.getElementById("vipDays").value);
+      if (!userId) return;
+
+      try {
+        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
+        if (res.ok) {
+          showToast(`👑 VIP успешно выдан пользователю ${userId}!`);
+          document.getElementById("vipUserId").value = "";
+          loadDashboardData();
+        } else {
+          alert(res.error || "Ошибка выдачи VIP");
+        }
+      } catch (err) {
+        alert("Ошибка сети при выдаче VIP");
+      }
+    }
+
+    async function quickExtendVip(userId, days) {
+      try {
+        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
+        if (res.ok) {
+          showToast(`👑 VIP продлён на +${days} дней!`);
+          loadDashboardData();
+        }
+      } catch (e) { alert("Ошибка продления"); }
+    }
+
+    async function quickTakeVip(userId) {
+      if (!confirm(`Вы уверены, что хотите снять VIP статус у пользователя ${userId}?`)) return;
+      try {
+        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
+        if (res.ok) {
+          showToast(`❌ VIP статус снят.`);
+          loadDashboardData();
+        }
+      } catch (e) { alert("Ошибка снятия VIP"); }
+    }
+
+    async function loadUsersTable() {
+      const tbody = document.getElementById("usersTableBody");
+      try {
+        const data = await apiRequest("/api/admin/users");
+        allUsersData = data.users || [];
+        renderUsersTable(allUsersData);
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Ошибка загрузки пользователей</td></tr>`;
+      }
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById("usersTableBody");
+      if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Пользователей пока нет</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = users.slice(0, 50).map(u => {
+        const vipBadge = u.isVip ? `<span class="status-active">VIP 👑</span>` : `<span style="color: var(--text-muted)">Нет</span>`;
+        return `
+          <tr>
+            <td><code>${u.userId}</code></td>
+            <td><b>${u.name || "Пользователь"}</b> ${u.username ? `(@${u.username})` : ""}</td>
+            <td>${u.count || 0}</td>
+            <td>${u.loveLevel || 75}%</td>
+            <td>${vipBadge}</td>
+            <td>
+              <button class="btn-sm" onclick="setVipInput('${u.userId}')">Выдать VIP</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function setVipInput(userId) {
+      document.getElementById("vipUserId").value = userId;
+      switchTab('vips');
+      window.scrollTo({ top: 300, behavior: "smooth" });
+    }
+
+    function filterUsersTable() {
+      const q = document.getElementById("searchUser").value.toLowerCase().trim();
+      if (!q) {
+        renderUsersTable(allUsersData);
+        return;
+      }
+      const filtered = allUsersData.filter(u => 
+        String(u.userId).includes(q) || 
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.username && u.username.toLowerCase().includes(q))
+      );
+      renderUsersTable(filtered);
+    }
+
+    function applyTemplate(type) {
+      const area = document.getElementById("broadcastText");
+      if (type === "promo") {
+        area.value = "⚡ <b>ГОРЯЧАЯ АКЦИЯ ОТ ЛАМ!</b> 💚👑\n\nТолько сегодня вечный VIP-статус и бесконечная энергия со скидкой 20%! Напиши команду /vip прямо сейчас и забери свою золотую корону 💕";
+      } else if (type === "feature") {
+        area.value = "✨ <b>ОБНОВЛЕНИЕ ОНИ-ПРИНЦЕССЫ!</b> ⚡\n\nДарлинг, я научилась рисовать ультра-красивые арты и генерировать картинки в HD! Напиши мне <code>/art они-принцесса в неоновом городе</code> и оцени мой шедевр 🎨💕";
+      } else if (type === "morning") {
+        area.value = "☀️ <b>Доброе утро, Дарлинг!</b> 💕\n\nНадеюсь, ты выспался? Я уже зарядила свои они-рожки на 100 000 Вольт и готова помогать тебе с учёбой, кодом и любыми задачами! Как твоё настроение сегодня? ✨";
+      }
+    }
+
+    async function handleSendBroadcast() {
+      const text = document.getElementById("broadcastText").value.trim();
+      if (!text) return alert("Введите текст сообщения для рассылки!");
+      if (!confirm("Вы уверены, что хотите запустить рассылку по ВСЕМ пользователям бота?")) return;
+
+      const resEl = document.getElementById("broadcastResult");
+      resEl.style.display = "block";
+      resEl.innerText = "⏳ Рассылка выполняется... Пожалуйста, не закрывайте страницу.";
+
+      try {
+        const res = await apiRequest("/api/admin/broadcast", "POST", { text });
+        if (res.ok) {
+          resEl.innerText = `✅ Рассылка завершена! Доставлено: ${res.sent} из ${res.total} (ошибок: ${res.failed}).`;
+          showToast("Рассылка успешно выполнена!");
+        } else {
+          resEl.innerText = "Ошибка рассылки: " + (res.error || "Неизвестная ошибка");
+        }
+      } catch (err) {
+        resEl.innerText = "Ошибка соединения при рассылке";
+      }
+    }
+
+    async function saveSettings() {
+      const freeLimit = parseInt(document.getElementById("settingFreeLimit").value);
+      try {
+        const res = await apiRequest("/api/admin/settings", "POST", { dailyFreeLimit: freeLimit });
+        if (res.ok) {
+          showToast("⚙️ Настройки сохранены!");
+        }
+      } catch (e) { alert("Ошибка сохранения настроек"); }
+    }
+
+    async function handleResetAllLimits() {
+      if (!confirm("Сбросить ежедневную энергию всем пользователям?")) return;
+      try {
+        const res = await apiRequest("/api/admin/reset-limits", "POST");
+        if (res.ok) {
+          showToast("⚡ Все лимиты энергии сброшены!");
+        }
+      } catch (e) { alert("Ошибка сброса"); }
+    }
+
+    // Инициализация при загрузке
+    checkAuth();
+  </script>
+</body>
+</html>

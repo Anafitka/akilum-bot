@@ -555,13 +555,16 @@ function saveUserStats() {
   }
 }
 
-function recordInteraction(userId) {
+function recordInteraction(userId, meta = {}) {
   const stats = loadUserStats();
   const id = String(userId);
   if (!stats[id]) {
     stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
   }
   stats[id].count += 1;
+  stats[id].lastSeen = Date.now();
+  if (meta.name) stats[id].name = meta.name;
+  if (meta.username) stats[id].username = meta.username;
   if (stats[id].count % 2 === 0 && stats[id].loveLevel < 100) {
     stats[id].loveLevel += 1;
   }
@@ -604,4 +607,6 @@ module.exports = {
   recordInteraction,
   recordLightningBolt,
   renderProgressBar,
+  loadUserStats,
+  saveUserStats,
 };

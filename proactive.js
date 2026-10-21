@@ -231,4 +231,6 @@ module.exports = {
   getProactiveStatus,
   initProactiveScheduler,
   checkAndSendProactive,
+  loadChats,
+  saveChats,
 };

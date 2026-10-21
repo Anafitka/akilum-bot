@@ -600,6 +600,8 @@ bot.on("message:successful_payment", async (ctx) => {
     setUserVip(userId, 30, 75);
   } else if (payload === "payload_vip_forever") {
     setUserVip(userId, -1, 250);
+  } else if (payload === "payload_energy_50") {
+    resetUserDailyUsage(userId);
   } else {
     setUserVip(userId, 7, 25);
   }
@@ -2358,7 +2360,13 @@ bot.on("message:new_chat_members", async (ctx) => {
 initProactiveScheduler(bot, getSmartSticker);
 
 // Запуск WebApp сервера для Telegram Mini App
-startWebAppServer();
+startWebAppServer(Number(process.env.PORT) || 3000, {
+  bot,
+  isUserVip,
+  getUserDailyUsage,
+  DAILY_FREE_LIMIT,
+  recordInteraction,
+});
 
 // Установка кнопки меню WebApp (если URL сконфигурирован)
 const activeWebAppUrl = getWebAppUrl();

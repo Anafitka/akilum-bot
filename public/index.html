@@ -3,23 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Лам 💚</title>
+  <title>Лам • Они-Принцесса 💚</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
       --bg: #070913;
-      --card: rgba(18, 24, 38, 0.85);
+      --card-bg: rgba(17, 24, 39, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
       --neon-green: #00ff88;
       --neon-cyan: #00f0ff;
       --neon-gold: #ffd700;
-      --text: #e2e8f0;
+      --neon-pink: #ff2d78;
+      --text: #f1f5f9;
       --text-muted: #94a3b8;
+      --gold-gradient: linear-gradient(135deg, #ffd700, #ff8800);
+      --green-gradient: linear-gradient(135deg, #00ff88, #00b4d8);
+      --card-radius: 18px;
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
@@ -28,16 +33,18 @@
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
-      padding-bottom: 70px;
+      padding-bottom: 90px;
     }
-    /* Animated Cyberpunk Grid Background */
-    .cyber-grid {
+    /* Cyberpunk Grid Background */
+    .cyber-bg {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
       background-image: 
-        linear-gradient(to right, rgba(0, 255, 136, 0.05) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0, 240, 255, 0.05) 1px, transparent 1px);
-      background-size: 30px 30px;
+        radial-gradient(circle at 10% 20%, rgba(0, 255, 136, 0.07) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.07) 0%, transparent 40%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 28px 28px, 28px 28px;
       pointer-events: none;
       z-index: 0;
     }
@@ -48,72 +55,200 @@
       max-width: 480px;
       margin: 0 auto;
     }
-    /* Header Card */
-    .hero-card {
-      background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 240, 255, 0.1));
-      border: 1px solid rgba(0, 255, 136, 0.3);
-      border-radius: 20px;
-      padding: 18px;
-      text-align: center;
-      box-shadow: 0 0 25px rgba(0, 255, 136, 0.2);
-      margin-bottom: 16px;
-      backdrop-filter: blur(10px);
+
+    /* Top User Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding: 4px 2px;
     }
-    .lum-avatar {
-      width: 90px;
-      height: 90px;
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-avatar {
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      border: 3px solid var(--neon-green);
-      box-shadow: 0 0 20px var(--neon-green);
-      margin: 0 auto 10px;
+      background: linear-gradient(135deg, #00ff88, #00f0ff);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 42px;
-      background: radial-gradient(circle, #1a365d, #0f172a);
+      font-size: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+    }
+    .user-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .user-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .badge-pill {
+      background: rgba(0, 255, 136, 0.12);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      color: var(--neon-green);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: 0.3px;
+    }
+    .badge-pill.vip {
+      background: rgba(255, 215, 0, 0.15);
+      border-color: rgba(255, 215, 0, 0.4);
+      color: var(--neon-gold);
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.25);
+    }
+
+    /* Tab Sections */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Hero / Interactive Clicker Card */
+    .hero-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      padding: 20px 16px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      margin-bottom: 16px;
+      backdrop-filter: blur(16px);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-card::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle, rgba(0, 255, 136, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .lum-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      border: 3px solid var(--neon-green);
+      box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      background: radial-gradient(circle, #1e3a8a, #0b1329);
       cursor: pointer;
-      transition: transform 0.1s ease;
+      transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     .lum-avatar:active {
-      transform: scale(0.92);
+      transform: scale(0.9);
+      box-shadow: 0 0 35px var(--neon-green);
     }
     .hero-title {
       font-size: 20px;
       font-weight: 800;
       color: #fff;
-      text-shadow: 0 0 10px var(--neon-green);
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
     }
-    .hero-subtitle {
+    .hero-quote {
       font-size: 13px;
       color: var(--neon-cyan);
-      margin-top: 4px;
+      margin-top: 5px;
+      min-height: 20px;
+      font-style: italic;
     }
     .stat-row {
       display: flex;
       justify-content: space-around;
-      margin-top: 14px;
-      padding-top: 12px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
     }
     .stat-box {
       text-align: center;
     }
     .stat-val {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 17px;
+      font-weight: 800;
       color: var(--neon-gold);
     }
     .stat-lbl {
       font-size: 11px;
       color: var(--text-muted);
+      margin-top: 2px;
     }
 
-    /* Section Headers */
-    .section-title {
+    /* VIP Banner on Home Tab */
+    .vip-banner {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 136, 0, 0.1));
+      border: 1px solid rgba(255, 215, 0, 0.35);
+      border-radius: var(--card-radius);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    .vip-banner:active {
+      transform: scale(0.98);
+    }
+    .vip-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .vip-banner-icon {
+      font-size: 28px;
+    }
+    .vip-banner-title {
       font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .vip-banner-desc {
+      font-size: 11px;
+      color: var(--neon-gold);
+      margin-top: 2px;
+    }
+    .vip-banner-btn {
+      background: var(--gold-gradient);
+      color: #070913;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 8px 14px;
+      border-radius: 12px;
+      white-space: nowrap;
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Section Titles */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
+      letter-spacing: 1.2px;
       color: var(--neon-cyan);
       margin: 18px 0 10px;
       display: flex;
@@ -124,45 +259,207 @@
       content: '';
       flex: 1;
       height: 1px;
-      background: linear-gradient(to right, rgba(0, 240, 255, 0.4), transparent);
+      background: linear-gradient(to right, rgba(0, 240, 255, 0.3), transparent);
     }
 
-    /* Cyber Grid Buttons */
+    /* Grid Action Cards */
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
     }
-    .cyber-btn {
-      background: var(--card);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 14px;
+    .action-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
       padding: 14px 12px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      text-align: center;
+      align-items: flex-start;
       gap: 6px;
       cursor: pointer;
-      transition: all 0.2s ease;
-      backdrop-filter: blur(8px);
+      transition: all 0.15s ease;
+      backdrop-filter: blur(12px);
     }
-    .cyber-btn:active {
+    .action-card:active {
       transform: scale(0.96);
       border-color: var(--neon-green);
-      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.08);
     }
-    .cyber-btn .icon {
+    .action-card .icon {
       font-size: 26px;
+      margin-bottom: 2px;
     }
-    .cyber-btn .title {
+    .action-card .title {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: #fff;
     }
-    .cyber-btn .desc {
-      font-size: 10px;
+    .action-card .desc {
+      font-size: 11px;
       color: var(--text-muted);
+      line-height: 1.3;
+    }
+
+    /* ================= SHOP TAB STYLES ================= */
+    .shop-header {
+      text-align: center;
+      margin-bottom: 18px;
+      padding: 10px 0;
+    }
+    .shop-crown {
+      font-size: 42px;
+      filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.6));
+      animation: floatCrown 2.5s ease-in-out infinite alternate;
+    }
+    @keyframes floatCrown {
+      from { transform: translateY(0); }
+      to { transform: translateY(-6px); }
+    }
+    .shop-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      margin-top: 6px;
+    }
+    .shop-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Pricing Cards */
+    .price-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      padding: 18px;
+      margin-bottom: 14px;
+      position: relative;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+      transition: transform 0.15s ease;
+    }
+    .price-card.featured {
+      border: 1.5px solid rgba(255, 215, 0, 0.5);
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(17, 24, 39, 0.85));
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+    }
+    .ribbon {
+      position: absolute;
+      top: 14px; right: 14px;
+      background: var(--gold-gradient);
+      color: #070913;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 8px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .ribbon.cyan {
+      background: var(--green-gradient);
+    }
+    .price-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .price-card-icon {
+      font-size: 32px;
+    }
+    .price-card-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .price-card-amount {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--neon-gold);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+    .price-features {
+      list-style: none;
+      margin: 12px 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .price-features li {
+      font-size: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .price-features li span {
+      color: var(--neon-green);
+      font-weight: 800;
+    }
+    .buy-btn {
+      width: 100%;
+      background: var(--gold-gradient);
+      border: none;
+      color: #070913;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 13px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 4px 18px rgba(255, 215, 0, 0.35);
+      transition: all 0.15s ease;
+    }
+    .buy-btn:active {
+      transform: scale(0.97);
+      filter: brightness(1.1);
+    }
+    .buy-btn.secondary {
+      background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 240, 255, 0.2));
+      border: 1px solid rgba(0, 255, 136, 0.4);
+      color: #fff;
+      box-shadow: none;
+    }
+    .buy-btn.secondary:active {
+      background: rgba(0, 255, 136, 0.3);
+    }
+
+    /* Profile Card */
+    .profile-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      padding: 18px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(16px);
+    }
+    .profile-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 13px;
+    }
+    .profile-row:last-child {
+      border-bottom: none;
+    }
+    .profile-row-label {
+      color: var(--text-muted);
+    }
+    .profile-row-val {
+      font-weight: 700;
+      color: #fff;
     }
 
     /* Floating sparks on tap */
@@ -170,7 +467,7 @@
       position: absolute;
       pointer-events: none;
       animation: flySpark 0.7s forwards ease-out;
-      font-size: 20px;
+      font-size: 22px;
       z-index: 999;
     }
     @keyframes flySpark {
@@ -178,112 +475,405 @@
       100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
     }
 
-    /* Bottom Navigation */
+    /* Modal / Alert Notification */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal-box {
+      background: #0f172a;
+      border: 1px solid var(--neon-green);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+    }
+    .modal-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .modal-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-bottom: 18px;
+    }
+    .modal-btn {
+      width: 100%;
+      background: var(--green-gradient);
+      border: none;
+      color: #070913;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 12px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    /* Bottom Navigation Bar */
     .bottom-nav {
       position: fixed;
       bottom: 0; left: 0; width: 100%;
-      height: 60px;
+      height: 68px;
       background: rgba(11, 15, 25, 0.95);
-      border-top: 1px solid rgba(0, 255, 136, 0.2);
-      backdrop-filter: blur(15px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
       display: flex;
       justify-content: space-around;
       align-items: center;
-      z-index: 10;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 6px);
     }
-    .nav-item {
+    .nav-btn {
       display: flex;
       flex-direction: column;
       align-items: center;
       font-size: 10px;
       color: var(--text-muted);
+      background: none;
+      border: none;
       cursor: pointer;
       gap: 3px;
-      transition: color 0.2s;
+      transition: all 0.2s ease;
+      position: relative;
+      flex: 1;
     }
-    .nav-item.active {
+    .nav-btn .nav-icon {
+      font-size: 22px;
+      transition: transform 0.15s ease;
+    }
+    .nav-btn.active {
       color: var(--neon-green);
     }
-    .nav-item .nav-icon {
-      font-size: 20px;
+    .nav-btn.active .nav-icon {
+      transform: scale(1.15);
+    }
+    .nav-badge {
+      position: absolute;
+      top: -2px;
+      right: 22%;
+      background: var(--neon-pink);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: 10px;
     }
   </style>
 </head>
 <body>
-  <div class="cyber-grid"></div>
+  <div class="cyber-bg"></div>
 
   <div class="container">
-    <!-- Hero / Clicker Card -->
-    <div class="hero-card" id="clickerArea">
-      <div class="lum-avatar" id="lumAvatar">⚡</div>
-      <div class="hero-title">ЛАМ 💚</div>
-      <div class="hero-subtitle" id="lumQuote">«Тапни по мне, Дарлинг, поделюсь зарядом!»</div>
-      
-      <div class="stat-row">
-        <div class="stat-box">
-          <div class="stat-val" id="clickCounter">0</div>
-          <div class="stat-lbl">Искорок</div>
+    <!-- Top Header Bar -->
+    <div class="top-bar">
+      <div class="user-info">
+        <div class="user-avatar" id="topAvatar">⚡</div>
+        <div>
+          <div class="user-name" id="userName">Дарлинг</div>
+          <div class="user-sub" id="userSub">Связь с планетой они ⚡</div>
         </div>
-        <div class="stat-box">
-          <div class="stat-val" id="loveCounter">100%</div>
-          <div class="stat-lbl">Настроение</div>
+      </div>
+      <div class="badge-pill" id="userBadge">
+        <span>🔋</span>
+        <span id="badgeEnergy">20/20</span>
+      </div>
+    </div>
+
+    <!-- ================= TAB 1: ГЛАВНАЯ (HOME) ================= -->
+    <div class="tab-content active" id="tab-home">
+      <!-- Hero / Clicker Card -->
+      <div class="hero-card">
+        <div class="lum-avatar" id="lumAvatar">⚡</div>
+        <div class="hero-title">ЛАМ 💚</div>
+        <div class="hero-quote" id="lumQuote">«Тапни по мне, Дарлинг, поделюсь зарядом!»</div>
+        
+        <div class="stat-row">
+          <div class="stat-box">
+            <div class="stat-val" id="clickCounter">0</div>
+            <div class="stat-lbl">Искорок</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="loveCounter">85%</div>
+            <div class="stat-lbl">Связь</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="energyCounter">20/20</div>
+            <div class="stat-lbl">Энергия</div>
+          </div>
         </div>
-        <div class="stat-box">
-          <div class="stat-val">24/7</div>
-          <div class="stat-lbl">Рядом</div>
+      </div>
+
+      <!-- VIP Teaser Banner -->
+      <div class="vip-banner" onclick="switchTab('shop')">
+        <div class="vip-banner-left">
+          <div class="vip-banner-icon">👑</div>
+          <div>
+            <div class="vip-banner-title">Стань VIP Дарлингом</div>
+            <div class="vip-banner-desc">Безлимит молний + корона</div>
+          </div>
+        </div>
+        <div class="vip-banner-btn">В магазин ⭐️</div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="section-title">🎒 Учёба и задачи</div>
+      <div class="grid-2">
+        <div class="action-card" onclick="sendAction('Реши задачу по фото')">
+          <div class="icon">📚</div>
+          <div class="title">АнтиГДЗ Решебник</div>
+          <div class="desc">Пошаговый разбор задач</div>
+        </div>
+        <div class="action-card" onclick="sendAction('код: калькулятор на python')">
+          <div class="icon">💻</div>
+          <div class="title">Информатика & Код</div>
+          <div class="desc">С окном копирования</div>
+        </div>
+        <div class="action-card" onclick="sendAction('шпора: формулы по физике')">
+          <div class="icon">📝</div>
+          <div class="title">Шпаргалка</div>
+          <div class="desc">Краткая выжимка формул</div>
+        </div>
+        <div class="action-card" onclick="sendAction('/pdf')">
+          <div class="icon">📄</div>
+          <div class="title">Сборщик PDF</div>
+          <div class="desc">Фото тетрадей в 1 файл</div>
+        </div>
+      </div>
+
+      <div class="section-title">✨ Медиа & Музыка</div>
+      <div class="grid-2">
+        <div class="action-card" onclick="sendAction('Как скачать видео с TikTok или Reels?')">
+          <div class="icon">🎬</div>
+          <div class="title">Скачать видео</div>
+          <div class="desc">TikTok, YouTube, Reels</div>
+        </div>
+        <div class="action-card" onclick="sendAction('найди трек')">
+          <div class="icon">🎵</div>
+          <div class="title">Поиск треков</div>
+          <div class="desc">Слушать MP3 превью</div>
         </div>
       </div>
     </div>
 
-    <!-- Quick Tool Actions -->
-    <div class="section-title">🎒 Помощь с учёбой</div>
-    <div class="grid-2">
-      <div class="cyber-btn" onclick="sendAction('шпора: формулы по физике')">
-        <div class="icon">📝</div>
-        <div class="title">Шпаргалка</div>
-        <div class="desc">Формулы и подсказки</div>
+    <!-- ================= TAB 2: МАГАЗИН VIP (SHOP) ================= -->
+    <div class="tab-content" id="tab-shop">
+      <div class="shop-header">
+        <div class="shop-crown">👑</div>
+        <div class="shop-title">МАГАЗИН VIP ДАРЛИНГА</div>
+        <div class="shop-subtitle">Оплата в 1 клик через официальные Telegram Stars ⭐️ без банковских карт и комиссий</div>
       </div>
-      <div class="cyber-btn" onclick="sendAction('/quiz школьная программа')">
-        <div class="icon">🎯</div>
-        <div class="title">Викторина</div>
-        <div class="desc">Тест для разминки</div>
+
+      <!-- Plan 1: 1 Month VIP (Popular) -->
+      <div class="price-card featured">
+        <div class="ribbon">Хит продаж</div>
+        <div class="price-card-header">
+          <div class="price-card-icon">👑</div>
+          <div>
+            <div class="price-card-title">VIP Дарлинг (1 месяц)</div>
+            <div class="price-card-amount">75 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~1.5$)</span></div>
+          </div>
+        </div>
+        <ul class="price-features">
+          <li><span>⚡</span> Полный безлимит на все решения и задачи</li>
+          <li><span>💻</span> Генерация длинного кода без ограничений</li>
+          <li><span>👑</span> Золотая корона VIP в профиле /love</li>
+          <li><span>🚀</span> Наивысший приоритет ответов нейросети</li>
+          <li><span>💬</span> Приоритет в группах на тысячи людей</li>
+        </ul>
+        <button class="buy-btn" id="btn-vip-month" onclick="buyItem('vip_month', 75, 'VIP на 1 месяц')">
+          ⭐️ Получить VIP за 75 Stars
+        </button>
       </div>
-      <div class="cyber-btn" onclick="sendAction('код: калькулятор на python')">
-        <div class="icon">💻</div>
-        <div class="title">Информатика</div>
-        <div class="desc">Помощь с кодом</div>
+
+      <!-- Plan 2: Lifetime VIP -->
+      <div class="price-card">
+        <div class="ribbon cyan">Выгода</div>
+        <div class="price-card-header">
+          <div class="price-card-icon">💎</div>
+          <div>
+            <div class="price-card-title">Навсегда VIP (Lifetime)</div>
+            <div class="price-card-amount">250 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~5.0$)</span></div>
+          </div>
+        </div>
+        <ul class="price-features">
+          <li><span>♾️</span> Вечный VIP статус навсегда</li>
+          <li><span>👑</span> Эксклюзивный статус Легенды у Лам</li>
+          <li><span>⚡</span> Пожизненная безлимитная энергия</li>
+        </ul>
+        <button class="buy-btn" id="btn-vip-forever" onclick="buyItem('vip_forever', 250, 'Вечный VIP')">
+          👑 Купить навсегда за 250 Stars
+        </button>
       </div>
-      <div class="cyber-btn" onclick="sendAction('/roulette')">
-        <div class="icon">🎰</div>
-        <div class="title">Случайный выбор</div>
-        <div class="desc">Мини-игра для друзей</div>
+
+      <!-- Plan 3: Energy Pack -->
+      <div class="price-card">
+        <div class="price-card-header">
+          <div class="price-card-icon">⚡</div>
+          <div>
+            <div class="price-card-title">+50 Молний энергии</div>
+            <div class="price-card-amount">15 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~0.3$)</span></div>
+          </div>
+        </div>
+        <ul class="price-features">
+          <li><span>🔋</span> 50 дополнительных запросов без подписки</li>
+          <li><span>🚀</span> Снятие дневного лимита</li>
+        </ul>
+        <button class="buy-btn secondary" id="btn-energy-50" onclick="buyItem('energy_50', 15, '+50 Молний')">
+          ⚡ Пополнить за 15 Stars
+        </button>
+      </div>
+
+      <!-- Plan 4: Milk Tip -->
+      <div class="price-card">
+        <div class="price-card-header">
+          <div class="price-card-icon">🍓</div>
+          <div>
+            <div class="price-card-title">Клубничное молоко для Лам</div>
+            <div class="price-card-amount">25 ⭐️ <span style="font-size: 13px; color: var(--text-muted); font-weight: normal;">(~0.5$)</span></div>
+          </div>
+        </div>
+        <ul class="price-features">
+          <li><span>💕</span> Угости они-принцессу её любимым лакомством</li>
+          <li><span>💥</span> Получи заряд искр 100 000 Вольт и любовь</li>
+        </ul>
+        <button class="buy-btn secondary" id="btn-tip-25" onclick="buyItem('tip_25', 25, 'Клубничное молоко')">
+          🍓 Угостить за 25 Stars
+        </button>
       </div>
     </div>
 
-    <!-- Media & Fun Actions -->
-    <div class="section-title">✨ Развлечения и уют</div>
-    <div class="grid-2">
-      <div class="cyber-btn" onclick="sendAction('/duel')">
-        <div class="icon">⚔️</div>
-        <div class="title">Дуэль молний</div>
-        <div class="desc">Шутливая битва</div>
-      </div>
-      <div class="cyber-btn" onclick="sendAction('/morning')">
-        <div class="icon">☀️</div>
-        <div class="title">Дайджест</div>
-        <div class="desc">Погода и новости</div>
-      </div>
-      <div class="cyber-btn" onclick="sendAction('курс')">
-        <div class="icon">💎</div>
-        <div class="title">Курсы валют</div>
-        <div class="desc">Доллар, сомы, крипта</div>
-      </div>
-      <div class="cyber-btn" onclick="sendAction('/love')">
-        <div class="icon">💚</div>
-        <div class="title">Наш профиль</div>
-        <div class="desc">Статистика общения</div>
+    <!-- ================= TAB 3: ИГРЫ И ГРУППА (GAMES) ================= -->
+    <div class="tab-content" id="tab-games">
+      <div class="section-title">🎮 Игры для компании и друзей</div>
+      <div class="grid-2">
+        <div class="action-card" onclick="sendAction('/quiz общие школьные знания')">
+          <div class="icon">🎯</div>
+          <div class="title">Викторина (Quiz)</div>
+          <div class="desc">Опрос-тест с баллами</div>
+        </div>
+        <div class="action-card" onclick="sendAction('/duel')">
+          <div class="icon">⚔️</div>
+          <div class="title">Дуэль молний</div>
+          <div class="desc">Битва HP между игроками</div>
+        </div>
+        <div class="action-card" onclick="sendAction('/roulette')">
+          <div class="icon">🎰</div>
+          <div class="title">Они-Рулетка</div>
+          <div class="desc">Забавные наказания</div>
+        </div>
+        <div class="action-card" onclick="sendAction('/roast')">
+          <div class="icon">🔥</div>
+          <div class="title">Они-Прожарка</div>
+          <div class="desc">Юморной подкол друга</div>
+        </div>
+        <div class="action-card" onclick="sendAction('шар судьбы: получу ли я пять?')">
+          <div class="icon">🔮</div>
+          <div class="title">Шар судьбы</div>
+          <div class="desc">Ответ на любой вопрос</div>
+        </div>
+        <div class="action-card" onclick="sendAction('нарисуй красивый неоновый арт')">
+          <div class="icon">🎨</div>
+          <div class="title">Нейро-Арт</div>
+          <div class="desc">Создание картинок и аватарок</div>
+        </div>
+        <div class="action-card" onclick="sendAction('курс')">
+          <div class="icon">💎</div>
+          <div class="title">Курс валют</div>
+          <div class="desc">Доллар, сомы, TON, BTC</div>
+        </div>
+        <div class="action-card" onclick="sendAction('погода')">
+          <div class="icon">⛅</div>
+          <div class="title">Погода</div>
+          <div class="desc">Живой метео-радар</div>
+        </div>
       </div>
     </div>
+
+    <!-- ================= TAB 4: ПРОФИЛЬ (PROFILE) ================= -->
+    <div class="tab-content" id="tab-profile">
+      <div class="profile-card">
+        <div style="text-align: center; margin-bottom: 14px;">
+          <div class="lum-avatar" style="width: 72px; height: 72px; font-size: 34px;">💚</div>
+          <div style="font-size: 18px; font-weight: 800;" id="profName">Дарлинг</div>
+          <div style="font-size: 12px; color: var(--neon-cyan); margin-top: 2px;" id="profStatus">Любимый Дарлинг 💕</div>
+        </div>
+
+        <div class="profile-row">
+          <span class="profile-row-label">VIP Статус</span>
+          <span class="profile-row-val" id="profVip">Не активен</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Заряды энергии на сегодня</span>
+          <span class="profile-row-val" id="profEnergy">20 / 20</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Уровень связи</span>
+          <span class="profile-row-val" id="profLove">85%</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-row-label">Выпущено молний</span>
+          <span class="profile-row-val" id="profBolts">0 ⚡</span>
+        </div>
+      </div>
+
+      <button class="buy-btn" onclick="switchTab('shop')" style="margin-bottom: 12px;">
+        ⭐️ Открыть магазин VIP
+      </button>
+
+      <button class="buy-btn secondary" onclick="shareBot()">
+        💌 Поделиться ботом с друзьями
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal / Purchase Notification -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <div class="modal-icon" id="modalIcon">🎉</div>
+      <div class="modal-title" id="modalTitle">Успешно!</div>
+      <div class="modal-desc" id="modalDesc">Твой VIP-статус активирован!</div>
+      <button class="modal-btn" onclick="closeModal()">Отлично! 💚</button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation Bar -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" onclick="switchTab('home')" id="nav-home">
+      <span class="nav-icon">⚡</span>
+      <span>Главная</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('shop')" id="nav-shop">
+      <span class="nav-badge">VIP</span>
+      <span class="nav-icon">⭐️</span>
+      <span>Магазин</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('games')" id="nav-games">
+      <span class="nav-icon">🎮</span>
+      <span>Игры</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('profile')" id="nav-profile">
+      <span class="nav-icon">👤</span>
+      <span>Профиль</span>
+    </button>
   </div>
 
   <script>
@@ -292,8 +882,68 @@
       tg.expand();
       tg.setHeaderColor('#070913');
       tg.setBackgroundColor('#070913');
+      tg.enableClosingConfirmation?.();
     }
 
+    const user = tg?.initDataUnsafe?.user;
+    const userId = user?.id || null;
+    const firstName = user?.first_name || "Дарлинг";
+
+    document.getElementById('userName').textContent = firstName;
+    document.getElementById('profName').textContent = firstName;
+    if (firstName && firstName.length > 0) {
+      document.getElementById('topAvatar').textContent = firstName[0].toUpperCase();
+    }
+
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+
+      const targetTab = document.getElementById('tab-' + tabId);
+      const targetNav = document.getElementById('nav-' + tabId);
+      if (targetTab) targetTab.classList.add('active');
+      if (targetNav) targetNav.classList.add('active');
+
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Load real-time status from bot backend
+    async function fetchUserStatus() {
+      if (!userId) return;
+      try {
+        const res = await fetch(`/api/user-status?userId=${userId}`);
+        const data = await res.json();
+        if (data.ok) {
+          const isVip = data.isVip;
+          const energyStr = isVip ? "∞ Безлимит" : `${data.remainingEnergy}/${data.maxEnergy}`;
+          
+          document.getElementById('badgeEnergy').textContent = isVip ? "VIP 👑" : `${data.remainingEnergy}/${data.maxEnergy}`;
+          document.getElementById('energyCounter').textContent = energyStr;
+          document.getElementById('loveCounter').textContent = `${data.loveLevel}%`;
+          document.getElementById('profLove').textContent = `${data.loveLevel}%`;
+          document.getElementById('profEnergy').textContent = energyStr;
+          document.getElementById('profBolts').textContent = `${data.bolts} ⚡`;
+
+          if (isVip) {
+            const badge = document.getElementById('userBadge');
+            badge.classList.add('vip');
+            badge.innerHTML = `<span>👑</span> <span>VIP Дарлинг</span>`;
+            document.getElementById('profStatus').textContent = "👑 VIP Дарлинг ⭐️";
+            document.getElementById('profVip').textContent = "👑 Активен";
+            document.getElementById('profVip').style.color = "var(--neon-gold)";
+          }
+        }
+      } catch (err) {
+        console.warn("Status fetch notice:", err.message);
+      }
+    }
+    fetchUserStatus();
+
+    // Clicker functionality
     let clicks = 0;
     const quotes = [
       "БЗ-З-Т! Молния в сердце! ⚡",
@@ -312,15 +962,10 @@
       clicks++;
       counterEl.textContent = clicks;
 
-      // Haptic feedback
       if (tg?.HapticFeedback) {
         tg.HapticFeedback.impactOccurred('medium');
       }
-
-      // Random quote
       quoteEl.textContent = `«${quotes[Math.floor(Math.random() * quotes.length)]}»`;
-
-      // Spark particles
       createSpark(e.clientX, e.clientY);
     });
 
@@ -328,16 +973,63 @@
       const spark = document.createElement('div');
       spark.className = 'spark';
       spark.textContent = ['⚡', '✨', '💖', '💥', '💚'][Math.floor(Math.random() * 5)];
-      spark.style.left = `${x - 10}px`;
-      spark.style.top = `${y - 10}px`;
+      spark.style.left = `${x - 12}px`;
+      spark.style.top = `${y - 12}px`;
       
-      const dx = `${(Math.random() - 0.5) * 120}px`;
-      const dy = `${-Math.random() * 80 - 20}px`;
+      const dx = `${(Math.random() - 0.5) * 140}px`;
+      const dy = `${-Math.random() * 90 - 30}px`;
       spark.style.setProperty('--dx', dx);
       spark.style.setProperty('--dy', dy);
 
       document.body.appendChild(spark);
       setTimeout(() => spark.remove(), 700);
+    }
+
+    // Telegram Stars Payment Function
+    async function buyItem(itemType, amount, itemName) {
+      if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('heavy');
+      }
+
+      const btn = document.getElementById(`btn-${itemType.replace('_', '-')}`);
+      const oldText = btn ? btn.innerHTML : "";
+      if (btn) btn.innerHTML = `⏳ Создаю чек на ${amount} ⭐️...`;
+
+      try {
+        const res = await fetch(`/api/create-invoice?type=${itemType}&userId=${userId || ''}`);
+        const data = await res.json();
+
+        if (data.ok && data.invoiceLink) {
+          if (btn) btn.innerHTML = oldText;
+
+          // Native Telegram WebApp Stars Invoice sheet
+          if (tg?.openInvoice) {
+            tg.openInvoice(data.invoiceLink, (status) => {
+              if (status === 'paid') {
+                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                showModal("🎉 ОПЛАТА ПРОШЛА!", `Спасибо, мой Дарлинг! Твой ${itemName} успешно активирован! 👑✨`);
+                fetchUserStatus();
+              } else if (status === 'cancelled') {
+                console.log("Оплата отменена пользователем");
+              } else if (status === 'failed') {
+                showModal("❌ Ошибка", "Не удалось провести платеж. Попробуй ещё раз!");
+              }
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Invoice creation failed, fallback to chat:", err.message);
+      }
+
+      if (btn) btn.innerHTML = oldText;
+
+      // Fallback: send command to bot chat
+      if (tg?.sendData) {
+        tg.sendData(`/vip`);
+      } else {
+        showModal("⭐️ Оплата Stars", `Для покупки ${itemName} напиши боту команду /vip!`);
+      }
     }
 
     function sendAction(commandText) {
@@ -347,8 +1039,26 @@
       if (tg?.sendData) {
         tg.sendData(commandText);
       } else {
-        alert("Команда скопирована: " + commandText);
+        alert("Команда скопирована для чата: " + commandText);
       }
+    }
+
+    function shareBot() {
+      const shareUrl = `https://t.me/share/url?url=https://t.me/akilum_bot&text=${encodeURIComponent('Смотри, какой крутой ИИ-бот Лам! Решает домашку, пишет код и развлекает в группах ⚡')}`;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(shareUrl);
+      } else {
+        window.open(shareUrl, '_blank');
+      }
+    }
+
+    function showModal(title, desc) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalDesc').textContent = desc;
+      document.getElementById('modalOverlay').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
     }
   </script>
 </body>

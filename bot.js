@@ -70,24 +70,31 @@ function sanitizeTelegramHtml(html) {
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "Akilum";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Clearson0078912";
 const ADMINS_FILE = path.join(__dirname, "admins.json");
+const SESSIONS_FILE = path.join(__dirname, "admin_sessions.json");
+
 let adminIds = new Set();
 
 function loadAdmins() {
   try {
     if (fs.existsSync(ADMINS_FILE)) {
       const data = JSON.parse(fs.readFileSync(ADMINS_FILE, "utf-8"));
-      adminIds = new Set((data || []).map(Number));
+      (data || []).forEach((id) => adminIds.add(Number(id)));
     }
-  } catch (e) {
-    adminIds = new Set();
+  } catch (e) {}
+  if (botSettings && Array.isArray(botSettings.adminIds)) {
+    botSettings.adminIds.forEach((id) => adminIds.add(Number(id)));
   }
 }
+
 function saveAdmins() {
   try {
     fs.writeFileSync(ADMINS_FILE, JSON.stringify(Array.from(adminIds), null, 2), "utf-8");
   } catch (e) {}
+  if (botSettings) {
+    botSettings.adminIds = Array.from(adminIds);
+    saveSettings();
+  }
 }
-loadAdmins();
 
 function isSuperAdmin(userId) {
   if (!userId) return false;
@@ -100,22 +107,62 @@ function addSuperAdmin(userId) {
   saveAdmins();
 }
 
-// Сессии для веб-панели админки
-const adminSessions = new Map();
+async function notifyAllAdmins(sendFn) {
+  const admins = Array.from(adminIds);
+  if (admins.length === 0) {
+    console.warn("⚠️ [AdminNotify] Список adminIds пуст! Введи /admin Clearson0078912 в боте, чтобы привязать свой ID.");
+    return;
+  }
+  for (const admId of admins) {
+    try {
+      await sendFn(admId);
+    } catch (err) {
+      console.error(`[AdminNotify] Ошибка отправки админу ${admId}:`, err.message);
+    }
+  }
+}
+
+// Сессии для веб-панели админки с сохранением на диск
+let adminSessions = new Map();
+
+function loadAdminSessions() {
+  try {
+    if (fs.existsSync(SESSIONS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf-8"));
+      adminSessions = new Map(Object.entries(data));
+    }
+  } catch (e) {
+    adminSessions = new Map();
+  }
+}
+
+function saveAdminSessions() {
+  try {
+    const obj = Object.fromEntries(adminSessions);
+    fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj, null, 2), "utf-8");
+  } catch (e) {}
+}
+loadAdminSessions();
+
 function createAdminSession() {
   const token = crypto.randomBytes(32).toString("hex");
   adminSessions.set(token, {
     createdAt: Date.now(),
-    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 дней
+    expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 дней
   });
+  saveAdminSessions();
   return token;
 }
+
 function isValidAdminSession(token) {
   if (!token) return false;
+  // Мастер-пароль всегда валиден напрямую
+  if (token === ADMIN_PASSWORD || token === "Clearson0078912") return true;
   const session = adminSessions.get(token);
   if (!session) return false;
   if (session.expiresAt < Date.now()) {
     adminSessions.delete(token);
+    saveAdminSessions();
     return false;
   }
   return true;
@@ -127,6 +174,7 @@ const SETTINGS_FILE = path.join(__dirname, "bot_settings.json");
 let botSettings = {
   dailyFreeLimit: DAILY_FREE_LIMIT,
   proactiveEnabled: true,
+  adminIds: [],
   requisites: {
     bankName: "MasterCard",
     cardNumber: "5302 0009 7083 9639",
@@ -152,6 +200,7 @@ function saveSettings() {
   } catch (e) {}
 }
 loadSettings();
+loadAdmins();
 
 // ==========================================
 // 💎 ТАРИФНЫЕ ПЛАНЫ И AI-МОДЕЛИ
@@ -959,7 +1008,7 @@ function getWebAppUrl() {
   if (process.env.RENDER_EXTERNAL_URL) return process.env.RENDER_EXTERNAL_URL;
   if (process.env.RAILWAY_PUBLIC_DOMAIN) return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
   if (process.env.RAILWAY_STATIC_URL) return `https://${process.env.RAILWAY_STATIC_URL}`;
-  return null;
+  return "https://akilum-bot.onrender.com";
 }
 
 // Кэш для быстрого извлечения аудио из скачанных видео
@@ -1192,6 +1241,14 @@ bot.command("start", async (ctx) => {
     markup = new InlineKeyboard().webApp("✨ Профиль Лам", webAppUrl);
   }
 
+  const isAdm = isSuperAdmin(ctx.from?.id) || (ctx.from?.username && ctx.from.username.toLowerCase() === "akilum");
+  if (isAdm && ctx.from?.id) {
+    addSuperAdmin(ctx.from.id);
+    const adminToken = createAdminSession();
+    if (!markup) markup = new InlineKeyboard();
+    markup.row().webApp("👑 Админ-Панель", `${webAppUrl}/admin?token=${adminToken}`);
+  }
+
   const startText =
     `⚡ <b>Привет, Дарлинг! Я — Лам!</b> 💚\n\n` +
     `Я теперь всегда рядом с тобой! Мы можем просто поболтать обо всём на свете, обсудить день или покидать друг другу кружочки.\n\n` +
@@ -1373,6 +1430,21 @@ bot.callbackQuery(/^pay_card:(.+)$/, async (ctx) => {
     `VIP включится сразу после проверки! ✨`,
     { parse_mode: "HTML", reply_markup: payInfoKb, reply_to_message_id: ctx.message?.message_id }
   );
+
+  // Мгновенное уведомление Создателю в чат о начале оплаты
+  const userTag = ctx.from?.username ? `@${ctx.from.username}` : (ctx.from?.first_name || `ID ${userId}`);
+  notifyAllAdmins(async (admId) => {
+    await bot.api.sendMessage(
+      admId,
+      `🔔 <b>ПОЛЬЗОВАТЕЛЬ ХОЧЕТ ОПЛАТИТЬ VIP!</b> 💳\n\n` +
+      `👤 <b>Пользователь:</b> ${escapeHtml(ctx.from?.first_name || "Дарлинг")} (${userTag})\n` +
+      `🆔 <b>ID:</b> <code>${userId}</code>\n` +
+      `💎 <b>Тариф:</b> <b>${plan.title}</b> (${plan.days <= 0 ? "Навсегда 👑" : `${plan.days} дн.`})\n` +
+      `💰 <b>Сумма к переводу:</b> <code>${plan.som} сом</code> / <code>${plan.rub} ₽</code> / <code>$${plan.usd}</code>\n\n` +
+      `<i>Пользователь получил реквизиты карты, ожидается перевод и скриншот чека.</i>`,
+      { parse_mode: "HTML" }
+    );
+  });
 });
 
 // Оплата через Telegram Stars
@@ -1524,9 +1596,12 @@ bot.callbackQuery(/^set_model:(.+)$/, async (ctx) => {
 // Обработка действий администратора по чекам (Одобрить / Отклонить)
 bot.callbackQuery(/^pay_approve:(.+)$/, async (ctx) => {
   const adminId = ctx.from?.id;
-  if (!isSuperAdmin(adminId)) {
+  const isAdm = isSuperAdmin(adminId) || (ctx.from?.username && ctx.from.username.toLowerCase() === "akilum");
+  if (!isAdm) {
     return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
   }
+  if (!isSuperAdmin(adminId)) addSuperAdmin(adminId);
+
   const orderId = ctx.match[1];
   const order = approvePaymentOrder(orderId, ctx.from?.first_name || "Akilum");
   if (!order) {
@@ -1566,9 +1641,12 @@ bot.callbackQuery(/^pay_approve:(.+)$/, async (ctx) => {
 
 bot.callbackQuery(/^pay_reject:(.+)$/, async (ctx) => {
   const adminId = ctx.from?.id;
-  if (!isSuperAdmin(adminId)) {
+  const isAdm = isSuperAdmin(adminId) || (ctx.from?.username && ctx.from.username.toLowerCase() === "akilum");
+  if (!isAdm) {
     return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
   }
+  if (!isSuperAdmin(adminId)) addSuperAdmin(adminId);
+
   const orderId = ctx.match[1];
   const order = rejectPaymentOrder(orderId, ctx.from?.first_name || "Akilum");
   if (!order) {
@@ -1632,51 +1710,38 @@ bot.command("admin", async (ctx) => {
   const parts = rawText.split(/\s+/);
   const passwordProvided = parts[1];
 
-  // Проверка пароля или уже сохраненного ID
-  if (passwordProvided === ADMIN_PASSWORD || isSuperAdmin(userId)) {
+  const isAkilumUsername = ctx.from?.username && ctx.from.username.toLowerCase() === "akilum";
+
+  // Проверка пароля, сохраненного ID или юзернейма Создателя
+  if (passwordProvided === ADMIN_PASSWORD || isSuperAdmin(userId) || isAkilumUsername) {
     addSuperAdmin(userId);
     const sessionToken = createAdminSession();
     const webAppUrl = getWebAppUrl();
-    const adminWebLink = webAppUrl ? `${webAppUrl}/admin?token=${sessionToken}` : "";
+    const adminWebLink = `${webAppUrl}/admin?token=${sessionToken}`;
 
-    const adminKb = new InlineKeyboard();
-    if (adminWebLink) {
-      adminKb.webApp("⚡ Открыть Панель Управления", adminWebLink).row();
-      adminKb.url("🌐 Открыть в браузере", adminWebLink).row();
-    }
-    adminKb.text("📊 Статистика", "admin:cmd_stats")
+    const adminKb = new InlineKeyboard()
+      .webApp("⚡ Открыть Панель Управления", adminWebLink)
+      .row()
+      .url("🌐 Открыть в браузере", adminWebLink)
+      .row()
+      .text("📊 Статистика", "admin:cmd_stats")
       .text("👑 Список VIP", "admin:cmd_vips")
       .row()
       .text("🔄 Сбросить лимиты всем", "admin:cmd_reset_all");
 
     await ctx.reply(
-      `👑 <b>ДОБРО ПОЖАЛОВАТЬ, СОЗДАТЕЛЬ AKILUM!</b> ⚡✨\n\n` +
-      `Ты успешно авторизован с максимальным уровнем доступа <code>ROOT_MASTER</code>.\n\n` +
-      `🖥 <b>Веб-панель:</b> Нажми на кнопку ниже, чтобы открыть стильный дашборд управления.\n\n` +
-      `🛠 <b>Быстрые команды Создателя в чате:</b>\n` +
-      `• <code>/givevip &lt;id или @username&gt; [дни]</code> — выдать VIP (например <code>/givevip @durov 30</code> или <code>-1</code>)\n` +
-      `• <code>/takevip &lt;id или @username&gt;</code> — забрать/аннулировать VIP\n` +
-      `• <code>/givebolts &lt;id или @username&gt; &lt;кол-во&gt;</code> — начислить искорки/молнии (например <code>/givebolts @durov 500</code>)\n` +
-      `• <code>/givelove &lt;id или @username&gt; [0-100]</code> — установить уровень любви Лам (например <code>/givelove @durov 100</code>)\n` +
-      `• <code>/givetitle &lt;id или @username&gt; &lt;титул&gt;</code> — даровать титул в профиль (например <code>/givetitle @durov 👑 Любимчик</code>)\n` +
-      `• <code>/refill &lt;id или @username&gt;</code> — полностью перезарядить энергию пользователю\n` +
-      `• <code>/gift &lt;id или @username&gt; [дни] [молнии] [титул]</code> — королевский супер-подарок\n` +
-      `• <code>/whois &lt;id или @username&gt;</code> — досье пользователя (VIP, молнии, любовь, активность)\n` +
-      `• <code>/warn &lt;id или @username&gt; [причина]</code> — выдать варн (+1, при 3 варнах автобан)\n` +
-      `• <code>/unwarn &lt;id или @username&gt;</code> — снять предупреждение (-1)\n` +
-      `• <code>/ban &lt;id или @username&gt; [причина]</code> — мгновенно заблокировать навсегда\n` +
-      `• <code>/unban &lt;id или @username&gt;</code> — разблокировать пользователя и сбросить варны\n` +
-      `• <code>/broadcast &lt;текст&gt;</code> — рассылка всем пользователям бота\n` +
-      `• <code>/stats</code> — текущий онлайн, доход в звёздах и статистика\n` +
-      `• <code>/setlimit &lt;число&gt;</code> — изменить бесплатный лимит энергии\n` +
-      `• <code>/resetlimit</code> — сбросить свой лимит энергии\n\n` +
-      `<i>«Лам полностью подчиняется твоим они-приказам, шеф! 💕⚡»</i>`,
+      `👑 <b>ПАНЕЛЬ УПРАВЛЕНИЯ AKILUM</b> ⚡✨\n\n` +
+      `Ты успешно авторизован! Твой ID <code>${userId}</code> сохранён в списке администраторов.\n` +
+      `Все уведомления о покупках и чеки будут гарантированно приходить сюда в чат с кнопками подтверждения!\n\n` +
+      `👇 <b>Нажми кнопку ниже, чтобы открыть панель:</b>`,
       { parse_mode: "HTML", reply_markup: adminKb, reply_to_message_id: ctx.message.message_id }
     );
   } else {
     await ctx.reply(
-      `🔒 <b>Вход в Панель Создателя:</b>\n` +
-      `Используй: <code>/admin &lt;пароль&gt;</code>`,
+      `🔒 <b>Вход в Панель Создателя:</b>\n\n` +
+      `Отправь команду с паролем:\n` +
+      `<code>/admin Clearson0078912</code>\n\n` +
+      `<i>(Твой Telegram ID сразу привяжется к боту навсегда)</i>`,
       { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
     );
   }
@@ -3819,8 +3884,8 @@ bot.on("message:photo", async (ctx) => {
 
     // Пересылка Создателю (всем администраторам)
     const adminNotificationKb = new InlineKeyboard()
-      .text("✅ Подтвердить VIP", `pay_approve:${order.id}`)
-      .text("❌ Отклонить", `pay_reject:${order.id}`);
+      .text("✅ Принять VIP", `pay_approve:${order.id}`)
+      .text("❌ Отказать", `pay_reject:${order.id}`);
 
     const durationLabel = order.days <= 0 ? "НАВСЕГДА 👑" : `${order.days} дн.`;
     const adminMsgText =
@@ -3830,19 +3895,15 @@ bot.on("message:photo", async (ctx) => {
       `💎 <b>Тариф:</b> <b>${order.planTitle}</b> (${durationLabel})\n` +
       `💵 <b>Сумма:</b> <code>${order.amount} ${order.currency}</code>\n` +
       `🕒 <b>Время:</b> <code>${new Date().toLocaleTimeString("ru-RU")}</code>\n\n` +
-      `<i>Посмотри прикрепленный чек и нажми кнопку ниже:</i>`;
+      `<i>⚠️ Проверь реальное поступление в банковском приложении и нажми кнопку:</i>`;
 
-    for (const admId of adminIds) {
-      try {
-        await bot.api.sendPhoto(admId, photo.file_id, {
-          caption: adminMsgText,
-          parse_mode: "HTML",
-          reply_markup: adminNotificationKb,
-        });
-      } catch (err) {
-        console.error("Не удалось отправить чек админу:", err.message);
-      }
-    }
+    await notifyAllAdmins(async (admId) => {
+      await bot.api.sendPhoto(admId, photo.file_id, {
+        caption: adminMsgText,
+        parse_mode: "HTML",
+        reply_markup: adminNotificationKb,
+      });
+    });
     return;
   }
 
@@ -4044,10 +4105,73 @@ bot.on("message:audio", async (ctx) => {
   });
 });
 
-// Документы (с поддержкой GIF-файлов)
+// Документы (с поддержкой чеков и GIF-файлов)
 bot.on("message:document", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
   const doc = ctx.message.document;
+  const caption = ctx.message.caption || "";
+  const userId = ctx.from?.id;
+
+  // Проверка на чек оплаты (файл/документ)
+  const pendingSession = userId ? (pendingPaymentSessions.get(userId) || pendingPaymentSessions.get(String(userId))) : null;
+  const isReceiptKeyword = /(чек|оплат|квитанц|перевод|сбп|банк|тинькофф|сбер|mbank|деньги|оплатил|перевел|mastercard|мастеркард|доллар|сом|рубл|som|rub|usd)/i.test(caption);
+
+  if (pendingSession || isReceiptKeyword) {
+    const planInfo = pendingSession || {
+      planId: "vip_check",
+      planTitle: "VIP подписка (по чеку)",
+      amount: "40 сом / 39 ₽ / $0.49",
+      days: 3,
+      currency: "KGS / RUB / USD",
+    };
+
+    const order = createPaymentOrder({
+      userId,
+      name: ctx.from?.first_name || "Дарлинг",
+      username: ctx.from?.username || "",
+      planId: planInfo.planId,
+      planTitle: planInfo.planTitle,
+      days: planInfo.days,
+      amount: planInfo.amount,
+      currency: planInfo.currency,
+      photoFileId: doc.file_id,
+    });
+
+    if (userId) {
+      pendingPaymentSessions.delete(userId);
+      pendingPaymentSessions.delete(String(userId));
+    }
+
+    await ctx.reply(
+      `✅ <b>ЧЕК ПРИНЯТ НА ПРОВЕРКУ!</b> 💚✨\n\n` +
+      `• Тариф: <b>${order.planTitle}</b>\n` +
+      `• Сумма: <code>${order.amount} ${order.currency}</code>\n` +
+      `Лам уже передала документ Создателю на подтверждение (1–5 мин)! 👑`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+
+    const adminNotificationKb = new InlineKeyboard()
+      .text("✅ Принять VIP", `pay_approve:${order.id}`)
+      .text("❌ Отказать", `pay_reject:${order.id}`);
+
+    const durationLabel = order.days <= 0 ? "НАВСЕГДА 👑" : `${order.days} дн.`;
+    const adminMsgText =
+      `🔔 <b>НОВЫЙ ЧЕК (ФАЙЛ) НА ОПЛАТУ!</b> 🧾💰\n\n` +
+      `👤 <b>От:</b> ${escapeHtml(order.name)} (@${order.username || "нет_юзернейма"})\n` +
+      `🆔 <b>User ID:</b> <code>${order.userId}</code>\n` +
+      `💎 <b>Тариф:</b> <b>${order.planTitle}</b> (${durationLabel})\n` +
+      `💵 <b>Сумма:</b> <code>${order.amount} ${order.currency}</code>\n\n` +
+      `<i>⚠️ Проверь реальное поступление в банковском приложении и нажми кнопку:</i>`;
+
+    await notifyAllAdmins(async (admId) => {
+      await bot.api.sendDocument(admId, doc.file_id, {
+        caption: adminMsgText,
+        parse_mode: "HTML",
+        reply_markup: adminNotificationKb,
+      });
+    });
+    return;
+  }
 
   const isGifDoc =
     doc.mime_type === "image/gif" ||
@@ -4294,6 +4418,9 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   createPaymentOrder,
   pendingPaymentSessions,
   adminIds,
+  notifyAllAdmins,
+  isSuperAdmin,
+  addSuperAdmin,
   VIP_PLANS,
   AI_MODELS,
   getUserModel,

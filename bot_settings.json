@@ -1,6 +1,7 @@
 {
   "dailyFreeLimit": 30,
   "proactiveEnabled": true,
+  "adminIds": [],
   "requisites": {
     "bankName": "MasterCard",
     "cardNumber": "5302 0009 7083 9639",

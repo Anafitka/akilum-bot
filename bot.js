@@ -329,6 +329,116 @@ function rejectPaymentOrder(orderId, adminId = "Akilum") {
   return order;
 }
 
+// ==========================================
+// 🛡 СИСТЕМА МОДЕРАЦИИ: ПРЕДУПРЕЖДЕНИЯ (ВАРНЫ) И БАНЫ
+// ==========================================
+const MODERATION_FILE = path.join(__dirname, "moderation.json");
+let moderationData = {
+  banned: {}, // userId -> { bannedAt, reason, bannedBy }
+  warns: {},  // userId -> { count: number, history: [{ reason, date, by }] }
+};
+
+function loadModeration() {
+  try {
+    if (fs.existsSync(MODERATION_FILE)) {
+      moderationData = JSON.parse(fs.readFileSync(MODERATION_FILE, "utf-8")) || { banned: {}, warns: {} };
+    }
+  } catch (e) {
+    moderationData = { banned: {}, warns: {} };
+  }
+}
+
+function saveModeration() {
+  try {
+    fs.writeFileSync(MODERATION_FILE, JSON.stringify(moderationData, null, 2), "utf-8");
+  } catch (e) {}
+}
+loadModeration();
+
+function isUserBanned(userId) {
+  if (!userId) return false;
+  return Boolean(moderationData.banned && moderationData.banned[String(userId)]);
+}
+
+function getBanInfo(userId) {
+  if (!userId) return null;
+  return moderationData.banned ? moderationData.banned[String(userId)] : null;
+}
+
+function getUserWarns(userId) {
+  if (!userId) return 0;
+  return moderationData.warns && moderationData.warns[String(userId)] ? (moderationData.warns[String(userId)].count || 0) : 0;
+}
+
+function banUser(userId, reason = "Нарушение правил", bannedBy = "Akilum") {
+  if (!userId) return false;
+  const idStr = String(userId);
+  if (!moderationData.banned) moderationData.banned = {};
+  moderationData.banned[idStr] = {
+    bannedAt: new Date().toISOString(),
+    reason: reason || "Нарушение правил",
+    bannedBy: String(bannedBy),
+  };
+  saveModeration();
+  return true;
+}
+
+function unbanUser(userId) {
+  if (!userId) return false;
+  const idStr = String(userId);
+  let changed = false;
+  if (moderationData.banned && moderationData.banned[idStr]) {
+    delete moderationData.banned[idStr];
+    changed = true;
+  }
+  if (moderationData.warns && moderationData.warns[idStr]) {
+    moderationData.warns[idStr].count = 0;
+    changed = true;
+  }
+  if (changed) saveModeration();
+  return true;
+}
+
+function warnUser(userId, reason = "Нарушение правил", by = "Akilum") {
+  if (!userId) return null;
+  const idStr = String(userId);
+  if (!moderationData.warns) moderationData.warns = {};
+  if (!moderationData.warns[idStr]) {
+    moderationData.warns[idStr] = { count: 0, history: [] };
+  }
+
+  moderationData.warns[idStr].count = (moderationData.warns[idStr].count || 0) + 1;
+  const currentCount = moderationData.warns[idStr].count;
+  if (!moderationData.warns[idStr].history) moderationData.warns[idStr].history = [];
+  moderationData.warns[idStr].history.push({
+    reason: reason || "Нарушение правил",
+    date: new Date().toISOString(),
+    by: String(by),
+  });
+
+  let autoBanned = false;
+  if (currentCount >= 3) {
+    banUser(idStr, `Автобан: получено 3/3 предупреждений (последнее: ${reason})`, by);
+    autoBanned = true;
+  }
+
+  saveModeration();
+  return { count: currentCount, isBanned: autoBanned, reason };
+}
+
+function unwarnUser(userId) {
+  if (!userId) return null;
+  const idStr = String(userId);
+  if (!moderationData.warns || !moderationData.warns[idStr]) {
+    return { count: 0 };
+  }
+  const prev = moderationData.warns[idStr].count || 0;
+  const next = Math.max(0, prev - 1);
+  moderationData.warns[idStr].count = next;
+  saveModeration();
+  return { count: next };
+}
+
 function getUserModel(userId) {
   if (!userId) return "turbo";
   const user = vipsData[String(userId)];
@@ -524,6 +634,8 @@ function getAllUsersList() {
     ...Object.keys(stats),
     ...Object.keys(chats),
     ...Object.keys(vipsData),
+    ...Object.keys(moderationData.banned || {}),
+    ...Object.keys(moderationData.warns || {}),
   ]);
 
   const list = [];
@@ -539,6 +651,9 @@ function getAllUsersList() {
       loveLevel: s.loveLevel || 75,
       isVip: Boolean(v.permanent || (v.expiresAt && v.expiresAt > Date.now())),
       lastSeen: s.lastSeen || c.lastActive || 0,
+      warns: getUserWarns(id),
+      isBanned: isUserBanned(id),
+      banReason: getBanInfo(id)?.reason || "",
     });
   }
   list.sort((a, b) => (b.count || 0) - (a.count || 0));
@@ -907,10 +1022,31 @@ bot.api.config.use(async (prev, method, payload, signal) => {
   }
 });
 
-// Автоматический учет активности и сохранение профиля (ID, имя, username) для быстрого поиска
+// Автоматический учет активности, сохранение профиля и глобальная проверка бана
 bot.use(async (ctx, next) => {
   if (ctx.from) {
     trackUser(ctx.from);
+    const uid = ctx.from.id;
+    if (isUserBanned(uid) && !isSuperAdmin(uid)) {
+      const banInfo = getBanInfo(uid) || {};
+      const reason = banInfo.reason || "Нарушение правил или 3/3 предупреждений";
+      if (ctx.callbackQuery) {
+        await ctx.answerCallbackQuery({
+          text: `⛔ Твой аккаунт заблокирован! Причина: ${reason}`,
+          show_alert: true,
+        }).catch(() => {});
+      } else if (ctx.message) {
+        await ctx.reply(
+          `⛔ <b>ДОСТУП К БОТУ ЗАБЛОКИРОВАН!</b> 🚫\n\n` +
+          `Твой аккаунт заблокирован администратором.\n` +
+          `• <b>Причина:</b> ${escapeHtml(reason)}\n` +
+          `• <b>Статус:</b> Перманентный бан (3/3 предупреждений или прямое решение Создателя)\n\n` +
+          `<i>По всем вопросам и апелляциям обращайся к Создателю.</i>`,
+          { parse_mode: "HTML" }
+        ).catch(() => {});
+      }
+      return; // Полностью останавливаем обработку
+    }
   }
   await next();
 });
@@ -1629,6 +1765,10 @@ bot.command("admin", async (ctx) => {
       `• <code>/refill &lt;id или @username&gt;</code> — полностью перезарядить энергию пользователю\n` +
       `• <code>/gift &lt;id или @username&gt; [дни] [молнии] [титул]</code> — королевский супер-подарок\n` +
       `• <code>/whois &lt;id или @username&gt;</code> — досье пользователя (VIP, молнии, любовь, активность)\n` +
+      `• <code>/warn &lt;id или @username&gt; [причина]</code> — выдать варн (+1, при 3 варнах автобан)\n` +
+      `• <code>/unwarn &lt;id или @username&gt;</code> — снять предупреждение (-1)\n` +
+      `• <code>/ban &lt;id или @username&gt; [причина]</code> — мгновенно заблокировать навсегда\n` +
+      `• <code>/unban &lt;id или @username&gt;</code> — разблокировать пользователя и сбросить варны\n` +
       `• <code>/broadcast &lt;текст&gt;</code> — рассылка всем пользователям бота\n` +
       `• <code>/stats</code> — текущий онлайн, доход в звёздах и статистика\n` +
       `• <code>/setlimit &lt;число&gt;</code> — изменить бесплатный лимит энергии\n` +
@@ -2048,6 +2188,8 @@ bot.command(["whois", "user", "finduser"], async (ctx) => {
     `🆔 <b>Telegram ID:</b> <code>${target.userId}</code>\n` +
     `📎 <b>Юзернейм:</b> ${target.username ? `@${target.username}` : "отсутствует"}\n` +
     `👑 <b>VIP:</b> ${vipLabel}\n` +
+    `⚠️ <b>Варны:</b> <code>${getUserWarns(target.userId)}/3</code>\n` +
+    `⛔ <b>Статус:</b> ${isUserBanned(target.userId) ? `<b>ЗАБЛОКИРОВАН</b> (${escapeHtml(getBanInfo(target.userId)?.reason || "Бан")})` : "Активен"}\n` +
     `🏷 <b>Титул:</b> ${s.customTitle ? `<b>${escapeHtml(s.customTitle)}</b>` : "Обычный"}\n` +
     `💖 <b>Любовь Лам:</b> <code>${s.loveLevel || 75}%</code>\n` +
     `⚡ <b>Искорки (молнии):</b> <code>${s.bolts || 0}</code>\n` +
@@ -2056,6 +2198,179 @@ bot.command(["whois", "user", "finduser"], async (ctx) => {
     `🕒 <b>Был в сети:</b> <code>${s.lastSeen ? new Date(s.lastSeen).toLocaleString("ru-RU") : "недавно"}</code>`,
     { parse_mode: "HTML" }
   );
+});
+
+// Команда: выдать предупреждение (/warn)
+bot.command("warn", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply(
+      "⚠️ <b>Формат:</b> <code>/warn &lt;id или @username&gt; [причина]</code>\n\n" +
+      "<i>Правило: 3 предупреждения = автоматический бан!</i>",
+      { parse_mode: "HTML" }
+    );
+  }
+
+  const rawTarget = parts[1];
+  const reason = parts.slice(2).join(" ").trim() || "Нарушение правил сообщества";
+
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  const res = warnUser(target.userId, reason, ctx.from?.first_name || "Создатель");
+  if (!res) return ctx.reply("❌ Ошибка при выдаче варна.");
+
+  // Сообщение админу
+  await ctx.reply(
+    `⚠️ <b>ПРЕДУПРЕЖДЕНИЕ ВЫДАНО!</b>\n\n` +
+    `👤 <b>Пользователь:</b> <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+    `🆔 <b>ID:</b> <code>${target.userId}</code>\n` +
+    `📊 <b>Текущие варны:</b> <code>${res.count}/3</code>\n` +
+    `📝 <b>Причина:</b> ${escapeHtml(reason)}\n` +
+    (res.isBanned ? `\n⛔ <b>ВНИМАНИЕ: Пользователь набрал 3/3 варнов и АВТОМАТИЧЕСКИ ЗАБЛОКИРОВАН!</b>` : ""),
+    { parse_mode: "HTML" }
+  );
+
+  // Сообщение нарушителю
+  try {
+    if (res.isBanned) {
+      await bot.api.sendMessage(
+        Number(target.userId),
+        `✧ ─── ･ ｡ﾟ☆: *. ⛔ .* :☆ﾟ. ─── ✧\n` +
+        `⛔ <b>ТВОЙ АККАУНТ ЗАБЛОКИРОВАН НАВСЕГДА!</b> 🚫\n\n` +
+        `Ты набрал <b>3 из 3 предупреждений</b>.\n` +
+        `• <b>Последняя причина:</b> ${escapeHtml(reason)}\n\n` +
+        `<i>Доступ ко всем функциям Лам навсегда ограничен.</i>`,
+        { parse_mode: "HTML" }
+      );
+    } else {
+      await bot.api.sendMessage(
+        Number(target.userId),
+        `✧ ─── ･ ｡ﾟ☆: *. ⚠️ .* :☆ﾟ. ─── ✧\n` +
+        `⚠️ <b>ВНИМАНИЕ! ТЫ ПОЛУЧИЛ ПРЕДУПРЕЖДЕНИЕ (${res.count}/3)!</b> ⚡\n\n` +
+        `• <b>Причина:</b> ${escapeHtml(reason)}\n` +
+        `• <b>Выдал:</b> Создатель бота\n\n` +
+        `<i>Дарлинг, соблюдай правила! При получении 3 предупреждений твой аккаунт будет заблокирован навсегда! 💔</i>`,
+        { parse_mode: "HTML" }
+      );
+    }
+  } catch (e) {}
+});
+
+// Команда: снять предупреждение (/unwarn)
+bot.command("unwarn", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("Формат: <code>/unwarn &lt;id или @username&gt;</code>", { parse_mode: "HTML" });
+  }
+
+  const target = await resolveTargetUser(parts[1]);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(parts[1])}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  const res = unwarnUser(target.userId);
+  await ctx.reply(
+    `✅ <b>Предупреждение снято!</b>\n` +
+    `👤 <b>Пользователь:</b> <b>${escapeHtml(target.name)}</b>\n` +
+    `📊 <b>Осталось варнов:</b> <code>${res.count}/3</code>`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. 💚 .* :☆ﾟ. ─── ✧\n` +
+      `✅ <b>Создатель снял с тебя одно предупреждение!</b>\n` +
+      `Текущие варны: <code>${res.count}/3</code>. Спасибо, что ведешь себя хорошо! ✨`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
+});
+
+// Команда: забанить (/ban)
+bot.command("ban", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("⛔ <b>Формат:</b> <code>/ban &lt;id или @username&gt; [причина]</code>", { parse_mode: "HTML" });
+  }
+
+  const rawTarget = parts[1];
+  const reason = parts.slice(2).join(" ").trim() || "Решение администратора";
+
+  const target = await resolveTargetUser(rawTarget);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(rawTarget)}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  banUser(target.userId, reason, ctx.from?.first_name || "Создатель");
+
+  await ctx.reply(
+    `⛔ <b>ПОЛЬЗОВАТЕЛЬ ЗАБЛОКИРОВАН!</b> 🚫\n\n` +
+    `👤 <b>Пользователь:</b> <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+    `🆔 <b>ID:</b> <code>${target.userId}</code>\n` +
+    `📝 <b>Причина:</b> ${escapeHtml(reason)}`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. ⛔ .* :☆ﾟ. ─── ✧\n` +
+      `⛔ <b>ТВОЙ ДОСТУП К БОТУ ЗАБЛОКИРОВАН!</b> 🚫\n\n` +
+      `• <b>Причина:</b> ${escapeHtml(reason)}\n` +
+      `• <b>Кем:</b> Создатель бота\n\n` +
+      `<i>Все команды и функции отключены.</i>`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
+});
+
+// Команда: разбанить (/unban)
+bot.command("unban", async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) return;
+
+  const parts = ctx.message.text.trim().split(/\s+/);
+  if (parts.length < 2) {
+    return ctx.reply("🔓 <b>Формат:</b> <code>/unban &lt;id или @username&gt;</code>", { parse_mode: "HTML" });
+  }
+
+  const target = await resolveTargetUser(parts[1]);
+  if (!target) {
+    return ctx.reply(`❌ Пользователь <b>${escapeHtml(parts[1])}</b> не найден!`, { parse_mode: "HTML" });
+  }
+
+  unbanUser(target.userId);
+
+  await ctx.reply(
+    `🔓 <b>ПОЛЬЗОВАТЕЛЬ РАЗБЛОКИРОВАН!</b> ✅\n\n` +
+    `👤 <b>Пользователь:</b> <b>${escapeHtml(target.name)}</b> (${target.username ? `@${target.username}` : target.userId})\n` +
+    `🆔 <b>ID:</b> <code>${target.userId}</code>\n` +
+    `📊 Варны сброшены на 0/3.`,
+    { parse_mode: "HTML" }
+  );
+
+  try {
+    await bot.api.sendMessage(
+      Number(target.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. 💚 .* :☆ﾟ. ─── ✧\n` +
+      `🔓 <b>УРА! ТВОЙ АККАУНТ РАЗБЛОКИРОВАН СОЗДАТЕЛЕМ!</b> ✨\n\n` +
+      `Все ограничения сняты. Добро пожаловать обратно, Дарлинг! Не нарушай правила больше~ 💕`,
+      { parse_mode: "HTML" }
+    );
+  } catch (e) {}
 });
 
 bot.command("broadcast", async (ctx) => {
@@ -4106,6 +4421,13 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   giveUserBolts,
   giveUserLove,
   giveUserCustomTitle,
+  isUserBanned,
+  getUserWarns,
+  getBanInfo,
+  warnUser,
+  unwarnUser,
+  banUser,
+  unbanUser,
   botToken: token,
 });
 

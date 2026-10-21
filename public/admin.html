@@ -772,9 +772,40 @@
       <div id="broadcastResult" style="margin-top: 14px; font-size: 13px; color: var(--neon-emerald); display: none;"></div>
     </div>
 
-    <!-- Вкладка 3: База пользователей -->
+    <!-- Вкладка 3: База пользователей и Модерация -->
     <div id="tab-users" class="card-panel" style="display: none;">
-      <h2 class="panel-title">👥 Недавние пользователи бота</h2>
+      <h2 class="panel-title">👥 Пользователи и Модерация</h2>
+
+      <!-- Quick Moderation Card -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+        <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 10px 0; display:flex; align-items:center; gap:8px;">
+          🛡️ Быстрая модерация по @username или ID
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 150px 1.5fr auto; gap: 10px; align-items: end;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Пользователь (@username или ID)</label>
+            <input type="text" id="modUserTarget" class="form-input" placeholder="@username или 12345678">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Действие</label>
+            <select id="modActionType" class="form-input">
+              <option value="warn">⚠️ Варн (+1)</option>
+              <option value="unwarn">✅ Снять варн (-1)</option>
+              <option value="ban">⛔ Забанить</option>
+              <option value="unban">🔓 Разбанить</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Причина</label>
+            <input type="text" id="modReason" class="form-input" placeholder="Спам / Фейк чек / Оскорбления">
+          </div>
+          <button class="btn-action" onclick="executeFastModeration()" style="height: 42px;">Применить</button>
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted); margin: 8px 0 0 0;">
+          📌 <b>Правило модерации:</b> 3 предупреждения приводят к автоматическому перманентному бану бота!
+        </p>
+      </div>
+
       <div class="form-group" style="max-width: 320px; margin-bottom: 16px;">
         <input type="text" id="searchUser" class="form-input" placeholder="🔍 Поиск по ID или имени..." oninput="filterUsersTable()">
       </div>
@@ -787,11 +818,12 @@
               <th>Запросов</th>
               <th>Любовь</th>
               <th>VIP</th>
+              <th>Варны / Статус</th>
               <th>Действие</th>
             </tr>
           </thead>
           <tbody id="usersTableBody">
-            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка базы...</td></tr>
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Загрузка базы...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1296,14 +1328,33 @@
     function renderUsersTable(users) {
       const tbody = document.getElementById("usersTableBody");
       if (!users || users.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Пользователей пока нет</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Пользователей пока нет</td></tr>`;
         return;
       }
 
       tbody.innerHTML = users.slice(0, 50).map(u => {
         const vipBadge = u.isVip ? `<span class="status-active">VIP 👑</span>` : `<span style="color: var(--text-muted)">Нет</span>`;
         const targetHandle = u.username ? `@${u.username}` : u.userId;
-        const takeBtn = u.isVip ? `<button class="btn-sm" style="color: #fca5a5" onclick="quickTakeVip('${u.userId}')">Снять</button>` : "";
+        const takeBtn = u.isVip ? `<button class="btn-sm" style="color: #fca5a5" onclick="quickTakeVip('${u.userId}')">Снять VIP</button>` : "";
+
+        let statusBadge = `<span style="color:var(--text-muted); font-size:11px;">0/3</span>`;
+        if (u.isBanned) {
+          statusBadge = `<span style="background:rgba(239,68,68,0.25); color:#f87171; font-weight:800; padding:2px 8px; border-radius:10px; font-size:11px;">⛔ БАН</span>`;
+        } else if (u.warns > 0) {
+          statusBadge = `<span style="background:rgba(245,158,11,0.25); color:#fbbf24; font-weight:700; padding:2px 8px; border-radius:10px; font-size:11px;">⚠️ ${u.warns}/3</span>`;
+        }
+
+        let modBtns = "";
+        if (u.isBanned) {
+          modBtns = `<button class="btn-sm" style="background:rgba(34,197,94,0.2); color:#4ade80;" onclick="handleUnbanUser('${targetHandle}')">🔓 Разбанить</button>`;
+        } else {
+          modBtns = `
+            <button class="btn-sm" style="background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);" onclick="handleWarnUser('${targetHandle}')">⚠️ Варн</button>
+            <button class="btn-sm" style="color:#f87171;" onclick="handleBanUser('${targetHandle}')">⛔ Бан</button>
+            ${u.warns > 0 ? `<button class="btn-sm" style="color:#94a3b8;" onclick="handleUnwarnUser('${targetHandle}')">Снять варн</button>` : ""}
+          `;
+        }
+
         return `
           <tr>
             <td><code>${u.userId}</code></td>
@@ -1311,16 +1362,129 @@
             <td>${u.count || 0}</td>
             <td>${u.loveLevel || 75}%</td>
             <td>${vipBadge}</td>
+            <td>${statusBadge}</td>
             <td>
               <div style="display:flex; gap:4px; flex-wrap:wrap;">
                 <button class="btn-sm" onclick="setVipInput('${targetHandle}')">👑 VIP</button>
                 <button class="btn-sm" style="background: rgba(192, 132, 252, 0.2); color: #c084fc; border-color: rgba(192, 132, 252, 0.4);" onclick="openRewardForUser('${targetHandle}')">🎁 Наградить</button>
                 ${takeBtn}
+                ${modBtns}
               </div>
             </td>
           </tr>
         `;
       }).join("");
+    }
+
+    async function executeFastModeration() {
+      const identifier = document.getElementById("modUserTarget").value.trim();
+      const action = document.getElementById("modActionType").value;
+      const reason = document.getElementById("modReason").value.trim() || "Нарушение правил";
+
+      if (!identifier) {
+        alert("Укажите @username или ID пользователя!");
+        return;
+      }
+
+      try {
+        if (action === "warn") {
+          const res = await apiRequest("/api/admin/warn-user", "POST", { identifier, reason });
+          if (res.ok) {
+            showToast(`⚠️ Варн выдан! Всего варнов: ${res.count}/3${res.isBanned ? ' (АВТОБАН!)' : ''}`);
+            loadUsersTable();
+          } else {
+            alert(res.error || "Ошибка выдачи варна");
+          }
+        } else if (action === "unwarn") {
+          const res = await apiRequest("/api/admin/unwarn-user", "POST", { identifier });
+          if (res.ok) {
+            showToast(`✅ Варн снят! Осталось: ${res.count}/3`);
+            loadUsersTable();
+          } else {
+            alert(res.error || "Ошибка снятия варна");
+          }
+        } else if (action === "ban") {
+          if (!confirm(`Точно заблокировать ${identifier}?`)) return;
+          const res = await apiRequest("/api/admin/ban-user", "POST", { identifier, reason });
+          if (res.ok) {
+            showToast(`⛔ Пользователь заблокирован!`);
+            loadUsersTable();
+          } else {
+            alert(res.error || "Ошибка блокировки");
+          }
+        } else if (action === "unban") {
+          const res = await apiRequest("/api/admin/unban-user", "POST", { identifier });
+          if (res.ok) {
+            showToast(`🔓 Пользователь разблокирован!`);
+            loadUsersTable();
+          } else {
+            alert(res.error || "Ошибка разблокировки");
+          }
+        }
+      } catch (e) {
+        alert("Ошибка выполнения действия модерации");
+      }
+    }
+
+    async function handleWarnUser(targetHandle) {
+      const reason = prompt(`Причина предупреждения для ${targetHandle}:`, "Нарушение правил сообщества");
+      if (reason === null) return;
+      try {
+        const res = await apiRequest("/api/admin/warn-user", "POST", { identifier: targetHandle, reason });
+        if (res.ok) {
+          showToast(`⚠️ Варн выдан! Всего варнов: ${res.count}/3${res.isBanned ? ' (АВТОБАН!)' : ''}`);
+          loadUsersTable();
+        } else {
+          alert(res.error || "Ошибка");
+        }
+      } catch (e) {
+        alert("Ошибка сети");
+      }
+    }
+
+    async function handleUnwarnUser(targetHandle) {
+      try {
+        const res = await apiRequest("/api/admin/unwarn-user", "POST", { identifier: targetHandle });
+        if (res.ok) {
+          showToast(`✅ Варн снят! Осталось: ${res.count}/3`);
+          loadUsersTable();
+        } else {
+          alert(res.error || "Ошибка");
+        }
+      } catch (e) {
+        alert("Ошибка сети");
+      }
+    }
+
+    async function handleBanUser(targetHandle) {
+      const reason = prompt(`Причина блокировки для ${targetHandle}:`, "Решение администратора");
+      if (reason === null) return;
+      try {
+        const res = await apiRequest("/api/admin/ban-user", "POST", { identifier: targetHandle, reason });
+        if (res.ok) {
+          showToast(`⛔ Пользователь заблокирован!`);
+          loadUsersTable();
+        } else {
+          alert(res.error || "Ошибка");
+        }
+      } catch (e) {
+        alert("Ошибка сети");
+      }
+    }
+
+    async function handleUnbanUser(targetHandle) {
+      if (!confirm(`Разблокировать пользователя ${targetHandle}?`)) return;
+      try {
+        const res = await apiRequest("/api/admin/unban-user", "POST", { identifier: targetHandle });
+        if (res.ok) {
+          showToast(`🔓 Пользователь разблокирован!`);
+          loadUsersTable();
+        } else {
+          alert(res.error || "Ошибка");
+        }
+      } catch (e) {
+        alert("Ошибка сети");
+      }
     }
 
     function setVipInput(targetHandle) {

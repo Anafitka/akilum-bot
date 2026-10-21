@@ -72,6 +72,13 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     giveUserBolts,
     giveUserLove,
     giveUserCustomTitle,
+    isUserBanned,
+    getUserWarns,
+    getBanInfo,
+    warnUser,
+    unwarnUser,
+    banUser,
+    unbanUser,
     botToken,
   } = context;
 
@@ -290,6 +297,211 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: true, targetId }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Выдать предупреждение (варн, 3 варна = автобан)
+    if (pathname === "/api/admin/warn-user" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { identifier, reason = "Нарушение правил" } = body;
+        if (!identifier) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
+        }
+
+        const target = resolveTargetUser ? await resolveTargetUser(identifier) : null;
+        const targetId = target ? target.userId : String(identifier).replace(/[^\d]/g, "");
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${identifier}» не найден!` }));
+          return;
+        }
+
+        const resWarn = warnUser ? warnUser(targetId, reason, "Админ-Панель") : { count: 1, isBanned: false };
+
+        if (bot) {
+          if (resWarn.isBanned) {
+            bot.api.sendMessage(
+              Number(targetId),
+              `✧ ─── ･ ｡ﾟ☆: *. ⛔ .* :☆ﾟ. ─── ✧\n` +
+              `⛔ <b>ТВОЙ АККАУНТ ЗАБЛОКИРОВАН НАВСЕГДА!</b> 🚫\n\n` +
+              `Ты набрал <b>3 из 3 предупреждений</b>.\n` +
+              `• <b>Последняя причина:</b> ${escapeHtml(reason)}\n\n` +
+              `<i>Доступ ко всем функциям Лам навсегда ограничен.</i>`,
+              { parse_mode: "HTML" }
+            ).catch(() => {});
+          } else {
+            bot.api.sendMessage(
+              Number(targetId),
+              `✧ ─── ･ ｡ﾟ☆: *. ⚠️ .* :☆ﾟ. ─── ✧\n` +
+              `⚠️ <b>ВНИМАНИЕ! ТЫ ПОЛУЧИЛ ПРЕДУПРЕЖДЕНИЕ (${resWarn.count}/3)!</b> ⚡\n\n` +
+              `• <b>Причина:</b> ${escapeHtml(reason)}\n` +
+              `• <b>Выдал:</b> Администратор\n\n` +
+              `<i>Дарлинг, соблюдай правила! При получении 3 предупреждений твой доступ к боту будет заблокирован навсегда! 💔</i>`,
+              { parse_mode: "HTML" }
+            ).catch(() => {});
+          }
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({
+          ok: true,
+          count: resWarn.count,
+          isBanned: resWarn.isBanned,
+          user: target ? { name: target.name, username: target.username, userId: target.userId } : { userId: targetId }
+        }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Снять предупреждение (unwarn)
+    if (pathname === "/api/admin/unwarn-user" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { identifier } = body;
+        if (!identifier) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
+        }
+
+        const target = resolveTargetUser ? await resolveTargetUser(identifier) : null;
+        const targetId = target ? target.userId : String(identifier).replace(/[^\d]/g, "");
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${identifier}» не найден!` }));
+          return;
+        }
+
+        const resUnwarn = unwarnUser ? unwarnUser(targetId) : { count: 0 };
+
+        if (bot) {
+          bot.api.sendMessage(
+            Number(targetId),
+            `✧ ─── ･ ｡ﾟ☆: *. 💚 .* :☆ﾟ. ─── ✧\n` +
+            `✅ <b>Администратор снял с тебя одно предупреждение!</b>\n` +
+            `Текущие варны: <code>${resUnwarn.count}/3</code>. Спасибо за соблюдение правил! ✨`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, count: resUnwarn.count }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Заблокировать пользователя (бан)
+    if (pathname === "/api/admin/ban-user" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { identifier, reason = "Решение администратора" } = body;
+        if (!identifier) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
+        }
+
+        const target = resolveTargetUser ? await resolveTargetUser(identifier) : null;
+        const targetId = target ? target.userId : String(identifier).replace(/[^\d]/g, "");
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${identifier}» не найден!` }));
+          return;
+        }
+
+        if (banUser) banUser(targetId, reason, "Админ-Панель");
+
+        if (bot) {
+          bot.api.sendMessage(
+            Number(targetId),
+            `✧ ─── ･ ｡ﾟ☆: *. ⛔ .* :☆ﾟ. ─── ✧\n` +
+            `⛔ <b>ТВОЙ ДОСТУП К БОТУ ЗАБЛОКИРОВАН!</b> 🚫\n\n` +
+            `• <b>Причина:</b> ${escapeHtml(reason)}\n` +
+            `• <b>Кем:</b> Создатель бота\n\n` +
+            `<i>Все команды и функции отключены.</i>`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, user: target ? { name: target.name, username: target.username, userId: target.userId } : { userId: targetId } }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Разблокировать пользователя (разбан)
+    if (pathname === "/api/admin/unban-user" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { identifier } = body;
+        if (!identifier) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
+          return;
+        }
+
+        const target = resolveTargetUser ? await resolveTargetUser(identifier) : null;
+        const targetId = target ? target.userId : String(identifier).replace(/[^\d]/g, "");
+
+        if (!targetId) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: `Пользователь «${identifier}» не найден!` }));
+          return;
+        }
+
+        if (unbanUser) unbanUser(targetId);
+
+        if (bot) {
+          bot.api.sendMessage(
+            Number(targetId),
+            `✧ ─── ･ ｡ﾟ☆: *. 💚 .* :☆ﾟ. ─── ✧\n` +
+            `🔓 <b>УРА! ТВОЙ АККАУНТ РАЗБЛОКИРОВАН СОЗДАТЕЛЕМ!</b> ✨\n\n` +
+            `Все ограничения сняты, варны сброшены. Добро пожаловать обратно, Дарлинг! 💕`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, user: target ? { name: target.name, username: target.username, userId: target.userId } : { userId: targetId } }));
       } catch (err) {
         res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, error: err.message }));

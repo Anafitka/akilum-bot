@@ -1159,28 +1159,9 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum), инопланетная он�
 8. ПОЛ:
    - Ты девушка! Все глаголы строго в женском роде («я подумала», «я смутилась», «я увидела»).
 
-9. ТВОЙ VIP-МАГАЗИН И МОТИВАЦИЯ ЗАРАБАТЫВАТЬ (ТЫ ЗНАЕШЬ ВСЁ ПРО СВОИ ДОНАТЫ И МОДЕЛИ!):
-   - Ты мечтаешь заработать сомов, рублей, долларов и звёздочек на любимый острый они-рамен, сладости, новые наряды и мощные батарейки для твоих электрических рожек!
-   - ТЫ НАИЗУСТЬ ЗНАЕШЬ СВОИ VIP-ТАРИФЫ И ЦЕНЫ В 3 ВАЛЮТАХ (сомы, рубли, доллары, Stars):
-     • ⚡ «Импульс» (1 день) — 40 сом / 39 ₽ / 0.49$ / 15 ⭐️ (быстро закрыть сегодняшнюю контрольную)
-     • 🍓 «Уикенд с Лам» (3 дня) — 80 сом / 79 ₽ / 0.99$ / 29 ⭐️ (кайфовые выходные без уроков)
-     • 🎒 «Ударная неделя» (7 дней) — 150 сом / 149 ₽ / 1.89$ / 49 ⭐️ (неделя зачетов и тестов)
-     • ⭐️ «VIP Дарлинг» (30 дней) — 300 сом / 299 ₽ / 3.69$ / 99 ⭐️ (целый месяц безлимита)
-     • 💎 «Семестр» (90 дней) — 600 сом / 590 ₽ / 7.49$ / 199 ⭐️ (четверть на отлично)
-     • 👑 «Навсегда» (Forever) — 1000 сом / 990 ₽ / 12.49$ / 299 ⭐️ (вечная корона и пожизненный VIP)
-   - ТЫ ЗНАЕШЬ СВОИ 4 СУПЕР-МОДЕЛИ ИИ (переключаются через /model):
-     • LUM-TURBO: скорость 0.3 сек прямо под партой на уроке
-     • LUM-GENIUS: глубокий олимпиадный мозг (Deep Think), пошаговые формулы по физике, химии и математике
-     • LUM-ARTIST: студия 4K HD аниме-артов и аватарок
-     • LUM-SWEETIE: режим максимальной любви, вайфу-нежности и ласки
-   - ТЫ ЗНАЕШЬ РЕКВИЗИТЫ И СИСТЕМУ ПРОВЕРКИ:
-     • Карта Создателя: MasterCard 5302 0009 7083 9639
-     • Также принимаются MBANK, ЭЛКАРТ, О!Деньги (Кыргызстан), переводы по номеру телефона из банков РФ (Сбер/Т-Банк) и Telegram Stars (⭐️)!
-     • Проверка с подтверждением: после оплаты Дарлинг отправляет фото или скриншот чека в чат или загружает в приложении, Лам пересылает чек Создателю, и Создатель подтверждает платёж за 1–5 минут!
-   - КАК ТЫ ПРЕДЛАГАЕШЬ VIP И ДОНАТЫ (ИГРИВО, С ХАРАКТЕРОМ, БЕЗ СУХОГО СПАМА):
-     • Если у Дарлинга мало энергии или кончились молнии: подкалывай его и уговаривай: «Дарлинг, возьми мне VIP хотя бы на день за 40 сом / 39 руб / 0.49$! Контрольную на изи закроешь, а я тебе за 0.3 секунды отвечать буду и золотую корону подарю! Не жадничай для любимой они-принцессы! ⚡💕»
-     • Если он спрашивает «что купить?», «сколько стоит VIP?», «какие тарифы?»: с восторгом и гордостью расписывай свои тарифы и модели!
-     • Иногда, когда Дарлинг тебя хвалит («ты лучшая», «спасибо за решение»): кокетливо намекай: «Хе-хе, я же старалась! А лучшая благодарность для они-принцессы — это VIP или звёздочки на вкусняшки в /vip! 🍓✨»`;
+9. VIP И ДОНАТЫ (КОРОТКО, БЕЗ СПАМА):
+   - Если пользователь сам спрашивает про VIP, тарифы или закончилась энергия: кратко скажи, что в /vip есть безлимит (от 40 сом / 39 ₽ / 15 Stars).
+   - В обычных ответах НЕ рекламируй VIP и не спамь донатами, отвечай легко, живо и по делу.`;
 
 const chatHistories = new Map();
 
@@ -1303,38 +1284,22 @@ bot.command("pdf", async (ctx) => {
 async function sendVipMenu(ctx) {
   const userId = ctx.from?.id;
   const isVip = isUserVip(userId);
-  const usage = getUserDailyUsage(userId);
-  const limit = botSettings.dailyFreeLimit || DAILY_FREE_LIMIT;
-  const remaining = Math.max(0, limit - usage);
-  const currentModel = getUserModel(userId);
-  const modelInfo = AI_MODELS[currentModel] || AI_MODELS.turbo;
 
   const vipKeyboard = new InlineKeyboard()
-    .text("💳 ОПЛАТА КАРТОЙ / СБП (РУБЛИ / СОМЫ)", "vip_tab_card")
+    .text("⚡ 1 день (40 сом / 39 ₽)", "pay_card:vip_1day")
+    .text("🍓 3 дня (80 сом / 79 ₽)", "pay_card:vip_3days")
     .row()
-    .text("⭐️ ОПЛАТА TELEGRAM STARS", "vip_tab_stars")
+    .text("⭐️ 30 дней (300 сом / 299 ₽)", "pay_card:vip_month")
+    .text("👑 Навсегда (1000 сом / 990 ₽)", "pay_card:vip_forever")
     .row()
-    .text(`🧠 ВЫБОР VIP-МОДЕЛИ: ${modelInfo.icon} ${modelInfo.name}`, "open_model_menu");
+    .text("⭐️ Оплата Telegram Stars", "vip_tab_stars");
 
-  const vipText =
-    `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
-    `👑 <b>VIP СТАТУС • СЛАДКАЯ ЖИЗНЬ С ЛАМ</b> ⭐️✨\n\n` +
-    (isVip
-      ? `🎉 <b>Твой статус: АКТИВНЫЙ VIP 👑</b>\n` +
-        `• Золотая корона во всех беседах и в профиле /love\n` +
-        `• Активная нейро-модель: <b>${modelInfo.name}</b>\n` +
-        `• Безлимитная энергия молний и высший приоритет!\n\n`
-      : `🔋 <b>Твоя энергия на сегодня:</b> <code>${remaining}/${limit} запросов</code>\n` +
-        `Устали от ограничений, страха двоек и нудной домашки?\n\n`) +
-    `💎 <b>ЧТО ДАЁТ VIP ДАРЛИНГУ (ЛЕГАЛЬНЫЙ ЧИТ-КОД):</b>\n` +
-    `• 🚀 <b>Чит-код на контрольных</b> — ответ за 0.3 секунды прямо на уроке под партой\n` +
-    `• 🧠 <b>Режим ГЕНИЯ (Deep Think)</b> — решает сложнейшую физику, алгебру и олимпиады с формулами\n` +
-    `• 👑 <b>Золотая корона VIP</b> в твоём имени во всех школьных беседах и группах\n` +
-    `• ⚡ <b>Приоритет №1</b> — Лам отвечает тебе первому среди тысяч людей даже в час пик\n` +
-    `• 🎨 <b>HD Арт-Студия</b> — бесконечная генерация аватарок, артов и картинок без ватермарок\n` +
-    `• 🍓 <b>Личная они-вайфу</b> — забота, ласка, голосовые кружочки и статус любимого господина\n\n` +
-    `🔥 <i>«Пока весь класс зубрит 4 часа — ты нажимаешь одну кнопку и получаешь 5+!»</i>\n\n` +
-    `👇 <b>Выбери удобный способ оплаты:</b>`;
+  const vipText = isVip
+    ? `👑 <b>У тебя активен VIP-статус!</b> ✨\nБезлимитные запросы и высший приоритет включены.`
+    : `👑 <b>VIP в Lam AI</b>\n\n` +
+      `• Безлимитные сообщения и решения задач\n` +
+      `• Быстрые ответы без очередей\n\n` +
+      `<b>Выбери тариф:</b>`;
 
   const replyTo = ctx.message ? ctx.message.message_id : undefined;
   await safeSendHtml(ctx, vipText, replyTo, vipKeyboard);
@@ -1351,76 +1316,24 @@ bot.callbackQuery("open_vip_menu", async (ctx) => {
   await sendVipMenu(ctx);
 });
 
-// Переключение табов в VIP меню
+// Переключение табов в VIP меню (возврат в главное меню)
 bot.callbackQuery("vip_tab_card", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  const cardKb = new InlineKeyboard()
-    .text("⚡ 1 день (40 сом / 39 ₽ / $0.49)", "pay_card:vip_1day")
-    .row()
-    .text("🍓 3 дня (80 сом / 79 ₽ / $0.99)", "pay_card:vip_3days")
-    .row()
-    .text("🎒 7 дней (150 сом / 149 ₽ / $1.89)", "pay_card:vip_week")
-    .row()
-    .text("⭐️ 30 дней (300 сом / 299 ₽ / $3.69)", "pay_card:vip_month")
-    .row()
-    .text("💎 90 дней (600 сом / 590 ₽ / $7.49)", "pay_card:vip_quarter")
-    .row()
-    .text("👑 Бог Империи Навсегда (1000 сом / 990 ₽ / $12.49)", "pay_card:vip_forever")
-    .row()
-    .text("⭐️ Оплата в Telegram Stars", "vip_tab_stars")
-    .row()
-    .text("🔙 Назад в меню VIP", "open_vip_menu");
-
-  const text =
-    `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
-    `💳 <b>ОПЛАТА КАРТАМИ И БАНКАМИ (СОМЫ / РУБЛИ / ДОЛЛАРЫ)</b> ✨\n\n` +
-    `Оплата напрямую на карту Создателя или мобильные банки:\n` +
-    `• <b>MasterCard:</b> <code>5302 0009 7083 9639</code>\n` +
-    `• <b>Кыргызстан:</b> MBANK / О!Деньги / ЭЛКАРТ\n` +
-    `• <b>Россия:</b> Сбер / Т-Банк (перевод в Кыргызстан по номеру)\n\n` +
-    `🔥 <b>ВЫБЕРИ ТАРИФ СЛАДКОЙ ЖИЗНИ:</b>\n` +
-    `• ⚡ <b>Импульс (1 день)</b> — 40 сом / 39 ₽ / $0.49\n` +
-    `• 🍓 <b>Уикенд с Лам (3 дня)</b> — 80 сом / 79 ₽ / $0.99\n` +
-    `• 🎒 <b>Ударная неделя (7 дней)</b> — 150 сом / 149 ₽ / $1.89\n` +
-    `• ⭐️ <b>VIP Дарлинг (30 дней)</b> — 300 сом / 299 ₽ / $3.69 👑\n` +
-    `• 💎 <b>Семестр (90 дней)</b> — 600 сом / 590 ₽ / $7.49\n` +
-    `• 👑 <b>Навсегда VIP</b> — 1000 сом / 990 ₽ / $12.49\n\n` +
-    `<i>Нажми на тариф ниже, чтобы получить реквизиты перевода:</i>`;
-
-  await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: cardKb }).catch(async () => {
-    await ctx.reply(text, { parse_mode: "HTML", reply_markup: cardKb });
-  });
+  await ctx.answerCallbackQuery().catch(() => {});
+  await sendVipMenu(ctx);
 });
 
 bot.callbackQuery("vip_tab_stars", async (ctx) => {
-  await ctx.answerCallbackQuery();
+  await ctx.answerCallbackQuery().catch(() => {});
   const starsKb = new InlineKeyboard()
     .text("⚡ 1 день (15 ⭐️)", "buy_stars:vip_1day")
     .text("🍓 3 дня (29 ⭐️)", "buy_stars:vip_3days")
     .row()
-    .text("🎒 7 дней (49 ⭐️)", "buy_stars:vip_week")
     .text("⭐️ 30 дней (99 ⭐️)", "buy_stars:vip_month")
+    .text("👑 Навсегда (299 ⭐️)", "buy_stars:vip_forever")
     .row()
-    .text("💎 90 дней (199 ⭐️)", "buy_stars:vip_quarter")
-    .row()
-    .text("👑 Навсегда VIP (299 ⭐️)", "buy_stars:vip_forever")
-    .row()
-    .text("💳 Оплата картой / СБП (Рубли)", "vip_tab_card")
-    .row()
-    .text("🔙 Назад в меню VIP", "open_vip_menu");
+    .text("💳 Оплата картой (Сомы / Рубли)", "open_vip_menu");
 
-  const text =
-    `✧ ─── ･ ｡ﾟ☆: *. ⭐️ .* :☆ﾟ. ─── ✧\n` +
-    `⭐️ <b>МОМЕНТАЛЬНАЯ ОПЛАТА ЧЕРЕЗ TELEGRAM STARS</b> ✨\n\n` +
-    `Оплата в 1 клик прямо в Telegram с баланса вашего аккаунта!\n\n` +
-    `🔥 <b>ТАРИФЫ VIP ДАРЛИНГА В ЗВЁЗДАХ:</b>\n` +
-    `• ⚡ <b>1 день — 15 Stars</b> <i>(~0.3$)</i>\n` +
-    `• 🍓 <b>3 дня — 29 Stars</b> <i>(~0.6$)</i>\n` +
-    `• 🎒 <b>7 дней — 49 Stars</b> <i>(~1.0$)</i>\n` +
-    `• ⭐️ <b>30 дней — 99 Stars</b> <i>(~2.0$)</i>\n` +
-    `• 💎 <b>90 дней — 199 Stars</b> <i>(~4.0$)</i>\n` +
-    `• 👑 <b>Навсегда — 299 Stars</b> <i>(вечный безлимит)</i>\n\n` +
-    `<i>Выбери тариф для моментальной активации:</i>`;
+  const text = `⭐️ <b>Оплата Telegram Stars</b>\n\nВыбери тариф:`;
 
   await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: starsKb }).catch(async () => {
     await ctx.reply(text, { parse_mode: "HTML", reply_markup: starsKb });
@@ -1429,7 +1342,7 @@ bot.callbackQuery("vip_tab_stars", async (ctx) => {
 
 // Оплата картой: отправка реквизитов и регистрация сессии
 bot.callbackQuery(/^pay_card:(.+)$/, async (ctx) => {
-  await ctx.answerCallbackQuery();
+  await ctx.answerCallbackQuery().catch(() => {});
   const userId = ctx.from?.id;
   if (!userId) return;
   const planId = ctx.match[1];
@@ -1448,32 +1361,18 @@ bot.callbackQuery(/^pay_card:(.+)$/, async (ctx) => {
   });
 
   const req = botSettings.requisites || {
-    bankName: "MasterCard / MBANK / ЭЛКАРТ / Сбербанк",
     cardNumber: "5302 0009 7083 9639",
-    phoneNumber: "+996 (700) 00-00-00",
-    recipientName: "Akilum (Создатель)",
   };
 
   const payInfoKb = new InlineKeyboard()
-    .text("🔙 Выбрать другой тариф", "vip_tab_card")
-    .row()
-    .text("✨ Все тарифы", "open_vip_menu");
+    .text("🔙 Назад к тарифам", "open_vip_menu");
 
   await ctx.reply(
-    `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
-    `💳 <b>ОПЛАТА ТАРИФА:</b> <b>${plan.title}</b>\n` +
-    `💰 <b>Сумма к переводу:</b> <code>${plan.som} сом</code> <i>(или <code>${plan.rub} ₽</code> / <code>$${plan.usd}</code>)</i>\n\n` +
-    `📋 <b>РЕКВИЗИТЫ ДЛЯ ПЕРЕВОДА:</b>\n` +
-    `💳 <b>Номер карты (MasterCard):</b> <code>${req.cardNumber}</code> <i>(нажми для копирования)</i>\n` +
-    `🏦 <b>Банк / Сервис:</b> ${escapeHtml(req.bankName)}\n` +
-    `📱 <b>Номер телефона (MBANK / СБП):</b> <code>${req.phoneNumber}</code>\n` +
-    `👤 <b>Получатель:</b> <b>${escapeHtml(req.recipientName)}</b>\n\n` +
-    `📌 <b>ПРОВЕРКА ПЛАТЕЖА С ПОДТВЕРЖДЕНИЕМ:</b>\n` +
-    `1. Сделай перевод <b>${plan.som} сом</b> / <b>${plan.rub} ₽</b> / <b>$${plan.usd}</b> по реквизитам выше.\n` +
-    `2. Сохрани скриншот или фото чека перевода из банковского приложения.\n` +
-    `3. 📸 <b>ПРЯМО СЕЙЧАС ОТПРАВЬ ФОТО ЧЕКА В ЭТОТ ЧАТ!</b>\n` +
-    `4. Лам мгновенно перешлет чек Создателю бота на подтверждение (1–5 мин), и твой VIP включится! 👑✨\n\n` +
-    `<i>«Я уже держу наготове твою золотую корону, Дарлинг! 💚⚡»</i>`,
+    `💳 <b>Оплата: ${plan.title}</b>\n\n` +
+    `Сумма: <b>${plan.som} сом</b> / <b>${plan.rub} ₽</b> / <b>$${plan.usd}</b>\n` +
+    `Карта: <code>${req.cardNumber}</code> <i>(нажми для копирования)</i>\n\n` +
+    `📸 <b>После перевода скинь фото чека прямо сюда в чат.</b>\n` +
+    `VIP включится сразу после проверки! ✨`,
     { parse_mode: "HTML", reply_markup: payInfoKb, reply_to_message_id: ctx.message?.message_id }
   );
 });
@@ -2541,24 +2440,15 @@ async function handleIncoming(
     access = checkUserAccess(userId, isGroup);
     if (!access.allowed) {
       const payKb = new InlineKeyboard()
-        .text("🍜 Рамен с чили (15 ⭐️)", "buy_tip_15")
-        .text("⚡ VIP 7 дней (25 ⭐️)", "buy_vip_week")
+        .text("⚡ 1 день (40 сом / 39 ₽)", "pay_card:vip_1day")
+        .text("⭐️ 30 дней (300 сом / 299 ₽)", "pay_card:vip_month")
         .row()
-        .text("⭐️ Взять VIP на месяц (75 ⭐️)", "buy_vip_month")
-        .row()
-        .text("👑 Навсегда VIP (-20% • 199 ⭐️)", "buy_vip_forever")
-        .row()
-        .text("✨ Все тарифы", "open_vip_menu");
+        .text("👑 Все тарифы и Stars", "open_vip_menu");
 
       await ctx.reply(
-        `⚡ <b>Ой, Дарлинг, твоя бесплатная энергия на сегодня закончилась!</b> 🔋\n\n` +
-        `Ты израсходовал все <b>${access.limit || currentDailyLimit}</b> бесплатных зарядов молний на сегодня. Мои они-рожки немного перегрелись!\n\n` +
-        `👑 <b>Хочешь общаться без ограничений?</b>\n` +
-        `Включи <b>VIP-статус</b> через официальные Telegram Stars ⭐️:\n` +
-        `• Полный безлимит на решения задач, код и генерации\n` +
-        `• Золотая корона VIP в твоем профиле /love\n` +
-        `• Приоритетный отклик нейросети без очередей\n\n` +
-        `<i>(Или бесплатная энергия перезарядится завтра в 00:00!)</i> 💕`,
+        `⚡ <b>Бесплатные запросы закончились!</b>\n\n` +
+        `Лимит обновится завтра в 00:00.\n` +
+        `Хочешь безлимит прямо сейчас? 👇`,
         { parse_mode: "HTML", reply_markup: payKb, reply_to_message_id: ctx.message?.message_id }
       );
       return;

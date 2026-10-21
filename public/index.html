@@ -1597,69 +1597,54 @@
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title" id="cardPayTitle">💳 Оплата тарифа картой / MBANK</div>
+        <div class="sheet-title" id="cardPayTitle">💳 Оплата тарифа</div>
         <button class="sheet-close" onclick="closeSheet('card-pay')">✕</button>
       </div>
 
-      <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 16px; padding: 14px; margin-bottom: 14px; text-align: center;">
-        <div style="font-size: 12px; color: var(--text-secondary);">К оплате:</div>
+      <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 16px; padding: 12px; margin-bottom: 12px; text-align: center;">
+        <div style="font-size: 11px; color: var(--text-secondary);">К оплате:</div>
         <div style="font-size: 26px; font-weight: 800; color: var(--neon-gold);" id="cardPayAmount">40 сом</div>
         <div style="font-size: 12px; color: var(--neon-emerald); font-weight:700;" id="cardPayPlanName">Тариф: Импульс (1 день)</div>
       </div>
 
-      <div class="form-group" style="margin-bottom: 12px;">
-        <label class="form-label" style="font-size:11px; color:var(--text-secondary);">Банк / Платежная система</label>
-        <div class="sheet-input" style="font-weight: 700; color:#fff;" id="cardPayBank">MasterCard / MBANK / ЭЛКАРТ / Сбербанк</div>
-      </div>
-
-      <div class="form-group" style="margin-bottom: 12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер карты (MasterCard)</label>
-          <span style="font-size:11px; color:var(--neon-cyan); cursor:pointer; font-weight:700;" onclick="copyCardNumber()">Скопировать 📋</span>
+      <!-- Compact Card Block with Copy -->
+      <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 12px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Номер карты (MasterCard):</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px;">
+          <input type="text" id="cardPayCardNum" style="background:transparent; border:none; color:#fff; font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:800; outline:none; width:100%;" readonly value="5302 0009 7083 9639">
+          <button type="button" class="btn-action" style="padding: 6px 12px; font-size: 11px; white-space:nowrap; background: var(--neon-emerald); color: #000; font-weight: 700; border-radius: 8px;" onclick="copyCardNumber()">Скопировать 📋</button>
         </div>
-        <input type="text" id="cardPayCardNum" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:700; color:#fff;" readonly value="5302 0009 7083 9639">
       </div>
 
-      <div class="form-group" style="margin-bottom: 12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-          <label class="form-label" style="font-size:11px; color:var(--text-secondary); margin-bottom:0;">Номер телефона (MBANK / СБП)</label>
-          <span style="font-size:11px; color:var(--neon-cyan); cursor:pointer; font-weight:700;" onclick="copyPhoneNumber()">Скопировать 📋</span>
-        </div>
-        <input type="text" id="cardPayPhone" class="sheet-input" style="font-family:'JetBrains Mono', monospace; font-size:13px; color:#fff;" readonly value="+996 (700) 00-00-00">
+      <!-- Hidden fallbacks for script compatibility -->
+      <div style="display:none;">
+        <span id="cardPayBank">MasterCard</span>
+        <input type="hidden" id="cardPayPhone" value="+996 (700) 00-00-00">
+        <span id="cardPayRecipient">Akilum</span>
       </div>
 
-      <div class="form-group" style="margin-bottom: 14px;">
-        <label class="form-label" style="font-size:11px; color:var(--text-secondary);">Получатель</label>
-        <div class="sheet-input" style="color:var(--text-secondary);" id="cardPayRecipient">Akilum (Создатель)</div>
-      </div>
+      <!-- Simple Receipt Block -->
+      <div style="background: rgba(0, 255, 136, 0.04); border: 1px dashed rgba(0, 255, 136, 0.3); border-radius: 14px; padding: 12px; margin-bottom: 10px; text-align: center;">
+        <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 8px;">Переведите сумму и прикрепите чек:</div>
 
-      <!-- Verification and Confirmation Block -->
-      <div style="background: rgba(0, 255, 136, 0.05); border: 1px dashed rgba(0, 255, 136, 0.35); border-radius: 14px; padding: 12px; margin-bottom: 12px;">
-        <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 4px;">🧾 Проверка платежа с подтверждением:</div>
-        <p style="font-size: 11px; color: var(--text-secondary); margin: 0 0 10px 0; line-height: 1.4;">
-          Переведи сумму по реквизитам выше и загрузи чек прямо сюда. Создатель подтвердит оплату за <b>1–5 минут</b>!
-        </p>
-
-        <!-- Hidden input for file -->
         <input type="file" id="receiptFileInput" accept="image/*" style="display:none;" onchange="handleReceiptFileSelected(event)">
 
         <button type="button" class="btn-action" style="width: 100%; margin-bottom: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-subtle); color: #fff; font-size: 12px; font-weight: 600; padding: 10px;" onclick="document.getElementById('receiptFileInput').click()">
-          📁 Выбрать скриншот / фото чека
+          📁 Выбрать фото чека
         </button>
 
-        <!-- Image preview -->
-        <div id="receiptPreviewBox" style="display:none; margin-bottom: 10px; text-align: center;">
-          <img id="receiptPreviewImg" src="" style="max-height: 110px; border-radius: 10px; border: 1px solid var(--neon-emerald); margin-bottom: 4px; object-fit: contain;">
+        <div id="receiptPreviewBox" style="display:none; margin-bottom: 8px; text-align: center;">
+          <img id="receiptPreviewImg" src="" style="max-height: 90px; border-radius: 8px; border: 1px solid var(--neon-emerald); margin-bottom: 4px; object-fit: contain;">
           <div style="font-size: 11px; color: var(--neon-emerald); font-weight: 600;" id="receiptFileName">Чек выбран</div>
         </div>
 
         <button type="button" class="checkout-btn" id="btnSubmitReceipt" style="width: 100%; display:none; margin-bottom: 4px;" onclick="submitReceiptProof()">
-          🚀 Отправить чек на подтверждение Создателю
+          🚀 Отправить чек на проверку
         </button>
       </div>
 
-      <button type="button" class="checkout-btn" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.2); color: var(--text-secondary); margin-bottom: 6px;" onclick="submitReceiptToChat()">
-        💬 Или отправить чек в чат с ботом
+      <button type="button" class="checkout-btn" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-secondary); font-size: 12px; padding: 8px;" onclick="submitReceiptToChat()">
+        💬 Или скинуть чек прямо в чат с ботом
       </button>
     </div>
   </div>

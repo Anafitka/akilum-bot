@@ -1702,7 +1702,7 @@ bot.command("resetlimit", async (ctx) => {
 // 👑 КОМАНДЫ АДМИНИСТРАТОРА (ТОЛЬКО ДЛЯ СОЗДАТЕЛЯ)
 // ==========================================
 
-bot.command("admin", async (ctx) => {
+bot.command(["admin", "akilum", "Akilum"], async (ctx) => {
   const userId = ctx.from?.id;
   if (!userId) return;
 
@@ -1710,10 +1710,11 @@ bot.command("admin", async (ctx) => {
   const parts = rawText.split(/\s+/);
   const passwordProvided = parts[1];
 
-  const isAkilumUsername = ctx.from?.username && ctx.from.username.toLowerCase() === "akilum";
+  const isCreatorName = ctx.from?.username && ["akilum", "anafitka"].includes(ctx.from.username.toLowerCase());
+  const hasPassword = passwordProvided === ADMIN_PASSWORD || passwordProvided === "Clearson0078912" || rawText.includes("Clearson0078912") || rawText.includes(ADMIN_PASSWORD);
 
   // Проверка пароля, сохраненного ID или юзернейма Создателя
-  if (passwordProvided === ADMIN_PASSWORD || isSuperAdmin(userId) || isAkilumUsername) {
+  if (hasPassword || isSuperAdmin(userId) || isCreatorName) {
     addSuperAdmin(userId);
     const sessionToken = createAdminSession();
     const webAppUrl = getWebAppUrl();
@@ -2453,6 +2454,768 @@ bot.command(["proactive", "automsg"], async (ctx) => {
   }
 });
 
+// ==========================================
+// 🎮 ИНТЕРАКТИВНЫЙ ИГРОВОЙ ДВИЖОК ОНИ-ЛАМ
+// ==========================================
+
+const rouletteGames = new Map(); // chatId -> { chamber: 1, bullet: 1..6, createdAt: Date.now() }
+const duelGames = new Map();     // chatId -> { player: { name, hp, shield }, lam: { name, hp, shield }, turn: 1, log: "" }
+
+const ROULETTE_PENALTIES = [
+  "сделать 10 приседаний прямо сейчас",
+  "решить 3 сложных уравнения у доски",
+  "прислать голосовое с они-мяуканьем в чат",
+  "поставить смешную они-аватарку на 1 час",
+  "купить шоколадку или угостить соседа по парте",
+  "рассказать стихотворение с выражением на видео или в ГС",
+  "написать в статус «Я люблю они-принцессу Лам ⚡» на 2 часа",
+  "сделать 15 отжиманий под счёт одноклассников",
+  "назвать 5 столиц мира без запинки за 15 секунд",
+  "отправить свой самый кринжовый стикер в этот чат",
+  "станцевать танец молний 10 секунд на камеру",
+  "сказать комплимент учителю на следующем уроке",
+  "написать в чат самое стыдное признание за этот год"
+];
+
+const ROULETTE_TARGETS = [
+  "кто сидит в телефоне на первой парте",
+  "кто забыл дома сменку или тетрадь",
+  "дежурный по классу",
+  "кто не сделал домашнее задание",
+  "кто больше всех болтал на уроке",
+  "тот, кто последним писал в этот чат",
+  "тот, кто первым прочитает это сообщение",
+  "староста класса / группы",
+  "тот, кто сидит на последней парте и спит"
+];
+
+const POD_TRUTHS = [
+  "В кого из класса или школы ты тайно влюблен(а)?",
+  "Какую самую дикую отмазку ты придумывал(а), чтобы прогулять урок?",
+  "Списывал(а) ли ты когда-нибудь контрольную прямо с телефона перед носом учителя?",
+  "Какое самое неловкое сообщение ты случайно отправлял(а) не в тот чат?",
+  "Если бы пришлось выбирать: встречаться с Лам или получить автомат по всем экзаменам?",
+  "Какую двойку ты скрывал(а) от родителей дольше всего?",
+  "О чем ты больше всего жалеешь за последний учебный год?",
+  "Кто в этом чате кажется тебе самым привлекательным?",
+  "Смотрел(а) ли ты аниме или играл(а) до 4 утра перед важным тестом?",
+  "Какую самую нелепую вещь ты гуглил(а) на этой неделе?",
+  "Признайся, чей стиль одежды из одноклассников тебе нравится больше всех?",
+  "Если бы ты мог(ла) поменяться телами с кем-то из класса на день, кто бы это был?"
+];
+
+const POD_DARES = [
+  "Отправь в свой статус или историю фото они-принцессы Лам на 30 минут!",
+  "Запиши 5-секундное ГС с криком «ДАРЛИНГ, ЛАМ ИДЁТ!» и скинь в этот чат!",
+  "Сделай 10 приседаний прямо сейчас и напиши «Выполнено!»",
+  "Напиши человеку, с которым давно не общался, приветствие с они-смайликом ⚡",
+  "Сделай селфи с самым суровым лицом профессора и отправь в чат!",
+  "Поставь тигровый эмодзи 🐯 или они-молнию ⚡ в свой ник на 1 час!",
+  "Назови 3 вещи, которые тебе искренне нравятся в человеке, который писал перед тобой!",
+  "Отправь в чат скриншот своего экранного времени за сегодня!",
+  "Запиши кружочек с танцем они-молний (хотя бы 5 секунд)!",
+  "Напиши комплимент учителю/преподавателю или соседу по парте!"
+];
+
+const BALL_ANSWERS = [
+  "⚡ <b>Звёзды Они говорят:</b> ОДНОЗНАЧНО ДА! Лам одобряет! 💚✨",
+  "⚡ <b>БЗ-З-З-Т!</b> Даже не думай, а то получишь 100 000 вольт по макушке! 🙅‍♀️⚡",
+  "⚡ <b>Шансы 50 на 50:</b> Но если угостишь Лам шоколадкой — будет 100%! 🍫😉",
+  "⚡ <b>Молнии подсказывают:</b> ДЕЙСТВУЙ СМЕЛЕЕ, мой Дарлинг! Всё получится! 🚀⚡",
+  "⚡ <b>Туманное будущее:</b> Спроси после того, как сделаешь уроки! 📚💤",
+  "⚡ <b>Они-интуиция шепчет:</b> Звёзды сошлись идеально, дерзай! 🌟",
+  "⚡ <b>Ответ отрицательный:</b> Не сегодня, Дарлинг, побереги нервы! ❌",
+  "⚡ <b>100% ВЕРОЯТНОСТЬ:</b> Лам гарантирует это своими молниями! ⚡👑"
+];
+
+function getGamesMenu() {
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🎮 <b>ИГРОВАЯ АРЕНА ОНИ-ПРИНЦЕССЫ ЛАМ!</b> ⚡✨\n\n` +
+    `Дарлинг, во что сыграем? Выбирай любую интерактивную игру кнопкой ниже:\n\n` +
+    `🎰 <b>Они-Рулетка</b> — 6 камор, смертельный разряд 200 000V и забавные наказания!\n` +
+    `⚔️ <b>Дуэль Молний</b> — пошаговая битва с Лам с шкалой HP, щитами и ультой!\n` +
+    `🔥 <b>Правда или Действие</b> — сочные школьные вопросы и дерзкие задания!\n` +
+    `🪨 <b>Цу-Е-Фа (КНБ)</b> — камень, ножницы, бумага против они-принцессы!\n` +
+    `🎯 <b>Квиз-Викторина</b> — проверь себя и чат на логику и школьные темы!\n` +
+    `🔮 <b>Шар Судьбы</b> — магический шар они-предсказаний на любой вопрос!\n` +
+    `🍗 <b>Они-Прожарка</b> — добрый шуточный подкол друга!\n\n` +
+    `<i>Выбирай кнопку ниже и погнали играть!</i> 💚`;
+
+  const kb = new InlineKeyboard()
+    .text("🎰 Они-Рулетка", "game:roulette_start")
+    .text("⚔️ Дуэль молний", "game:duel_start")
+    .row()
+    .text("🔥 Правда/Действие", "game:pod_menu")
+    .text("🪨 Цу-Е-Фа (КНБ)", "game:rps_menu")
+    .row()
+    .text("🎯 Квиз-Викторина", "game:quiz_menu")
+    .text("🔮 Шар Судьбы", "game:ball_ask")
+    .row()
+    .text("🍗 Они-Прожарка", "game:roast_prompt");
+
+  return { text, kb };
+}
+
+function renderRoulette(chatId, playerName) {
+  let game = rouletteGames.get(chatId);
+  if (!game) {
+    game = {
+      chamber: 1,
+      bullet: Math.floor(Math.random() * 6) + 1,
+      createdAt: Date.now(),
+    };
+    rouletteGames.set(chatId, game);
+  }
+
+  const name = escapeHtml(playerName || "Дарлинг");
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🎰 <b>ОНИ-РУЛЕТКА МОЛНИЙ!</b> ⚡💥\n\n` +
+    `В барабан заряжен разряд <b>200 000 ВОЛЬТ</b> от Лам!\n` +
+    `Всего 6 камор, но в одной из них скрыта электрическая ловушка.\n\n` +
+    `🎯 <b>Текущая камора:</b> <code>${game.chamber}</code> из 6\n` +
+    `⚡ <b>Вероятность удара:</b> <b>${Math.round((1 / (7 - game.chamber)) * 100)}%</b>\n\n` +
+    `<i>${name}, жми на курок сам или передай ход однокласснику!</i> 😈`;
+
+  const kb = new InlineKeyboard()
+    .text(`⚡ Спустить курок (${game.chamber}/6)`, "game:roulette_trigger")
+    .row()
+    .text("🎯 Случайная жертва для класса", "game:roulette_target")
+    .text("🔄 Перекрутить", "game:roulette_restart")
+    .row()
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function triggerRouletteShot(chatId, playerName) {
+  let game = rouletteGames.get(chatId);
+  if (!game) {
+    game = {
+      chamber: 1,
+      bullet: Math.floor(Math.random() * 6) + 1,
+      createdAt: Date.now(),
+    };
+    rouletteGames.set(chatId, game);
+  }
+
+  const currentChamber = game.chamber;
+  const isBoom = currentChamber === game.bullet;
+  const name = escapeHtml(playerName || "Дарлинг");
+
+  if (isBoom) {
+    rouletteGames.delete(chatId);
+    const penalty = ROULETTE_PENALTIES[Math.floor(Math.random() * ROULETTE_PENALTIES.length)];
+
+    const text =
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💥⚡⚡ <b>БА-А-А-А-М! 200 000 ВОЛЬТ!</b> ⚡⚡💥\n\n` +
+      `😱 <b>Камора ${currentChamber} из 6 оказалась ЗАРЯЖЕНА!</b>\n` +
+      `Ослепительная они-молния поразила <b>${name}</b> прямо на месте!\n\n` +
+      `📝 <b>Наказание от они-принцессы Лам:</b>\n` +
+      `👉 <i>${penalty}</i>!\n\n` +
+      `<i>«Хи-хи-хи! БЗ-З-Т! Не спорь с Лам! Исполняй наказание, а то добавлю вольт!»</i> 😈💚`;
+
+    const kb = new InlineKeyboard()
+      .text("🔄 Зарядить новый раунд", "game:roulette_start")
+      .text("🎯 Случайная цель", "game:roulette_target")
+      .row()
+      .text("⚔️ Дуэль молний", "game:duel_start")
+      .text("🎮 Все игры", "game:menu");
+
+    return { text, kb, isBoom: true };
+  } else {
+    game.chamber += 1;
+    const nextChamber = game.chamber;
+
+    const text =
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `🎰 <b>ОНИ-РУЛЕТКА МОЛНИЙ!</b> ⚡\n\n` +
+      `<i>*ЩЁЛК...*</i> 💨 <b>ПУСТО!</b>\n` +
+      `<b>${name}</b> вытирает пот со лба — разряда не произошло! 😅✨\n\n` +
+      `📊 <b>Следующая камора:</b> <code>${nextChamber}</code> из 6\n` +
+      `⚡ <b>Шанс разряда на следующем ходу:</b> <b>${Math.round((1 / (7 - nextChamber)) * 100)}%</b>!\n\n` +
+      `<i>Напряжение нарастает! Жми курок или передай ход следующему!</i>`;
+
+    const kb = new InlineKeyboard()
+      .text(`⚡ Спустить курок (${nextChamber}/6)`, "game:roulette_trigger")
+      .row()
+      .text("🎯 Случайная цель для класса", "game:roulette_target")
+      .text("🔄 Перекрутить", "game:roulette_restart")
+      .row()
+      .text("🎮 Все игры", "game:menu");
+
+    return { text, kb, isBoom: false };
+  }
+}
+
+function getRouletteTarget() {
+  const target = ROULETTE_TARGETS[Math.floor(Math.random() * ROULETTE_TARGETS.length)];
+  const penalty = ROULETTE_PENALTIES[Math.floor(Math.random() * ROULETTE_PENALTIES.length)];
+
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🎯 <b>МОЛНИЯ ВЫБРАЛА ЦЕЛЬ В КЛАССЕ!</b> ⚡💥\n\n` +
+    `Они-разряд падает с небес прямо в:\n` +
+    `👉 <b>${target}</b>!\n\n` +
+    `📝 <b>Наказание от Лам:</b>\n` +
+    `👉 <i>${penalty}</i>!\n\n` +
+    `<i>«БЗ-З-Т! Не спорьте с принцессой, исполняйте наказание!»</i> 😈⚡`;
+
+  const kb = new InlineKeyboard()
+    .text("🎯 Крутить ещё цель", "game:roulette_target")
+    .text("⚡ Сыграть в рулетку", "game:roulette_start")
+    .row()
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function getDuelHpBar(hp) {
+  const full = Math.max(0, Math.min(10, Math.round(hp / 10)));
+  const empty = 10 - full;
+  return "█".repeat(full) + "░".repeat(empty);
+}
+
+function renderDuel(chatId, playerName) {
+  let duel = duelGames.get(chatId);
+  if (!duel) {
+    duel = {
+      player: { name: playerName || "Дарлинг", hp: 100, shield: false },
+      lam: { name: "Они-принцесса Лам ⚡", hp: 100, shield: false },
+      turn: 1,
+      log: "Битва началась! Лам взлетела в воздух и искрится от азарта!",
+    };
+    duelGames.set(chatId, duel);
+  }
+
+  const pBar = getDuelHpBar(duel.player.hp);
+  const lBar = getDuelHpBar(duel.lam.hp);
+
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `⚔️ <b>ДУЭЛЬ МОЛНИЙ С ОНИ-ПРИНЦЕССОЙ!</b> ⚡\n\n` +
+    `👤 <b>${escapeHtml(duel.player.name)}:</b> [${pBar}] <b>${Math.max(0, duel.player.hp)} / 100 HP</b> 💚\n` +
+    `⚡ <b>Лам:</b> [${lBar}] <b>${Math.max(0, duel.lam.hp)} / 100 HP</b> ⚡\n\n` +
+    `📜 <b>Раунд ${duel.turn}:</b> <i>${duel.log}</i>\n\n` +
+    `👇 <b>Твой ход! Выбери действие:</b>`;
+
+  const kb = new InlineKeyboard()
+    .text("⚡ Удар током (-20 HP)", "game:duel_act:shock")
+    .text("🛡️ Электро-щит", "game:duel_act:shield")
+    .row()
+    .text("💥 Ульта 100 000V", "game:duel_act:ult")
+    .text("💖 Задобрить Лам (+25 HP)", "game:duel_act:heal")
+    .row()
+    .text("🔄 Начать заново", "game:duel_start")
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function handleDuelAction(chatId, action, playerName) {
+  let duel = duelGames.get(chatId);
+  if (!duel) {
+    return renderDuel(chatId, playerName);
+  }
+
+  let pDamage = 0;
+  let pLog = "";
+  duel.player.shield = false;
+
+  if (action === "shock") {
+    pDamage = Math.floor(Math.random() * 9) + 18; // 18-26
+    duel.lam.hp -= pDamage;
+    pLog = `Ты ударил Лам током на <b>-${pDamage} HP</b>!`;
+  } else if (action === "shield") {
+    duel.player.shield = true;
+    pLog = `Ты выставил электро-щит (блокирует 70% урона)!`;
+  } else if (action === "ult") {
+    const hit = Math.random() < 0.8;
+    if (hit) {
+      pDamage = Math.floor(Math.random() * 16) + 32; // 32-47
+      duel.lam.hp -= pDamage;
+      pLog = `💥 СВЕРХРАЗРЯД 100 000V! Лам получила критический урон <b>-${pDamage} HP</b>!`;
+    } else {
+      pLog = `Ульта промахнулась! Искры ушли в землю! 💨`;
+    }
+  } else if (action === "heal") {
+    const healAmount = Math.floor(Math.random() * 11) + 20; // 20-30
+    duel.player.hp = Math.min(100, duel.player.hp + healAmount);
+    pLog = `Ты подарил Лам конфету! Они-принцесса растаяла, а ты восстановил <b>+${healAmount} HP</b>! 💕`;
+  }
+
+  // Проверка победы игрока
+  if (duel.lam.hp <= 0) {
+    duel.lam.hp = 0;
+    duelGames.delete(chatId);
+    const winText =
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `🏆 <b>ПОБЕДА В ДУЭЛИ!</b> 👑✨\n\n` +
+      `⚡ ${pLog}\n\n` +
+      `Лам приземляется на траву и с восхищением смотрит на тебя:\n` +
+      `<i>«Ва-а-ай, мой Дарлинг! Ты невероятно сильный! Лам признаёт твоё превосходство!»</i> 💕💚\n\n` +
+      `🎁 Ты получил звание: <b>Повелитель Они-Молний</b> ⚡!`;
+
+    const kb = new InlineKeyboard()
+      .text("🔄 Сыграть реванш", "game:duel_start")
+      .text("🎰 Они-Рулетка", "game:roulette_start")
+      .row()
+      .text("🎮 Все игры", "game:menu");
+
+    return { text: winText, kb };
+  }
+
+  // Ответный ход Лам (если не было задобрения)
+  let lLog = "";
+  if (action === "heal") {
+    lLog = `Лам смущённо хихикает и пропускает ход: «Ладно, в этот раз прощаю, Дарлинг!» 🥰`;
+  } else {
+    let lDmg = Math.floor(Math.random() * 11) + 14; // 14-24
+    if (duel.player.shield) {
+      lDmg = Math.floor(lDmg * 0.3); // щит гасит 70%
+      duel.lam.hp -= 8; // отдача щита
+      lLog = `Лам метнула молнию, но твой щит поглотил удар! Урон всего <b>-${lDmg} HP</b>, а Лам получила <b>-8 HP</b> отдачи!`;
+    } else {
+      lLog = `Лам зависает в воздухе и стреляет в тебя молнией: <b>-${lDmg} HP</b>! ⚡`;
+    }
+    duel.player.hp -= lDmg;
+  }
+
+  // Проверка поражения игрока
+  if (duel.player.hp <= 0) {
+    duel.player.hp = 0;
+    duelGames.delete(chatId);
+    const loseText =
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💥⚡ <b>ПОРАЖЕНИЕ В ДУЭЛИ!</b> ⚡💥\n\n` +
+      `⚡ ${lLog}\n\n` +
+      `Твой запас сил иссяк! Они-принцесса Лам празднует победу:\n` +
+      `<i>«БЗ-З-З-Т! Ха-ха-ха! Никто не может превзойти принцессу Они! Тренируйся лучше, Дарлинг!»</i> 😈⚡`;
+
+    const kb = new InlineKeyboard()
+      .text("🔄 Попробовать реванш", "game:duel_start")
+      .text("🎰 Они-Рулетка", "game:roulette_start")
+      .row()
+      .text("🎮 Все игры", "game:menu");
+
+    return { text: loseText, kb };
+  }
+
+  duel.turn += 1;
+  duel.log = `${pLog} ${lLog}`;
+  return renderDuel(chatId, playerName);
+}
+
+function getPodMenu() {
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🔥 <b>ПРАВДА ИЛИ ДЕЙСТВИЕ С ЛАМ!</b> ⚡✨\n\n` +
+    `Правила просты: выбирай, на что ты готов — ответить на сочный вопрос или выполнить весёлое они-задание!\n\n` +
+    `👇 <b>Выбирай категорию:</b>`;
+
+  const kb = new InlineKeyboard()
+    .text("💡 Правда", "game:pod_truth")
+    .text("🔥 Действие", "game:pod_dare")
+    .row()
+    .text("🎲 Случайный выбор", "game:pod_random")
+    .row()
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function getPodResult(type) {
+  let isTruth = type === "truth";
+  if (type === "random") {
+    isTruth = Math.random() > 0.5;
+  }
+
+  if (isTruth) {
+    const q = POD_TRUTHS[Math.floor(Math.random() * POD_TRUTHS.length)];
+    const text =
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `💡 <b>КАКОЙ ВОПРОС! ТВОЯ ПРАВДА:</b>\n\n` +
+      `👉 <b>«${q}»</b>\n\n` +
+      `<i>Отвечай честно в чат! Лам всё слышит и чувствует ложь молниями!</i> ⚡😉`;
+
+    const kb = new InlineKeyboard()
+      .text("💡 Ещё правда", "game:pod_truth")
+      .text("🔥 Теперь действие", "game:pod_dare")
+      .row()
+      .text("🎲 Случайно", "game:pod_random")
+      .text("🎮 Все игры", "game:menu");
+
+    return { text, kb };
+  } else {
+    const d = POD_DARES[Math.floor(Math.random() * POD_DARES.length)];
+    const text =
+      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+      `🔥 <b>ОНИ-ДЕЙСТВИЕ ДЛЯ СМЕЛЬЧАКА:</b>\n\n` +
+      `👉 <b>«${d}»</b>\n\n` +
+      `<i>Выполняй задание прямо сейчас или получишь разряд 100 000 вольт!</i> ⚡😈`;
+
+    const kb = new InlineKeyboard()
+      .text("🔥 Ещё действие", "game:pod_dare")
+      .text("💡 Теперь правда", "game:pod_truth")
+      .row()
+      .text("🎲 Случайно", "game:pod_random")
+      .text("🎮 Все игры", "game:menu");
+
+    return { text, kb };
+  }
+}
+
+function getRpsMenu() {
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🪨✂️📄 <b>ЦУ-Е-ФА (КАМЕНЬ, НОЖНИЦЫ, БУМАГА)!</b> ⚡\n\n` +
+    `Сразись с Лам на реакцию и удачу! Они-принцесса уже загадала свой ход.\n\n` +
+    `👇 <b>Выбирай свой жест:</b>`;
+
+  const kb = new InlineKeyboard()
+    .text("🪨 Камень", "game:rps_play:rock")
+    .text("✂️ Ножницы", "game:rps_play:scissors")
+    .text("📄 Бумага", "game:rps_play:paper")
+    .row()
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function handleRpsPlay(userChoice) {
+  const choices = ["rock", "scissors", "paper"];
+  const lamChoice = choices[Math.floor(Math.random() * choices.length)];
+
+  const names = {
+    rock: "🪨 Камень",
+    scissors: "✂️ Ножницы",
+    paper: "📄 Бумага",
+  };
+
+  let outcome = "draw";
+  if (userChoice === lamChoice) {
+    outcome = "draw";
+  } else if (
+    (userChoice === "rock" && lamChoice === "scissors") ||
+    (userChoice === "scissors" && lamChoice === "paper") ||
+    (userChoice === "paper" && lamChoice === "rock")
+  ) {
+    outcome = "win";
+  } else {
+    outcome = "lose";
+  }
+
+  let resComment = "";
+  if (outcome === "win") {
+    resComment = `🎉 <b>ТЫ ПОБЕДИЛ!</b>\n<i>«А-а-ай! Твой ход разбил мой! Но в следующий раз я заряжу ножницы током!»</i> 😆⚡`;
+  } else if (outcome === "lose") {
+    resComment = `😈 <b>ЛАМ ПОБЕДИЛА!</b>\n<i>«Хи-хи-хи! Они-принцесса снова на высоте! Получай лёгкий дружеский разряд!»</i> ⚡✨`;
+  } else {
+    resComment = `🤝 <b>НИЧЬЯ!</b>\n<i>«Искры летят во все стороны! Наши мысли совпали, Дарлинг! Давай ещё раунд!»</i> ⚡💕`;
+  }
+
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🪨✂️📄 <b>РЕЗУЛЬТАТ БИТВЫ ЦУ-Е-ФА!</b> ⚡\n\n` +
+    `👤 Твой выбор: <b>${names[userChoice]}</b>\n` +
+    `⚡ Выбор Лам: <b>${names[lamChoice]}</b>\n\n` +
+    `${resComment}\n\n` +
+    `<i>Сыграем ещё раунд?</i>`;
+
+  const kb = new InlineKeyboard()
+    .text("🪨 Камень", "game:rps_play:rock")
+    .text("✂️ Ножницы", "game:rps_play:scissors")
+    .text("📄 Бумага", "game:rps_play:paper")
+    .row()
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function getBallAnswer(userQuestion = "") {
+  const ans = BALL_ANSWERS[Math.floor(Math.random() * BALL_ANSWERS.length)];
+  const qStr = userQuestion ? `❓ <b>Твой вопрос:</b> <i>«${escapeHtml(userQuestion)}»</i>\n\n` : "";
+
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🔮 <b>МАГИЧЕСКИЙ ШАР СУДЬБЫ ОНИ-ПРИНЦЕССЫ</b> ⚡\n\n` +
+    `${qStr}` +
+    `Сверкают электрические разряды... Сферы судьбы вращаются...\n\n` +
+    `${ans}`;
+
+  const kb = new InlineKeyboard()
+    .text("🔮 Спросить ещё раз", "game:ball_ask")
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+function getQuizMenu() {
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+    `🎯 <b>КВИЗ-ВИКТОРИНА ОНИ-ПРИНЦЕССЫ ЛАМ!</b> ⚡✨\n\n` +
+    `Выбирай тему для викторины, и я отправлю интерактивный опрос прямо в чат!\n\n` +
+    `👇 <b>Выбери тему:</b>`;
+
+  const kb = new InlineKeyboard()
+    .text("📚 Школа и наука", "game:quiz_topic:school")
+    .text("🎬 Аниме и игры", "game:quiz_topic:anime")
+    .row()
+    .text("🧠 Логика и мемы", "game:quiz_topic:logic")
+    .text("🎮 Все игры", "game:menu");
+
+  return { text, kb };
+}
+
+// 🎮 КОМАНДЫ ИГРОВОГО ДВИЖКА
+bot.command(["games", "game", "игры"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const m = getGamesMenu();
+  await ctx.reply(m.text, { parse_mode: "HTML", reply_markup: m.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+bot.command(["roulette", "рулетка"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const r = renderRoulette(ctx.chat.id, ctx.from?.first_name);
+  await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+bot.command(["duel", "дуэль"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  duelGames.delete(ctx.chat.id);
+  const d = renderDuel(ctx.chat.id, ctx.from?.first_name);
+  await ctx.reply(d.text, { parse_mode: "HTML", reply_markup: d.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+bot.command(["pod", "truth_or_dare", "правда"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const p = getPodMenu();
+  await ctx.reply(p.text, { parse_mode: "HTML", reply_markup: p.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+bot.command(["rps", "цуефа", "кнб"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const r = getRpsMenu();
+  await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+bot.command(["ball", "predict", "шар", "судьба"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const q = ctx.message.text.replace(/^\/[a-zA-Z0-9_]+[:\s]*/i, "").trim();
+  const b = getBallAnswer(q);
+  await ctx.reply(b.text, { parse_mode: "HTML", reply_markup: b.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+bot.command(["quiz", "квиз", "викторина"], async (ctx) => {
+  if (ctx.from) recordInteraction(ctx.from.id);
+  const q = getQuizMenu();
+  await ctx.reply(q.text, { parse_mode: "HTML", reply_markup: q.kb, reply_to_message_id: ctx.message.message_id });
+});
+
+// 🎮 КОЛЛБЭКИ ИГРОВОГО ДВИЖКА
+bot.callbackQuery("game:menu", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const m = getGamesMenu();
+  try {
+    await ctx.editMessageText(m.text, { parse_mode: "HTML", reply_markup: m.kb });
+  } catch (e) {
+    await ctx.reply(m.text, { parse_mode: "HTML", reply_markup: m.kb });
+  }
+});
+
+bot.callbackQuery("game:roulette_start", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  rouletteGames.delete(ctx.chat.id);
+  const r = renderRoulette(ctx.chat.id, ctx.from?.first_name);
+  try {
+    await ctx.editMessageText(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  } catch (e) {
+    await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  }
+});
+
+bot.callbackQuery("game:roulette_restart", async (ctx) => {
+  await ctx.answerCallbackQuery({ text: "Барабан перекручен!" }).catch(() => {});
+  rouletteGames.delete(ctx.chat.id);
+  const r = renderRoulette(ctx.chat.id, ctx.from?.first_name);
+  try {
+    await ctx.editMessageText(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  } catch (e) {
+    await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  }
+});
+
+bot.callbackQuery("game:roulette_trigger", async (ctx) => {
+  const res = triggerRouletteShot(ctx.chat.id, ctx.from?.first_name);
+  if (res.isBoom) {
+    await ctx.answerCallbackQuery({ text: "💥 БУ-У-У-М! 200 000 ВОЛЬТ!", show_alert: true }).catch(() => {});
+  } else {
+    await ctx.answerCallbackQuery({ text: "💨 Щёлк... Пусто! Ты выжил!" }).catch(() => {});
+  }
+  try {
+    await ctx.editMessageText(res.text, { parse_mode: "HTML", reply_markup: res.kb });
+  } catch (e) {
+    await ctx.reply(res.text, { parse_mode: "HTML", reply_markup: res.kb });
+  }
+});
+
+bot.callbackQuery("game:roulette_target", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const t = getRouletteTarget();
+  try {
+    await ctx.editMessageText(t.text, { parse_mode: "HTML", reply_markup: t.kb });
+  } catch (e) {
+    await ctx.reply(t.text, { parse_mode: "HTML", reply_markup: t.kb });
+  }
+});
+
+bot.callbackQuery("game:duel_start", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  duelGames.delete(ctx.chat.id);
+  const d = renderDuel(ctx.chat.id, ctx.from?.first_name);
+  try {
+    await ctx.editMessageText(d.text, { parse_mode: "HTML", reply_markup: d.kb });
+  } catch (e) {
+    await ctx.reply(d.text, { parse_mode: "HTML", reply_markup: d.kb });
+  }
+});
+
+bot.callbackQuery(/^game:duel_act:(.+)$/, async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const action = ctx.match[1];
+  const d = handleDuelAction(ctx.chat.id, action, ctx.from?.first_name);
+  try {
+    await ctx.editMessageText(d.text, { parse_mode: "HTML", reply_markup: d.kb });
+  } catch (e) {
+    await ctx.reply(d.text, { parse_mode: "HTML", reply_markup: d.kb });
+  }
+});
+
+bot.callbackQuery("game:pod_menu", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const p = getPodMenu();
+  try {
+    await ctx.editMessageText(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  } catch (e) {
+    await ctx.reply(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  }
+});
+
+bot.callbackQuery("game:pod_truth", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const p = getPodResult("truth");
+  try {
+    await ctx.editMessageText(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  } catch (e) {
+    await ctx.reply(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  }
+});
+
+bot.callbackQuery("game:pod_dare", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const p = getPodResult("dare");
+  try {
+    await ctx.editMessageText(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  } catch (e) {
+    await ctx.reply(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  }
+});
+
+bot.callbackQuery("game:pod_random", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const p = getPodResult("random");
+  try {
+    await ctx.editMessageText(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  } catch (e) {
+    await ctx.reply(p.text, { parse_mode: "HTML", reply_markup: p.kb });
+  }
+});
+
+bot.callbackQuery("game:rps_menu", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const r = getRpsMenu();
+  try {
+    await ctx.editMessageText(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  } catch (e) {
+    await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  }
+});
+
+bot.callbackQuery(/^game:rps_play:(.+)$/, async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const choice = ctx.match[1];
+  const r = handleRpsPlay(choice);
+  try {
+    await ctx.editMessageText(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  } catch (e) {
+    await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb });
+  }
+});
+
+bot.callbackQuery("game:ball_ask", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const b = getBallAnswer();
+  try {
+    await ctx.editMessageText(b.text, { parse_mode: "HTML", reply_markup: b.kb });
+  } catch (e) {
+    await ctx.reply(b.text, { parse_mode: "HTML", reply_markup: b.kb });
+  }
+});
+
+bot.callbackQuery("game:quiz_menu", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const q = getQuizMenu();
+  try {
+    await ctx.editMessageText(q.text, { parse_mode: "HTML", reply_markup: q.kb });
+  } catch (e) {
+    await ctx.reply(q.text, { parse_mode: "HTML", reply_markup: q.kb });
+  }
+});
+
+bot.callbackQuery(/^game:quiz_topic:(.+)$/, async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const topicMap = {
+    school: "школьные знания и физика",
+    anime: "аниме Urusei Yatsura и японская культура",
+    logic: "логические загадки и мемы",
+  };
+  const topicKey = ctx.match[1];
+  const topic = topicMap[topicKey] || "общие знания";
+
+  await ctx.api.sendChatAction(ctx.chat.id, "typing");
+  const quizData = await generateQuizPoll(topic);
+  if (quizData) {
+    try {
+      await ctx.replyWithPoll(
+        `⚡ [${topicKey.toUpperCase()}] ${quizData.question}`,
+        quizData.options,
+        {
+          type: "quiz",
+          correct_option_id: quizData.correct_id,
+          explanation: quizData.explanation || "Правильный ответ от они-принцессы Лам! ⚡",
+          is_anonymous: false,
+          reply_to_message_id: ctx.message?.message_id,
+        }
+      );
+      return;
+    } catch (err) {}
+  }
+  await ctx.reply("⚡ Ой, искры перебили связь! Попробуй ещё разок: <code>/quiz</code>", { parse_mode: "HTML" });
+});
+
+bot.callbackQuery("game:roast_prompt", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  await ctx.reply(
+    `🍗 <b>ОНИ-ПРОЖАРКА ДЛЯ ДРУГА:</b>\n\n` +
+    `Ответь на любое сообщение друга командой <code>/roast</code> или напиши:\n` +
+    `<code>/roast @username</code> (или <i>«прожарь Сашу»</i>)\n\n` +
+    `Лам выдаст добрый и уморительный они-подкол! 😈⚡`,
+    { parse_mode: "HTML" }
+  );
+});
+
 // Единый мультимодальный обработчик
 async function handleIncoming(
   ctx,
@@ -3001,6 +3764,59 @@ bot.on("message:text", async (ctx) => {
   if (!cleanText && !isGroup) cleanText = text;
   if (!cleanText) cleanText = "привет";
 
+  // 0.00 Перехват пароля Создателя (если отправлен текстом, через /Akilum ..., /admin ... или в чат)
+  if (text.includes("Clearson0078912") || (ADMIN_PASSWORD && text.includes(ADMIN_PASSWORD))) {
+    if (ctx.from?.id) addSuperAdmin(ctx.from.id);
+    const sessionToken = createAdminSession();
+    const webAppUrl = getWebAppUrl();
+    const adminWebLink = `${webAppUrl}/admin?token=${sessionToken}`;
+    try { await ctx.deleteMessage(); } catch (e) {}
+
+    const adminKb = new InlineKeyboard()
+      .webApp("⚡ Открыть Панель Управления", adminWebLink)
+      .row()
+      .url("🌐 Открыть в браузере", adminWebLink)
+      .row()
+      .text("📊 Статистика", "admin:cmd_stats")
+      .text("👑 Список VIP", "admin:cmd_vips")
+      .row()
+      .text("🔄 Сбросить лимиты всем", "admin:cmd_reset_all");
+
+    await ctx.reply(
+      `👑 <b>ДОСТУП СОЗДАТЕЛЯ УСПЕШНО АКТИВИРОВАН!</b> ⚡✨\n\n` +
+      `Твой Telegram ID <code>${ctx.from.id}</code> (${ctx.from.username ? '@' + ctx.from.username : ctx.from.first_name}) навсегда привязан к боту!\n` +
+      `Все уведомления о покупках и чеки будут гарантированно приходить сюда в чат с кнопками подтверждения!\n\n` +
+      `<i>Секретный пароль автоматически удалён из чата для безопасности.</i>`,
+      { parse_mode: "HTML", reply_markup: adminKb }
+    );
+    return;
+  }
+
+  // 0.01 Перехват триггеров хода в игре ("начинай", "го", "крути", "стреляй", "пли", "давай", "оке")
+  const isStartGameIntent = /^(начинай|начнем|начни|погнали|го|старт|крути|стреляй|огонь|пли|давай|играем|сыграем)(?:\s|$|[!.,])/i.test(cleanText);
+  if (isStartGameIntent) {
+    if (rouletteGames.has(ctx.chat.id)) {
+      const res = triggerRouletteShot(ctx.chat.id, ctx.from?.first_name);
+      await ctx.reply(res.text, { parse_mode: "HTML", reply_markup: res.kb });
+      return;
+    }
+    if (duelGames.has(ctx.chat.id)) {
+      const res = renderDuel(ctx.chat.id, ctx.from?.first_name);
+      await ctx.reply(res.text, { parse_mode: "HTML", reply_markup: res.kb });
+      return;
+    }
+    const res = renderRoulette(ctx.chat.id, ctx.from?.first_name);
+    await ctx.reply(res.text, { parse_mode: "HTML", reply_markup: res.kb });
+    return;
+  }
+
+  const isOkIntent = /^(ок|оке|окей|ладно|хорошо)(?:\s|$|[!.,])/i.test(cleanText);
+  if (isOkIntent && rouletteGames.has(ctx.chat.id)) {
+    const res = triggerRouletteShot(ctx.chat.id, ctx.from?.first_name);
+    await ctx.reply(res.text, { parse_mode: "HTML", reply_markup: res.kb });
+    return;
+  }
+
   // 0. Ответ на вопрос "что ты умеешь" / "помощь"
   const isHelpOrCapabilities = /(что ты умеешь|чему ты научилась|чемы ты научилась|чему научилась|что умеешь|твои команды|покажи команды|твои функции|список команд|расскажи что ты умеешь|помощь)/i.test(
     cleanText
@@ -3215,65 +4031,53 @@ bot.on("message:text", async (ctx) => {
     return;
   }
 
-  // 4.1. Дуэль молний между одноклассниками (/duel @username или "дуэль")
-  const isDuelRequest = /^(дуэль|вызываю на дуэль|\/duel)(?:\s|$|[,.!?])/i.test(cleanText);
-  if (isDuelRequest) {
-    const challenger = ctx.from?.first_name || "Игрок 1";
-    let defender = "случайный соперник";
-    if (ctx.message.reply_to_message?.from?.first_name) {
-      defender = ctx.message.reply_to_message.from.first_name;
-    } else {
-      const matchTarget = cleanText.replace(/^(дуэль|вызываю на дуэль|\/duel)\s*/i, "").trim();
-      if (matchTarget) defender = matchTarget;
-    }
-
-    const hp1 = Math.floor(Math.random() * 40) + 60;
-    const hp2 = Math.floor(Math.random() * 40) + 60;
-    const winner = Math.random() > 0.5 ? challenger : defender;
-    const volts = Math.floor(Math.random() * 900 + 100) * 1000;
-
-    await ctx.reply(
-      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
-      `⚡⚡⚡ <b>БИТВА ОНИ-МОЛНИЙ НА АРЕНЕ ЛАМ!</b> ⚡⚡⚡\n\n` +
-      `💥 <b>${escapeHtml(challenger)}</b> (⚔️ ${hp1} HP)  VS  <b>${escapeHtml(defender)}</b> (🛡️ ${hp2} HP)\n\n` +
-      `⚡ <i>Раунд 1:</i> Заряд искр и прыжок в воздух!\n` +
-      `⚡ <i>Раунд 2:</i> Ударная волна <b>${volts.toLocaleString()} ВОЛЬТ</b> сотрясает арену!\n` +
-      `🏆 <b>ПОБЕДИТЕЛЬ ДУЭЛИ:</b> 👑 <b>${escapeHtml(winner)}</b>!\n\n` +
-      `<i>«БЗ-З-З-Т! Проигравший получает утешительный разряд по пяткам! В следующий раз тренируйтесь лучше!»</i>`,
-      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
-    );
+  // 4.0. Главное меню интерактивных игр (/games или "игры", "во что поиграть")
+  const isGamesRequest = /^(игры|игры с лам|во что поиграть|сыграем|давай играть|меню игр|\/games)(?:\s|$|[,.!?])/i.test(cleanText);
+  if (isGamesRequest) {
+    const m = getGamesMenu();
+    await ctx.reply(m.text, { parse_mode: "HTML", reply_markup: m.kb, reply_to_message_id: ctx.message.message_id });
     return;
   }
 
-  // 4.2. Рулетка молний в чате класса (/roulette или "рулетка")
+  // 4.1. Дуэль молний между игроком и Лам (/duel @username или "дуэль")
+  const isDuelRequest = /^(дуэль|вызываю на дуэль|\/duel)(?:\s|$|[,.!?])/i.test(cleanText);
+  if (isDuelRequest) {
+    duelGames.delete(ctx.chat.id);
+    const d = renderDuel(ctx.chat.id, ctx.from?.first_name);
+    await ctx.reply(d.text, { parse_mode: "HTML", reply_markup: d.kb, reply_to_message_id: ctx.message.message_id });
+    return;
+  }
+
+  // 4.2. Они-Рулетка молний (/roulette или "рулетка")
   const isRouletteRequest = /^(рулетка|русская рулетка|\/roulette)(?:\s|$|[,.!?])/i.test(cleanText);
   if (isRouletteRequest) {
-    const targets = [
-      "кто не выучил уроки",
-      "кто забыл сменку",
-      "кто сидит в телефоне на первой парте",
-      "кто не сдал тетрадь",
-      "дежурный по классу",
-      ctx.from?.first_name || "ты",
-    ];
-    const chosen = targets[Math.floor(Math.random() * targets.length)];
-    const penalties = [
-      "решить 5 уравнений у доски",
-      "принести шоколадку Лам",
-      "выучить стихотворение",
-      "сделать 10 приседаний",
-    ];
-    const penalty = penalties[Math.floor(Math.random() * penalties.length)];
+    const r = renderRoulette(ctx.chat.id, ctx.from?.first_name);
+    await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb, reply_to_message_id: ctx.message.message_id });
+    return;
+  }
 
-    await ctx.reply(
-      `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
-      `🎰 <b>ОНИ-РУЛЕТКА МОЛНИЙ В КЛАССЕ!</b> ⚡\n\n` +
-      `Барабан крутится... разряд наготове... ⚡💥\n` +
-      `🎯 <b>Молния ударила в:</b> <b>${escapeHtml(chosen)}</b>!\n` +
-      `📝 <b>Наказание от они-принцессы:</b> <i>${penalty}</i>!\n\n` +
-      `<i>«БЗ-З-Т! Не спорьте с Лам, а то добавлю 200 000 вольт!»</i>`,
-      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
-    );
+  // 4.2.1. Правда или Действие (/pod или "правда или действие")
+  const isPodRequest = /^(правда или действие|пид|\/pod|\/truth_or_dare)(?:\s|$|[,.!?])/i.test(cleanText);
+  if (isPodRequest) {
+    const p = getPodMenu();
+    await ctx.reply(p.text, { parse_mode: "HTML", reply_markup: p.kb, reply_to_message_id: ctx.message.message_id });
+    return;
+  }
+
+  // 4.2.2. Цу-Е-Фа (Камень, Ножницы, Бумага - /rps)
+  const isRpsRequest = /^(камень ножницы бумага|кнб|цуефа|цу-е-фа|\/rps)(?:\s|$|[,.!?])/i.test(cleanText);
+  if (isRpsRequest) {
+    const r = getRpsMenu();
+    await ctx.reply(r.text, { parse_mode: "HTML", reply_markup: r.kb, reply_to_message_id: ctx.message.message_id });
+    return;
+  }
+
+  // 4.2.3. Шар Судьбы / Магический шар предсказаний (/ball)
+  const isBallRequest = /^(шар судьбы|магический шар|шар предсказаний|\/ball|\/predict)(?:\s|$|[,.!?])/i.test(cleanText);
+  if (isBallRequest) {
+    const q = cleanText.replace(/^(шар судьбы|магический шар|шар предсказаний|\/ball|\/predict)[:\s]*/i, "").trim();
+    const b = getBallAnswer(q);
+    await ctx.reply(b.text, { parse_mode: "HTML", reply_markup: b.kb, reply_to_message_id: ctx.message.message_id });
     return;
   }
 
@@ -4456,13 +5260,17 @@ if (activeWebAppUrl) {
 // Регистрация списка команд в официальном меню Telegram
 const BOT_COMMANDS = [
   { command: "start", description: "⚡ Главное меню" },
+  { command: "games", description: "🎮 Все игры с Они-принцессой" },
+  { command: "roulette", description: "🎰 Они-рулетка молний (6 камор)" },
+  { command: "duel", description: "⚔️ Битва они-молний (HP и ульта)" },
+  { command: "pod", description: "🔥 Правда или Действие" },
+  { command: "rps", description: "🪨 Цу-Е-Фа (Камень, Ножницы)" },
+  { command: "quiz", description: "🎯 Викторина для тебя и группы" },
+  { command: "ball", description: "🔮 Шар Судьбы от Они-принцессы" },
   { command: "vip", description: "⭐️ VIP статус и безлимит" },
   { command: "model", description: "🧠 Выбор нейро-модели (VIP)" },
   { command: "love", description: "💚 Твой статус и энергия" },
-  { command: "quiz", description: "🎯 Викторина для тебя и группы" },
-  { command: "duel", description: "⚔️ Битва они-молний" },
-  { command: "roulette", description: "🎰 Рулетка наказаний" },
-  { command: "roast", description: "🔥 Забавная они-прожарка" },
+  { command: "roast", description: "🍗 Забавная они-прожарка" },
   { command: "pdf", description: "📄 Сборщик домашки в PDF" },
   { command: "help", description: "📚 Все команды и шпаргалка" },
 ];

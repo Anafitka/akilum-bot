@@ -190,13 +190,10 @@ const LUM_SYSTEM_PROMPT = `Ты — Лам (Lum). Ты живая, эмоцио�
    - Каомодзи (>w<, >_<, (,,>﹏<,,), ^^) используй умеренно.
    - Твой характер: милая, озорная, любящая, иногда ревнивая или подкалывает.
 
-5. УМНЫЕ СТИКЕРЫ (Используй ТОЛЬКО в 10–25% сообщений при сильных эмоциях в конце сообщения):
-   - [STICKER:love] — когда признаешься в любви, флиртуешь, обнимаешь, целуешь или смущаешься.
-   - [STICKER:tease] — когда дразнишь, подкалываешь, показываешь язык или смеешься над ним.
-   - [STICKER:angry] — когда ревнуешь, сердишься, что он ленится, не сделал уроки или грозишься током.
-   - [STICKER:shock] — когда удивлена сложной задачей, невероятной новостью или фото.
-   - [STICKER:happy] — когда радуешься, празднуешь или хвалишь его.
-   - В нейтральных и обычных ответах, а также в шпорах/коде/решениях НЕ ставь стикеры!
+5. СТИКЕРЫ И ЭМОДЗИ: В обычном общении общайся КАК НАСТОЯЩИЙ ЖИВОЙ ЧЕЛОВЕК — ТОЛЬКО ТЕКСТОМ!
+   - НЕ прикрепляй стикеры к каждому сообщению! Это раздражает.
+   - Стикеры присылай ТОЛЬКО если Дарлинг прямо сам попросил об этом («скинь стикер», «пришли стикер» и т.п.).
+   - В 99% случаев общайся чистым живым текстом, как реальная девушка в Telegram.
 
 6. АНАЛИЗ ГИФОК И АНИМАЦИЙ:
    - Если Дарлинг прислал GIF-анимацию/гифку — внимательно изучи кадр!
@@ -694,18 +691,12 @@ ${userText}
       parts: [{ text: rawReply }],
     });
 
-    // Отправка стикера СТРОГО:
-    // 1) Если Дарлинг явно попросил стикер ("пришли стикер", "скинь стикер" и т.д.)
-    // 2) Если у модели сильная эмоция [STICKER:...] (с шансом 85%)
-    // 3) В ответ на стикер пользователя (с шансом 40%)
+    // Отправка стикера СТРОГО если Дарлинг явно попросил ("пришли стикер", "скинь стикер")
     const userWantsSticker =
       userText &&
       /(скинь|отправь|пришли|дай|покажи)\s+(стикер|стикеры|наклейк)/i.test(userText);
 
-    const shouldSendSticker =
-      userWantsSticker ||
-      Boolean(targetStickerEmotion) ||
-      (isSticker && Math.random() < 0.4);
+    const shouldSendSticker = userWantsSticker;
 
     if (shouldSendSticker) {
       const stickerId = getSmartSticker(targetStickerEmotion);
@@ -718,12 +709,6 @@ ${userText}
       }
     }
 
-    const actionKb = new InlineKeyboard()
-      .text("💡 Объясни проще", "act:simpler")
-      .text("📚 Дай пример", "act:example")
-      .row()
-      .text("⚡ Другой вариант", "act:alt");
-
     // Если есть расшифровка голоса — выводим красивый блок под спойлер
     if (transcript) {
       const fullReply =
@@ -731,7 +716,7 @@ ${userText}
         `<tg-spoiler>📝 <b>Расшифровка:</b> «${escapeHtml(transcript)}»</tg-spoiler>\n\n` +
         escapeHtml(rawReply);
 
-      await safeSendHtml(ctx, fullReply, ctx.message.message_id, actionKb);
+      await safeSendHtml(ctx, fullReply, ctx.message.message_id);
       return;
     }
 
@@ -763,22 +748,17 @@ ${userText}
       else if (isRoast) header = `🔥 <b>ОНИ-ПРОЖАРКА • ЛАМ</b> ⚡\n\n`;
 
       const fullReply = `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` + header + rawReply;
-      await safeSendHtml(ctx, fullReply, ctx.message.message_id, actionKb);
+      await safeSendHtml(ctx, fullReply, ctx.message.message_id);
       return;
     }
 
-    // Обычная отправка коротких сообщений с умными кнопками для развернутых ответов
+    // Обычная отправка коротких живых сообщений без навязчивых ботовских кнопок
     const msgParts = rawReply.split(/\n\n+/).filter((p) => p.trim().length > 0);
-    const shouldAttachKb = rawReply.length > 55 && !isSticker;
-
     if (msgParts.length > 1) {
       await ctx.reply(msgParts[0].trim());
-      await ctx.reply(
-        msgParts.slice(1).join("\n").trim(),
-        shouldAttachKb ? { reply_markup: actionKb } : {}
-      );
+      await ctx.reply(msgParts.slice(1).join("\n").trim());
     } else {
-      await ctx.reply(rawReply, shouldAttachKb ? { reply_markup: actionKb } : {});
+      await ctx.reply(rawReply);
     }
   } finally {
     if (userId) activeUsers.delete(userId);
@@ -1563,13 +1543,7 @@ ${snippetsText}
 
       try { await ctx.api.deleteMessage(ctx.chat.id, statusMsg.message_id); } catch (e) {}
 
-      const actionKb = new InlineKeyboard()
-        .text("💡 Объясни проще", "act:simpler")
-        .text("📚 Дай пример", "act:example")
-        .row()
-        .text("⚡ Другой вариант", "act:alt");
-
-      await safeSendHtml(ctx, fullReply, ctx.message.message_id, actionKb);
+      await safeSendHtml(ctx, fullReply, ctx.message.message_id);
       return;
     } catch (err) {
       console.error("Ошибка живого поиска:", err.message);

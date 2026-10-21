@@ -47,6 +47,15 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     broadcastMessage,
     botSettings,
     saveSettings,
+    paymentOrders,
+    approvePaymentOrder,
+    rejectPaymentOrder,
+    createPaymentOrder,
+    VIP_PLANS,
+    AI_MODELS,
+    getUserModel,
+    setUserModel,
+    botToken,
   } = context;
 
   const indexPath = path.join(__dirname, "public", "index.html");
@@ -315,6 +324,157 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
+    // Список всех чеков и платежей (для админки)
+    if (pathname === "/api/admin/payments") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, payments: paymentOrders || [] }));
+      return;
+    }
+
+    // Подтвердить платёж и выдать VIP пользователю
+    if (pathname === "/api/admin/approve-payment" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { orderId } = body;
+        if (!orderId) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "orderId is required" }));
+          return;
+        }
+
+        const order = approvePaymentOrder ? approvePaymentOrder(orderId, "Web Admin Panel") : null;
+        if (!order) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "Order not found or already processed" }));
+          return;
+        }
+
+        if (bot) {
+          const durationLabel = order.days <= 0 ? "👑 НАВСЕГДА" : `${order.days} дн.`;
+          bot.api.sendMessage(
+            Number(order.userId),
+            `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
+            `🎉 <b>УРА! ТВОЙ ПЛАТЁЖ ПОДТВЕРЖДЕН СОЗДАТЕЛЕМ!</b> ⭐️✨\n\n` +
+            `Создатель бота лично проверил твой чек и активировал <b>VIP-статус (${durationLabel})</b>!\n\n` +
+            `👑 <b>Твои привилегии прямо сейчас:</b>\n` +
+            `• Золотая корона VIP в твоём профиле (/love) и во всех беседах\n` +
+            `• Безлимитная энергия молний и решений задач\n` +
+            `• Доступ ко всем 4 премиум-моделям (/model)\n` +
+            `• Ответ за 0.3 секунды и приоритет №1\n\n` +
+            `<i>«Добро пожаловать в сладкую жизнь, мой любимый VIP Дарлинг! 💚⚡»</i>`,
+            { parse_mode: "HTML" }
+          ).catch((e) => console.warn("Approve notify error:", e.message));
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, order }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Отклонить платёж по чеку
+    if (pathname === "/api/admin/reject-payment" && req.method === "POST") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      try {
+        const body = await parseJsonBody(req);
+        const { orderId } = body;
+        const order = rejectPaymentOrder ? rejectPaymentOrder(orderId, "Web Admin Panel") : null;
+        if (!order) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "Order not found" }));
+          return;
+        }
+
+        if (bot) {
+          bot.api.sendMessage(
+            Number(order.userId),
+            `⚠️ <b>Оповещение по оплате:</b>\n` +
+            `К сожалению, ваш чек по тарифу <b>${order.planTitle}</b> не прошел верификацию.\n` +
+            `Если произошла ошибка или вы отправили не тот чек, напишите Создателю напрямую или оформите заказ заново через /vip 💕`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, order }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // Получить или обновить реквизиты оплаты (админ)
+    if (pathname === "/api/admin/requisites") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+        return;
+      }
+      if (req.method === "POST") {
+        try {
+          const body = await parseJsonBody(req);
+          if (botSettings) {
+            botSettings.requisites = { ...(botSettings.requisites || {}), ...(body.requisites || body) };
+            if (saveSettings) saveSettings();
+          }
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: true, requisites: botSettings?.requisites }));
+        } catch (err) {
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: err.message }));
+        }
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, requisites: botSettings?.requisites || {} }));
+      return;
+    }
+
+    // Проксирование фото чека из Telegram для показа в веб-админке
+    if (pathname === "/api/admin/photo") {
+      if (!checkAdminAuth(req, parsedUrl)) {
+        res.writeHead(401);
+        res.end("Unauthorized");
+        return;
+      }
+      const fileId = parsedUrl.searchParams.get("fileId");
+      if (!fileId || !bot) {
+        res.writeHead(400);
+        res.end("fileId is required");
+        return;
+      }
+      try {
+        const file = await bot.api.getFile(fileId);
+        const fileUrl = `https://api.telegram.org/file/bot${botToken || process.env.BOT_TOKEN}/${file.file_path}`;
+        const photoRes = await fetch(fileUrl);
+        const buf = await photoRes.arrayBuffer();
+        res.writeHead(200, { "Content-Type": "image/jpeg", "Cache-Control": "private, max-age=3600" });
+        res.end(Buffer.from(buf));
+      } catch (err) {
+        res.writeHead(500);
+        res.end("Failed to load photo");
+      }
+      return;
+    }
+
     // ==========================================
     // 🌐 СТРАНИЦЫ И ПОЛЬЗОВАТЕЛЬСКИЕ API
     // ==========================================
@@ -474,31 +634,41 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     if (pathname === "/api/create-invoice") {
       const type = parsedUrl.searchParams.get("type") || "vip_month";
 
-      let title = "⭐️ VIP Дарлинг (1 месяц)";
+      let title = "⭐️ VIP Дарлинг (30 дней)";
       let description = "30 дней безлимита на задачи, код и золотая корона в профиле!";
       let payload = "payload_vip_month";
-      let amount = 75;
+      let amount = 99;
 
-      if (type === "vip_forever") {
-        title = "👑 Навсегда VIP Дарлинг";
-        description = "Вечный VIP статус, титул «Единственный Дарлинг» и бесконечные молнии без подписки!";
-        payload = "payload_vip_forever";
-        amount = 199; // Выгодная цена со скидкой!
+      if (type === "vip_1day" || type === "tip_15" || type === "ramen_15") {
+        title = "⚡ Импульс на 1 день VIP";
+        description = "24 часа полного безлимита, доступ ко всем моделям и спасение контрольной!";
+        payload = "payload_vip_1day";
+        amount = 15;
+      } else if (type === "vip_3days") {
+        title = "🍓 Уикенд с Лам (3 дня VIP)";
+        description = "3 дня беззаботного кайфа и отдыха с личной они-вайфу!";
+        payload = "payload_vip_3days";
+        amount = 29;
       } else if (type === "vip_week") {
-        title = "⚡ VIP Дарлинг (1 неделя)";
+        title = "🎒 Ударная Неделя (7 дней VIP)";
         description = "7 дней полного безлимита на задачи, код и арт-генерацию!";
         payload = "payload_vip_week";
-        amount = 25;
-      } else if (type === "tip_15" || type === "ramen_15") {
-        title = "🍜 Рамен с чили для Лам";
-        description = "Угости они-принцессу любимым горячим блюдом (+100к Вольт любви и мгновенная энергия)!";
-        payload = "payload_tip_15";
-        amount = 15;
-      } else if (type === "tip_25") {
-        title = "🍓 Клубничное молоко для Лам";
-        description = "Угости они-принцессу любимым напитком (+100к Вольт любви)!";
-        payload = "payload_tip_25";
-        amount = 25;
+        amount = 49;
+      } else if (type === "vip_month") {
+        title = "⭐️ VIP Дарлинг (30 дней)";
+        description = "Сладкая жизнь на целый месяц! Выбор 92% студентов!";
+        payload = "payload_vip_month";
+        amount = 99;
+      } else if (type === "vip_quarter") {
+        title = "💎 Четверть / Семестр (90 дней VIP)";
+        description = "3 месяца спокойствия и высший балл за все домашние работы со скидкой 40%!";
+        payload = "payload_vip_quarter";
+        amount = 199;
+      } else if (type === "vip_forever") {
+        title = "👑 Бог Они-Империи (Навсегда VIP)";
+        description = "Вечный VIP статус, титул «Единственный Дарлинг» и вечный безлимит без подписок!";
+        payload = "payload_vip_forever";
+        amount = 299;
       }
 
       try {
@@ -521,6 +691,63 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         res.end(JSON.stringify({ ok: false, error: err.message }));
         return;
       }
+    }
+
+    // API: Публичные реквизиты для оплаты картами / СБП
+    if (pathname === "/api/requisites") {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({
+        ok: true,
+        requisites: botSettings?.requisites || {
+          bankName: "Сбербанк / Т-Банк / СБП (или MBANK / О!Деньги / Kaspi)",
+          cardNumber: "2200 7000 1234 5678",
+          phoneNumber: "+7 (999) 000-00-00",
+          recipientName: "Akilum (Создатель)",
+          currency: "RUB / KGS",
+        },
+        plans: VIP_PLANS || {},
+      }));
+      return;
+    }
+
+    // API: Список доступных нейро-моделей
+    if (pathname === "/api/models") {
+      const userId = parsedUrl.searchParams.get("userId");
+      const currentModel = (getUserModel && userId) ? getUserModel(userId) : "turbo";
+      const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: true, models: AI_MODELS || {}, currentModel, isVip }));
+      return;
+    }
+
+    // API: Переключение модели пользователем
+    if (pathname === "/api/set-model" && req.method === "POST") {
+      try {
+        const body = await parseJsonBody(req);
+        const { userId, modelKey } = body;
+        if (!userId || !modelKey) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: false, error: "userId and modelKey are required" }));
+          return;
+        }
+
+        const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
+        if (!isVip) {
+          res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Выбор моделей доступен только владельцам VIP-статуса!" }));
+          return;
+        }
+
+        if (setUserModel) {
+          setUserModel(userId, modelKey);
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, currentModel: modelKey }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
     }
 
     // Главная страница Mini App

@@ -124,11 +124,24 @@ const SETTINGS_FILE = path.join(__dirname, "bot_settings.json");
 let botSettings = {
   dailyFreeLimit: DAILY_FREE_LIMIT,
   proactiveEnabled: true,
+  requisites: {
+    bankName: "Сбербанк / Т-Банк / СБП (или MBANK / О!Деньги / Kaspi)",
+    cardNumber: "2200 7000 1234 5678",
+    phoneNumber: "+7 (999) 000-00-00",
+    recipientName: "Akilum (Создатель)",
+    currency: "RUB / KGS",
+    notice: "После перевода пришлите фото чека прямо в чат!",
+  },
 };
 function loadSettings() {
   try {
     if (fs.existsSync(SETTINGS_FILE)) {
-      botSettings = { ...botSettings, ...JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8")) };
+      const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"));
+      botSettings = {
+        ...botSettings,
+        ...data,
+        requisites: { ...botSettings.requisites, ...(data.requisites || {}) },
+      };
     }
   } catch (e) {}
 }
@@ -138,6 +151,183 @@ function saveSettings() {
   } catch (e) {}
 }
 loadSettings();
+
+// ==========================================
+// 💎 ТАРИФНЫЕ ПЛАНЫ И AI-МОДЕЛИ
+// ==========================================
+const VIP_PLANS = {
+  vip_1day: {
+    id: "vip_1day",
+    title: "⚡ Импульс на 1 день",
+    badge: "Спасение сегодня 🔥",
+    description: "Мгновенное спасение контрольной или зачета! Полный безлимит на 24 часа и доступ ко всем VIP-моделям.",
+    days: 1,
+    stars: 15,
+    rub: 39,
+  },
+  vip_3days: {
+    id: "vip_3days",
+    title: "🍓 Уикенд с Лам (3 дня)",
+    badge: "Хит выходных ✨",
+    description: "3 дня беззаботного кайфа и отдыха. Решай всё домашнее задание наперед и получай любовь от Лам!",
+    days: 3,
+    stars: 29,
+    rub: 79,
+  },
+  vip_week: {
+    id: "vip_week",
+    title: "🎒 Ударная Неделя (7 дней)",
+    badge: "Для зачетов 📚",
+    description: "Неделя супер-мощи перед контрольными, олимпиадами и тестами. Золотая корона и ответ за 0.3 секунды.",
+    days: 7,
+    stars: 49,
+    rub: 149,
+  },
+  vip_month: {
+    id: "vip_month",
+    title: "⭐️ VIP Дарлинг (30 дней)",
+    badge: "Выбор 92% студентов 👑",
+    description: "Сладкая жизнь на целый месяц! Полный безлимит на задачи, код, HD арты, высший приоритет в группах.",
+    days: 30,
+    stars: 99,
+    rub: 299,
+  },
+  vip_quarter: {
+    id: "vip_quarter",
+    title: "💎 Четверть / Семестр (90 дней)",
+    badge: "Выгода -40% 🚀",
+    description: "Все контрольные и домашки четверти закрыты на отлично! 3 месяца спокойствия и статуса элиты.",
+    days: 90,
+    stars: 199,
+    rub: 590,
+  },
+  vip_forever: {
+    id: "vip_forever",
+    title: "👑 Бог Они-Империи (Навсегда)",
+    badge: "Легендарный статус 💎",
+    description: "Вечный пожизненный VIP-статус без подписок! Титул «Единственный Дарлинг» и вечная золотая корона во всех беседах.",
+    days: -1,
+    stars: 299,
+    rub: 990,
+  },
+};
+
+const AI_MODELS = {
+  turbo: {
+    id: "turbo",
+    name: "⚡ LUM-TURBO 0.3s",
+    tagline: "Молниеносная скорость для школы",
+    description: "Ответ за 0.3–0.5 секунды на базе Groq LPU Llama 3.3. Идеально под партой на уроке!",
+    icon: "⚡",
+  },
+  genius: {
+    id: "genius",
+    name: "🧠 LUM-GENIUS (Deep Think)",
+    tagline: "Олимпиадный супер-мозг",
+    description: "Пошаговый вывод сложных формул, физика, химия, глубокие сочинения и вышмат без ошибок.",
+    icon: "🧠",
+  },
+  artist: {
+    id: "artist",
+    name: "🎨 LUM-ARTIST Studio",
+    tagline: "Аниме и киберпанк в HD 4K",
+    description: "Генерация артов ультра-высокого разрешения на базе FLUX и Midjourney стилей.",
+    icon: "🎨",
+  },
+  sweetie: {
+    id: "sweetie",
+    name: "🍓 LUM-SWEETIE (Они-Вайфу)",
+    tagline: "Максимальная любовь и романтика",
+    description: "Нежная они-принцесса, которая ласково обращается к тебе, заботится и шлет теплые искры.",
+    icon: "🍓",
+  },
+};
+
+// ==========================================
+// 🧾 СИСТЕМА ОПЛАТЫ КАРТАМИ / СБП И ПРОВЕРКИ ЧЕКОВ
+// ==========================================
+const PAYMENTS_FILE = path.join(__dirname, "pending_payments.json");
+let paymentOrders = [];
+
+function loadPayments() {
+  try {
+    if (fs.existsSync(PAYMENTS_FILE)) {
+      paymentOrders = JSON.parse(fs.readFileSync(PAYMENTS_FILE, "utf-8")) || [];
+    }
+  } catch (e) {
+    paymentOrders = [];
+  }
+}
+
+function savePayments() {
+  try {
+    fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(paymentOrders, null, 2), "utf-8");
+  } catch (e) {}
+}
+loadPayments();
+
+const pendingPaymentSessions = new Map(); // userId -> { planId, planTitle, amount, days, currency, initiatedAt }
+
+function createPaymentOrder({ userId, name, username, planId, planTitle, days, amount, currency, photoFileId }) {
+  const order = {
+    id: "ord_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    userId: String(userId),
+    name: name || "Дарлинг",
+    username: username || "",
+    planId: planId || "vip_custom",
+    planTitle: planTitle || `${days} дн. VIP`,
+    days: Number(days),
+    amount: Number(amount),
+    currency: currency || "RUB",
+    photoFileId: photoFileId || "",
+    createdAt: new Date().toISOString(),
+    status: "pending",
+    processedAt: null,
+    processedBy: null,
+  };
+  paymentOrders.unshift(order);
+  savePayments();
+  return order;
+}
+
+function approvePaymentOrder(orderId, adminId = "Akilum") {
+  const order = paymentOrders.find((o) => o.id === orderId);
+  if (!order || order.status !== "pending") return null;
+
+  order.status = "approved";
+  order.processedAt = new Date().toISOString();
+  order.processedBy = adminId;
+  savePayments();
+
+  setUserVip(order.userId, order.days, order.amount, order.name, order.username);
+  return order;
+}
+
+function rejectPaymentOrder(orderId, adminId = "Akilum") {
+  const order = paymentOrders.find((o) => o.id === orderId);
+  if (!order || order.status !== "pending") return null;
+
+  order.status = "rejected";
+  order.processedAt = new Date().toISOString();
+  order.processedBy = adminId;
+  savePayments();
+  return order;
+}
+
+function getUserModel(userId) {
+  if (!userId) return "turbo";
+  const user = vipsData[String(userId)];
+  return user?.selectedModel || "turbo";
+}
+
+function setUserModel(userId, modelKey) {
+  if (!userId) return false;
+  const id = String(userId);
+  if (!vipsData[id]) vipsData[id] = {};
+  vipsData[id].selectedModel = modelKey;
+  saveVips();
+  return true;
+}
 
 // Хранилище VIP-пользователей (монетизация через Telegram Stars)
 const VIPS_FILE = path.join(__dirname, "vips.json");
@@ -828,34 +1018,42 @@ async function sendVipMenu(ctx) {
   const usage = getUserDailyUsage(userId);
   const limit = botSettings.dailyFreeLimit || DAILY_FREE_LIMIT;
   const remaining = Math.max(0, limit - usage);
+  const currentModel = getUserModel(userId);
+  const modelInfo = AI_MODELS[currentModel] || AI_MODELS.turbo;
 
   const vipKeyboard = new InlineKeyboard()
-    .text("🍜 Рамен с чили (15 ⭐️)", "buy_tip_15")
-    .text("⚡ VIP 7 дней (25 ⭐️)", "buy_vip_week")
+    .text("💳 ОПЛАТА КАРТОЙ / СБП (РУБЛИ / СОМЫ)", "vip_tab_card")
     .row()
-    .text("⭐️ VIP на 1 месяц (75 ⭐️)", "buy_vip_month")
+    .text("⭐️ ОПЛАТА TELEGRAM STARS", "vip_tab_stars")
     .row()
-    .text("👑 Навсегда VIP (-20% • 199 ⭐️)", "buy_vip_forever");
+    .text(`🧠 ВЫБОР VIP-МОДЕЛИ: ${modelInfo.icon} ${modelInfo.name}`, "open_model_menu");
 
   const vipText =
-    `✨ <b>ПРЕМИУМ ЛАМ • СТАТУС VIP ДАРЛИНГА</b> ⭐️👑\n\n` +
+    `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
+    `👑 <b>VIP СТАТУС • СЛАДКАЯ ЖИЗНЬ С ЛАМ</b> ⭐️✨\n\n` +
     (isVip
-      ? `🎉 <b>Твой статус: АКТИВНЫЙ VIP 👑</b>\nУ тебя включен максимальный приоритет движков, бесконечная энергия молний и золотая корона!\n\n`
-      : `🔋 <b>Твоя энергия на сегодня:</b> <code>${remaining}/${limit} запросов</code>\nХочешь снять любые ограничения и получить золотую корону?\n\n`) +
-    `💎 <b>Что даёт VIP:</b>\n` +
-    `• 🚀 <b>Безлимитные решения задач</b> и разборы сложных заданий\n` +
-    `• 💻 <b>Генерация длинного кода и сайтов</b> с кнопкой копирования\n` +
-    `• 👑 <b>Золотая корона VIP</b> в твоём профиле /love и в чатах\n` +
-    `• ⚡ <b>Приоритет в группах</b> — Лам отвечает тебе в первую очередь даже среди 10 000 человек!\n` +
-    `• 🍓 <b>Личная забота</b> — эксклюзивные стикеры, аудио и реакции\n\n` +
-    `<i>Оплата моментально прямо в Telegram через официальные Telegram Stars ⭐️:</i>`;
+      ? `🎉 <b>Твой статус: АКТИВНЫЙ VIP 👑</b>\n` +
+        `• Золотая корона во всех беседах и в профиле /love\n` +
+        `• Активная нейро-модель: <b>${modelInfo.name}</b>\n` +
+        `• Безлимитная энергия молний и высший приоритет!\n\n`
+      : `🔋 <b>Твоя энергия на сегодня:</b> <code>${remaining}/${limit} запросов</code>\n` +
+        `Устали от ограничений, страха двоек и нудной домашки?\n\n`) +
+    `💎 <b>ЧТО ДАЁТ VIP ДАРЛИНГУ (ЛЕГАЛЬНЫЙ ЧИТ-КОД):</b>\n` +
+    `• 🚀 <b>Чит-код на контрольных</b> — ответ за 0.3 секунды прямо на уроке под партой\n` +
+    `• 🧠 <b>Режим ГЕНИЯ (Deep Think)</b> — решает сложнейшую физику, алгебру и олимпиады с формулами\n` +
+    `• 👑 <b>Золотая корона VIP</b> в твоём имени во всех школьных беседах и группах\n` +
+    `• ⚡ <b>Приоритет №1</b> — Лам отвечает тебе первому среди тысяч людей даже в час пик\n` +
+    `• 🎨 <b>HD Арт-Студия</b> — бесконечная генерация аватарок, артов и картинок без ватермарок\n` +
+    `• 🍓 <b>Личная они-вайфу</b> — забота, ласка, голосовые кружочки и статус любимого господина\n\n` +
+    `🔥 <i>«Пока весь класс зубрит 4 часа — ты нажимаешь одну кнопку и получаешь 5+!»</i>\n\n` +
+    `👇 <b>Выбери удобный способ оплаты:</b>`;
 
   const replyTo = ctx.message ? ctx.message.message_id : undefined;
   await safeSendHtml(ctx, vipText, replyTo, vipKeyboard);
 }
 
-// МОНЕТИЗАЦИЯ ЧЕРЕЗ TELEGRAM STARS (ЗВЁЗДЫ)
-bot.command(["vip", "premium", "stars", "donate"], async (ctx) => {
+// МОНЕТИЗАЦИЯ ЧЕРЕЗ TELEGRAM STARS И КАРТЫ
+bot.command(["vip", "premium", "stars", "donate", "pay"], async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
   await sendVipMenu(ctx);
 });
@@ -863,6 +1061,347 @@ bot.command(["vip", "premium", "stars", "donate"], async (ctx) => {
 bot.callbackQuery("open_vip_menu", async (ctx) => {
   await ctx.answerCallbackQuery().catch(() => {});
   await sendVipMenu(ctx);
+});
+
+// Переключение табов в VIP меню
+bot.callbackQuery("vip_tab_card", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const cardKb = new InlineKeyboard()
+    .text("⚡ 1 день — 39 ₽", "pay_card:vip_1day")
+    .text("🍓 3 дня — 79 ₽", "pay_card:vip_3days")
+    .row()
+    .text("🎒 7 дней — 149 ₽", "pay_card:vip_week")
+    .text("⭐️ 30 дней — 299 ₽", "pay_card:vip_month")
+    .row()
+    .text("💎 90 дней — 590 ₽", "pay_card:vip_quarter")
+    .row()
+    .text("👑 Бог Они-Империи (Навсегда) — 990 ₽", "pay_card:vip_forever")
+    .row()
+    .text("⭐️ Оплата в Telegram Stars", "vip_tab_stars")
+    .row()
+    .text("🔙 Назад в меню VIP", "open_vip_menu");
+
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
+    `💳 <b>ОПЛАТА КАРТОЙ, СБП И БАНКАМИ (РУБЛИ / СОМЫ / ТЕНГЕ)</b> ✨\n\n` +
+    `Оплачивай напрямую с любой карты: <b>Сбербанк, Т-Банк, СБП, ВТБ, Альфа, MBANK, О!Деньги, Kaspi</b>!\n\n` +
+    `🔥 <b>ВЫБЕРИ ТАРИФ СЛАДКОЙ ЖИЗНИ:</b>\n` +
+    `• ⚡ <b>Импульс (1 день) — 39 ₽</b> <i>(спаси контрольную сегодня!)</i>\n` +
+    `• 🍓 <b>Уикенд с Лам (3 дня) — 79 ₽</b> <i>(кайфовые выходные)</i>\n` +
+    `• 🎒 <b>Ударная неделя (7 дней) — 149 ₽</b> <i>(зачеты и тесты)</i>\n` +
+    `• ⭐️ <b>VIP Дарлинг (30 дней) — 299 ₽</b> <i>(выбор 92% студентов 👑)</i>\n` +
+    `• 💎 <b>Четверть / Семестр (90 дней) — 590 ₽</b> <i>(скидка -40%)</i>\n` +
+    `• 👑 <b>Навсегда VIP — 990 ₽</b> <i>(вечный безлимит без подписок!)</i>\n\n` +
+    `<i>Нажми на тариф ниже, чтобы получить реквизиты перевода:</i>`;
+
+  await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: cardKb }).catch(async () => {
+    await ctx.reply(text, { parse_mode: "HTML", reply_markup: cardKb });
+  });
+});
+
+bot.callbackQuery("vip_tab_stars", async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const starsKb = new InlineKeyboard()
+    .text("⚡ 1 день (15 ⭐️)", "buy_stars:vip_1day")
+    .text("🍓 3 дня (29 ⭐️)", "buy_stars:vip_3days")
+    .row()
+    .text("🎒 7 дней (49 ⭐️)", "buy_stars:vip_week")
+    .text("⭐️ 30 дней (99 ⭐️)", "buy_stars:vip_month")
+    .row()
+    .text("💎 90 дней (199 ⭐️)", "buy_stars:vip_quarter")
+    .row()
+    .text("👑 Навсегда VIP (299 ⭐️)", "buy_stars:vip_forever")
+    .row()
+    .text("💳 Оплата картой / СБП (Рубли)", "vip_tab_card")
+    .row()
+    .text("🔙 Назад в меню VIP", "open_vip_menu");
+
+  const text =
+    `✧ ─── ･ ｡ﾟ☆: *. ⭐️ .* :☆ﾟ. ─── ✧\n` +
+    `⭐️ <b>МОМЕНТАЛЬНАЯ ОПЛАТА ЧЕРЕЗ TELEGRAM STARS</b> ✨\n\n` +
+    `Оплата в 1 клик прямо в Telegram с баланса вашего аккаунта!\n\n` +
+    `🔥 <b>ТАРИФЫ VIP ДАРЛИНГА В ЗВЁЗДАХ:</b>\n` +
+    `• ⚡ <b>1 день — 15 Stars</b> <i>(~0.3$)</i>\n` +
+    `• 🍓 <b>3 дня — 29 Stars</b> <i>(~0.6$)</i>\n` +
+    `• 🎒 <b>7 дней — 49 Stars</b> <i>(~1.0$)</i>\n` +
+    `• ⭐️ <b>30 дней — 99 Stars</b> <i>(~2.0$)</i>\n` +
+    `• 💎 <b>90 дней — 199 Stars</b> <i>(~4.0$)</i>\n` +
+    `• 👑 <b>Навсегда — 299 Stars</b> <i>(вечный безлимит)</i>\n\n` +
+    `<i>Выбери тариф для моментальной активации:</i>`;
+
+  await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: starsKb }).catch(async () => {
+    await ctx.reply(text, { parse_mode: "HTML", reply_markup: starsKb });
+  });
+});
+
+// Оплата картой: отправка реквизитов и регистрация сессии
+bot.callbackQuery(/^pay_card:(.+)$/, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const userId = ctx.from?.id;
+  if (!userId) return;
+  const planId = ctx.match[1];
+  const plan = VIP_PLANS[planId];
+  if (!plan) return;
+
+  pendingPaymentSessions.set(userId, {
+    planId: plan.id,
+    planTitle: plan.title,
+    amount: plan.rub,
+    days: plan.days,
+    currency: "RUB",
+    initiatedAt: Date.now(),
+  });
+
+  const req = botSettings.requisites || {
+    bankName: "Сбербанк / Т-Банк / СБП",
+    cardNumber: "2200 7000 1234 5678",
+    phoneNumber: "+7 (999) 000-00-00",
+    recipientName: "Akilum (Создатель)",
+  };
+
+  const payInfoKb = new InlineKeyboard()
+    .text("🔙 Выбрать другой тариф", "vip_tab_card")
+    .row()
+    .text("✨ Все тарифы", "open_vip_menu");
+
+  await ctx.reply(
+    `✧ ─── ･ ｡ﾟ☆: *. 💳 .* :☆ﾟ. ─── ✧\n` +
+    `💳 <b>ОПЛАТА ТАРИФА:</b> <b>${plan.title}</b>\n` +
+    `💰 <b>Сумма к переводу:</b> <code>${plan.rub} ₽</code> <i>(или ~${Math.round(plan.rub * 1.1)} сом / ~${Math.round(plan.rub * 5.8)} ₸)</i>\n\n` +
+    `📋 <b>РЕКВИЗИТЫ ДЛЯ ПЕРЕВОДА:</b>\n` +
+    `🏦 <b>Банк:</b> ${escapeHtml(req.bankName)}\n` +
+    `💳 <b>Номер карты:</b> <code>${req.cardNumber}</code> <i>(нажми для копирования)</i>\n` +
+    `📱 <b>Номер СБП / Телефон:</b> <code>${req.phoneNumber}</code>\n` +
+    `👤 <b>Получатель:</b> <b>${escapeHtml(req.recipientName)}</b>\n\n` +
+    `📌 <b>КАК АКТИВИРОВАТЬ VIP ЗА 1-5 МИНУТ:</b>\n` +
+    `1. Сделай перевод <b>${plan.rub} ₽</b> по реквизитам выше.\n` +
+    `2. Сохрани скриншот или чек перевода из банковского приложения.\n` +
+    `3. 📸 <b>ПРЯМО СЕЙЧАС ОТПРАВЬ ФОТО ЧЕКА В ЭТОТ ЧАТ!</b>\n` +
+    `4. Лам мгновенно перешлет чек Создателю бота, и твой VIP включится! 👑✨\n\n` +
+    `<i>«Я уже держу наготове твою золотую корону, Дарлинг! 💚⚡»</i>`,
+    { parse_mode: "HTML", reply_markup: payInfoKb, reply_to_message_id: ctx.message?.message_id }
+  );
+});
+
+// Оплата через Telegram Stars
+bot.callbackQuery(/^buy_stars:(.+)$/, async (ctx) => {
+  await ctx.answerCallbackQuery();
+  const planId = ctx.match[1];
+  const plan = VIP_PLANS[planId];
+  if (!plan) return;
+
+  try {
+    await ctx.replyWithInvoice(
+      plan.title,
+      plan.description,
+      `payload_${plan.id}`,
+      "XTR",
+      [{ label: plan.title, amount: plan.stars }]
+    );
+  } catch (err) {
+    console.error("Invoice error:", err.message);
+    await ctx.reply("Не удалось создать счет для Telegram Stars( Попробуй оплату картой через /vip 💳");
+  }
+});
+
+bot.on("pre_checkout_query", async (ctx) => {
+  await ctx.answerPreCheckoutQuery(true).catch((e) => console.error("pre_checkout error:", e.message));
+});
+
+bot.on("message:successful_payment", async (ctx) => {
+  const payment = ctx.message.successful_payment;
+  const payload = payment.invoice_payload;
+  const userId = ctx.from.id;
+  const name = ctx.from.first_name || "Дарлинг";
+  const username = ctx.from.username || "";
+
+  let days = 30;
+  if (payload.includes("1day") || payload.includes("tip_15")) days = 1;
+  else if (payload.includes("3days")) days = 3;
+  else if (payload.includes("week")) days = 7;
+  else if (payload.includes("month")) days = 30;
+  else if (payload.includes("quarter")) days = 90;
+  else if (payload.includes("forever")) days = -1;
+
+  setUserVip(userId, days, payment.total_amount, name, username);
+  const durationLabel = days <= 0 ? "👑 НАВСЕГДА" : `${days} дн.`;
+
+  await ctx.reply(
+    `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
+    `🎉 <b>СПАСИБО, МОЙ VIP ДАРЛИНГ!</b> 👑⭐️✨\n\n` +
+    `Оплата ${payment.total_amount} Stars успешно прошла! Твой VIP-статус (${durationLabel}) активирован!\n\n` +
+    `Теперь у тебя золотая корона в профиле (/love), доступ ко всем 4 премиум-моделям (/model) и высший приоритет! 💚⚡`,
+    { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+  );
+});
+
+// Модели ИИ для VIP-пользователей
+bot.command(["model", "models", "engine_mode"], async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+  const isVip = isUserVip(userId);
+  const currentModel = getUserModel(userId);
+
+  if (!isVip) {
+    const noVipKb = new InlineKeyboard().text("⭐️ Получить VIP и открыть модели", "open_vip_menu");
+    return ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. 🔒 .* :☆ﾟ. ─── ✧\n` +
+      `🔒 <b>ВЫБОР НЕЙРО-МОДЕЛЕЙ — ЭКСКЛЮЗИВ VIP</b> 👑✨\n\n` +
+      `Дарлинг, переключение на режим <b>ГЕНИЯ (Deep Think)</b>, <b>ультра-скорость 0.3с</b> и <b>HD Арт-Студию</b> доступно только владельцам VIP-статуса!\n\n` +
+      `💎 <b>Что доступно на VIP:</b>\n` +
+      `• ⚡ <b>LUM-TURBO</b> — молниеносный ответ за 0.3с на уроках\n` +
+      `• 🧠 <b>LUM-GENIUS</b> — олимпиадный мозг для физики, вышмата и сочинений\n` +
+      `• 🎨 <b>LUM-ARTIST</b> — генерация шедевров и аниме артов в 4K\n` +
+      `• 🍓 <b>LUM-SWEETIE</b> — максимальная ласка, романтика и забота\n\n` +
+      `👑 Включи VIP прямо сейчас — тарифы всего от <b>39 ₽</b> или <b>15 Stars</b>! 👇`,
+      { parse_mode: "HTML", reply_markup: noVipKb, reply_to_message_id: ctx.message.message_id }
+    );
+  }
+
+  const modelKb = new InlineKeyboard()
+    .text(currentModel === "turbo" ? "✅ ⚡ LUM-TURBO (0.3с)" : "⚡ LUM-TURBO (0.3с)", "set_model:turbo")
+    .row()
+    .text(currentModel === "genius" ? "✅ 🧠 LUM-GENIUS (Deep Think)" : "🧠 LUM-GENIUS (Deep Think)", "set_model:genius")
+    .row()
+    .text(currentModel === "artist" ? "✅ 🎨 LUM-ARTIST Studio" : "🎨 LUM-ARTIST Studio", "set_model:artist")
+    .row()
+    .text(currentModel === "sweetie" ? "✅ 🍓 LUM-SWEETIE (Они-Вайфу)" : "🍓 LUM-SWEETIE (Они-Вайфу)", "set_model:sweetie");
+
+  await ctx.reply(
+    `✧ ─── ･ ｡ﾟ☆: *. 🧠 .* :☆ﾟ. ─── ✧\n` +
+    `👑 <b>ВЫБОР НЕЙРО-МОДЕЛИ ДЛЯ VIP ДАРЛИНГА</b> ✨\n\n` +
+    `Текущая активная модель: <b>${AI_MODELS[currentModel]?.name || "⚡ LUM-TURBO"}</b>\n\n` +
+    `Выбери, как Лам должна думать и отвечать тебе:\n` +
+    `• ⚡ <b>LUM-TURBO 0.3s</b> — Groq LPU супер-скорость для школы и уроков\n` +
+    `• 🧠 <b>LUM-GENIUS (Deep Think)</b> — пошаговые доказательства, олимпиады и вышмат\n` +
+    `• 🎨 <b>LUM-ARTIST</b> — оптимизация под генерацию ультра-красивых артов\n` +
+    `• 🍓 <b>LUM-SWEETIE</b> — максимум нежности, любви, романтики и комплиментов 💕`,
+    { parse_mode: "HTML", reply_markup: modelKb, reply_to_message_id: ctx.message.message_id }
+  );
+});
+
+bot.callbackQuery("open_model_menu", async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  const userId = ctx.from?.id;
+  const isVip = isUserVip(userId);
+  const currentModel = getUserModel(userId);
+
+  if (!isVip) {
+    const noVipKb = new InlineKeyboard().text("⭐️ Получить VIP и открыть модели", "open_vip_menu");
+    return ctx.reply(
+      `🔒 <b>ВЫБОР НЕЙРО-МОДЕЛЕЙ — ЭКСКЛЮЗИВ VIP</b> 👑✨\n\nВключи VIP через /vip — сейчас действует скидка!`,
+      { parse_mode: "HTML", reply_markup: noVipKb }
+    );
+  }
+
+  const modelKb = new InlineKeyboard()
+    .text(currentModel === "turbo" ? "✅ ⚡ LUM-TURBO (0.3с)" : "⚡ LUM-TURBO (0.3с)", "set_model:turbo")
+    .row()
+    .text(currentModel === "genius" ? "✅ 🧠 LUM-GENIUS (Deep Think)" : "🧠 LUM-GENIUS (Deep Think)", "set_model:genius")
+    .row()
+    .text(currentModel === "artist" ? "✅ 🎨 LUM-ARTIST Studio" : "🎨 LUM-ARTIST Studio", "set_model:artist")
+    .row()
+    .text(currentModel === "sweetie" ? "✅ 🍓 LUM-SWEETIE (Они-Вайфу)" : "🍓 LUM-SWEETIE (Они-Вайфу)", "set_model:sweetie");
+
+  await ctx.reply(
+    `👑 <b>ВЫБЕРИ МОДЕЛЬ ДЛЯ СВОЕГО VIP:</b>`,
+    { parse_mode: "HTML", reply_markup: modelKb }
+  );
+});
+
+bot.callbackQuery(/^set_model:(.+)$/, async (ctx) => {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+  if (!isUserVip(userId)) {
+    return ctx.answerCallbackQuery({ text: "Выбор моделей доступен только на VIP!", show_alert: true });
+  }
+  const modelKey = ctx.match[1];
+  if (!AI_MODELS[modelKey]) return;
+
+  setUserModel(userId, modelKey);
+  await ctx.answerCallbackQuery({ text: `Включен режим: ${AI_MODELS[modelKey].name}` });
+
+  const modelInfo = AI_MODELS[modelKey];
+  await ctx.reply(
+    `⚡ <b>МОДЕЛЬ ПЕРЕКЛЮЧЕНА НА: ${modelInfo.name}!</b> 👑✨\n\n` +
+    `<i>«${modelInfo.tagline}! Мои они-рожки уже настроены на эту частоту, мой VIP Господин! 💕»</i>`,
+    { parse_mode: "HTML" }
+  );
+});
+
+// Обработка действий администратора по чекам (Одобрить / Отклонить)
+bot.callbackQuery(/^pay_approve:(.+)$/, async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) {
+    return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
+  }
+  const orderId = ctx.match[1];
+  const order = approvePaymentOrder(orderId, ctx.from?.first_name || "Akilum");
+  if (!order) {
+    return ctx.answerCallbackQuery({ text: "Заявка уже обработана или не найдена!", show_alert: true });
+  }
+
+  await ctx.answerCallbackQuery({ text: "Платёж подтвержден! VIP выдан." });
+  const durationLabel = order.days <= 0 ? "👑 НАВСЕГДА" : `${order.days} дн.`;
+
+  await ctx.editMessageCaption({
+    caption:
+      `✅ <b>ПЛАТЁЖ ПОДТВЕРЖДЕН! VIP ВЫДАН!</b> 👑⭐️\n\n` +
+      `• Пользователь: <b>${escapeHtml(order.name)}</b> (<code>${order.userId}</code>)\n` +
+      `• Тариф: <b>${order.planTitle}</b> (${durationLabel})\n` +
+      `• Сумма: <code>${order.amount} ${order.currency}</code>\n` +
+      `• Проверил: <b>${escapeHtml(ctx.from?.first_name || "Создатель")}</b>`,
+    parse_mode: "HTML",
+  }).catch(() => {});
+
+  // Радостное уведомление счастливчику
+  try {
+    await bot.api.sendMessage(
+      Number(order.userId),
+      `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
+      `🎉 <b>УРА! ТВОЙ ПЛАТЁЖ ПОДТВЕРЖДЕН СОЗДАТЕЛЕМ!</b> ⭐️✨\n\n` +
+      `Создатель бота лично проверил твой чек и активировал <b>VIP-статус (${durationLabel})</b>!\n\n` +
+      `👑 <b>Твои привилегии прямо сейчас:</b>\n` +
+      `• Золотая корона VIP в твоём профиле (/love) и в беседах\n` +
+      `• Безлимитная энергия молний и решений задач\n` +
+      `• Доступ ко всем 4 премиум-моделям (/model)\n` +
+      `• Ответ за 0.3 секунды и приоритет №1\n\n` +
+      `<i>«Добро пожаловать в сладкую жизнь, мой любимый VIP Дарлинг! 💚⚡»</i>`,
+      { parse_mode: "HTML" }
+    );
+  } catch (err) {}
+});
+
+bot.callbackQuery(/^pay_reject:(.+)$/, async (ctx) => {
+  const adminId = ctx.from?.id;
+  if (!isSuperAdmin(adminId)) {
+    return ctx.answerCallbackQuery({ text: "Доступ запрещен!", show_alert: true });
+  }
+  const orderId = ctx.match[1];
+  const order = rejectPaymentOrder(orderId, ctx.from?.first_name || "Akilum");
+  if (!order) {
+    return ctx.answerCallbackQuery({ text: "Заявка уже обработана или не найдена!", show_alert: true });
+  }
+
+  await ctx.answerCallbackQuery({ text: "Платёж отклонен." });
+  await ctx.editMessageCaption({
+    caption:
+      `❌ <b>ПЛАТЁЖ ОТКЛОНЕН</b>\n\n` +
+      `• Пользователь: <b>${escapeHtml(order.name)}</b> (<code>${order.userId}</code>)\n` +
+      `• Тариф: <b>${order.planTitle}</b>\n` +
+      `• Отклонил: <b>${escapeHtml(ctx.from?.first_name || "Создатель")}</b>`,
+    parse_mode: "HTML",
+  }).catch(() => {});
+
+  try {
+    await bot.api.sendMessage(
+      Number(order.userId),
+      `⚠️ <b>Оповещение по оплате:</b>\n` +
+      `К сожалению, ваш чек по тарифу <b>${order.planTitle}</b> не прошел верификацию.\n` +
+      `Если произошла ошибка или вы отправили не тот чек, напишите Создателю напрямую или оформите заказ заново через /vip 💕`,
+      { parse_mode: "HTML" }
+    );
+  } catch (err) {}
 });
 
 // Тестовая выдача VIP и сброс лимитов (доступно только Создателю Akilum)
@@ -887,118 +1426,6 @@ bot.command("resetlimit", async (ctx) => {
   }
   resetUserDailyUsage(userId);
   await ctx.reply("⚡ Твоя ежедневная энергия сброшена до максимума!", { parse_mode: "HTML" });
-});
-
-bot.callbackQuery("buy_tip_15", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  try {
-    await ctx.replyWithInvoice(
-      "🍜 Острый рамен с чили для Лам",
-      "Угости они-принцессу горячим раменом! Мгновенная перезарядка энергии и +1 день VIP-статуса!",
-      "payload_tip_15",
-      "XTR",
-      [{ label: "Острый рамен с чили", amount: 15 }]
-    );
-  } catch (err) {
-    console.error("Invoice error:", err.message);
-    await ctx.reply("Не удалось создать счет для Telegram Stars( Попробуй чуть позже!");
-  }
-});
-
-bot.callbackQuery("buy_vip_week", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  try {
-    await ctx.replyWithInvoice(
-      "⚡ Тест-драйв VIP (7 дней)",
-      "Неделя безлимитных решений задач, золотая корона в профиле и приоритетный отклик от Лам!",
-      "payload_vip_week",
-      "XTR",
-      [{ label: "VIP подписка на 7 дней", amount: 25 }]
-    );
-  } catch (err) {
-    console.error("Invoice error:", err.message);
-    await ctx.reply("Не удалось создать счет для Telegram Stars( Попробуй чуть позже!");
-  }
-});
-
-bot.callbackQuery("buy_vip_month", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  try {
-    await ctx.replyWithInvoice(
-      "⭐️ VIP Дарлинг (1 месяц)",
-      "30 дней безлимитных решений задач, золотая корона в профиле и максимальный приоритет от Лам!",
-      "payload_vip_month",
-      "XTR",
-      [{ label: "VIP подписка на 30 дней", amount: 75 }]
-    );
-  } catch (err) {
-    console.error("Invoice error:", err.message);
-    await ctx.reply("Не удалось создать счет для Telegram Stars( Попробуй чуть позже!");
-  }
-});
-
-bot.callbackQuery("buy_tip_25", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  try {
-    await ctx.replyWithInvoice(
-      "🍓 Клубничное молоко для Лам",
-      "Угости они-принцессу любимым напитком и получи искреннюю любовь и заряд 100 000 Вольт!",
-      "payload_tip_25",
-      "XTR",
-      [{ label: "Клубничное молоко", amount: 25 }]
-    );
-  } catch (err) {
-    console.error("Invoice error:", err.message);
-  }
-});
-
-bot.callbackQuery("buy_vip_forever", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  try {
-    await ctx.replyWithInvoice(
-      "👑 Навсегда VIP Дарлинг (Скидка -20%)",
-      "Вечный VIP статус навсегда, титул «Единственный Дарлинг», золотая корона во всех чатах и пожизненный безлимит!",
-      "payload_vip_forever",
-      "XTR",
-      [{ label: "Вечный VIP навсегда", amount: 199 }]
-    );
-  } catch (err) {
-    console.error("Invoice error:", err.message);
-  }
-});
-
-bot.on("pre_checkout_query", async (ctx) => {
-  await ctx.answerPreCheckoutQuery(true).catch((e) => console.error("pre_checkout error:", e.message));
-});
-
-bot.on("message:successful_payment", async (ctx) => {
-  const payment = ctx.message.successful_payment;
-  const payload = payment.invoice_payload;
-  const userId = ctx.from.id;
-  const name = ctx.from.first_name || "Дарлинг";
-  const username = ctx.from.username || "";
-
-  if (payload === "payload_tip_15") {
-    resetUserDailyUsage(userId);
-    setUserVip(userId, 1, 15, name, username);
-  } else if (payload === "payload_vip_week") {
-    setUserVip(userId, 7, 25, name, username);
-  } else if (payload === "payload_vip_month") {
-    setUserVip(userId, 30, 75, name, username);
-  } else if (payload === "payload_vip_forever") {
-    setUserVip(userId, -1, 199, name, username);
-  } else if (payload === "payload_tip_25") {
-    setUserVip(userId, 7, 25, name, username);
-  } else {
-    setUserVip(userId, 7, payment.total_amount || 25, name, username);
-  }
-
-  await ctx.reply(
-    `🎉 <b>СПАСИБО, МОЙ VIP ДАРЛИНГ!</b> 👑⭐️✨\n\n` +
-    `Оплата ${payment.total_amount} Stars успешно прошла! Я активировала твои привилегии на полную катушку!\n\n` +
-    `Теперь у тебя золотая корона в профиле (/love) и высший приоритет от они-принцессы! 💚⚡`,
-    { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
-  );
 });
 
 // ==========================================
@@ -1554,6 +1981,20 @@ ${userText}
     }
 
     let dynamicSystemPrompt = LUM_SYSTEM_PROMPT;
+    const userModel = (isUserVip(userId)) ? getUserModel(userId) : "turbo";
+    if (userModel === "genius") {
+      dynamicSystemPrompt += `\n\n[РЕЖИМ VIP ГЕНИЯ / DEEP THINK]:
+- Проявляй максимальный интеллект, олимпиадный уровень мышления, математическую строгость и подробный разбор формул и шагов.
+- Решай задачи на высший балл с четким объяснением логики решения.`;
+      configOverrides.maxOutputTokens = Math.max(configOverrides.maxOutputTokens, 750);
+    } else if (userModel === "sweetie") {
+      dynamicSystemPrompt += `\n\n[РЕЖИМ VIP ВАЙФУ / МАКСИМАЛЬНАЯ ЛЮБОВЬ]:
+- Будь невероятно нежной, заботливой, ласковой и эмоциональной они-принцессой. Обращайся к Дарлингу с безграничной любовью, хвали его, поддерживай и дари тепло.`;
+    } else if (userModel === "artist") {
+      dynamicSystemPrompt += `\n\n[РЕЖИМ VIP АРТ-СТУДИИ]:
+- Если Дарлинг просит нарисовать или сгенерировать арт, создавай для него подробнейшие художественные промпты в стилях аниме, киберпанк и 4K шедевров.`;
+    }
+
     if (!isGroup) {
       dynamicSystemPrompt += `\n\n[ВАЖНО ДЛЯ ТЕКУЩЕГО ДИАЛОГА В ЛИЧКЕ]:
 - Собеседник в этом чате — ЭТО ТВОЙ ДАРЛИНГ (он парень!).
@@ -2632,11 +3073,80 @@ ${snippetsText}
   await handleIncoming(ctx, { userText: cleanText });
 });
 
-// Фотографии (с поддержкой PDF сборщика, АнтиГДЗ, Детектива переписок, OCR и анализа калорий)
+// Фотографии (с поддержкой чеков оплаты, PDF сборщика, АнтиГДЗ, Детектива переписок, OCR и анализа калорий)
 bot.on("message:photo", async (ctx) => {
   if (ctx.from) recordInteraction(ctx.from.id);
   const photo = ctx.message.photo[ctx.message.photo.length - 1];
   const caption = ctx.message.caption || "";
+  const userId = ctx.from?.id;
+
+  // 0. Проверяем, является ли фото чеком оплаты (активная сессия или ключевые слова)
+  const pendingSession = userId ? pendingPaymentSessions.get(userId) : null;
+  const isReceiptKeyword = /(чек|оплат|квитанц|перевод|сбп|банк|тинькофф|сбер|mbank|деньги|оплатил|перевел)/i.test(caption);
+
+  if (pendingSession || isReceiptKeyword) {
+    const planInfo = pendingSession || {
+      planId: "vip_check",
+      planTitle: "VIP подписка (по чеку)",
+      amount: 79,
+      days: 3,
+      currency: "RUB",
+    };
+
+    const order = createPaymentOrder({
+      userId,
+      name: ctx.from?.first_name || "Дарлинг",
+      username: ctx.from?.username || "",
+      planId: planInfo.planId,
+      planTitle: planInfo.planTitle,
+      days: planInfo.days,
+      amount: planInfo.amount,
+      currency: planInfo.currency,
+      photoFileId: photo.file_id,
+    });
+
+    if (userId) pendingPaymentSessions.delete(userId);
+
+    // Уведомление пользователю
+    await ctx.reply(
+      `✧ ─── ･ ｡ﾟ☆: *. 🧾 .* :☆ﾟ. ─── ✧\n` +
+      `✅ <b>ЧЕК ПРИНЯТ НА ПРОВЕРКУ!</b> 💚✨\n\n` +
+      `• Тариф: <b>${order.planTitle}</b>\n` +
+      `• Сумма: <code>${order.amount} ${order.currency}</code>\n` +
+      `• Номер заявки: <code>#${order.id}</code>\n\n` +
+      `Лам уже передала твой чек Создателю бота на подтверждение. Обычно проверка занимает <b>1–5 минут</b>.\n` +
+      `Как только Создатель подтвердит — у тебя мгновенно включится золотая корона VIP и безлимит! 👑⚡`,
+      { parse_mode: "HTML", reply_to_message_id: ctx.message.message_id }
+    );
+
+    // Пересылка Создателю (всем администраторам)
+    const adminNotificationKb = new InlineKeyboard()
+      .text("✅ Подтвердить VIP", `pay_approve:${order.id}`)
+      .text("❌ Отклонить", `pay_reject:${order.id}`);
+
+    const durationLabel = order.days <= 0 ? "НАВСЕГДА 👑" : `${order.days} дн.`;
+    const adminMsgText =
+      `🔔 <b>НОВЫЙ ЧЕК НА ОПЛАТУ!</b> 🧾💰\n\n` +
+      `👤 <b>От:</b> ${escapeHtml(order.name)} (@${order.username || "нет_юзернейма"})\n` +
+      `🆔 <b>User ID:</b> <code>${order.userId}</code>\n` +
+      `💎 <b>Тариф:</b> <b>${order.planTitle}</b> (${durationLabel})\n` +
+      `💵 <b>Сумма:</b> <code>${order.amount} ${order.currency}</code>\n` +
+      `🕒 <b>Время:</b> <code>${new Date().toLocaleTimeString("ru-RU")}</code>\n\n` +
+      `<i>Посмотри прикрепленный чек и нажми кнопку ниже:</i>`;
+
+    for (const admId of adminIds) {
+      try {
+        await bot.api.sendPhoto(admId, photo.file_id, {
+          caption: adminMsgText,
+          parse_mode: "HTML",
+          reply_markup: adminNotificationKb,
+        });
+      } catch (err) {
+        console.error("Не удалось отправить чек админу:", err.message);
+      }
+    }
+    return;
+  }
 
   // 1. Проверяем, связано ли фото с созданием PDF домашки/конспектов
   const isPdf = /(^|\s)(pdf|пдф|в pdf|в пдф|собери в pdf|собери pdf|сделай pdf)(\s|$)/i.test(caption);
@@ -3080,6 +3590,15 @@ startWebAppServer(Number(process.env.PORT) || 3000, {
   broadcastMessage,
   botSettings,
   saveSettings,
+  paymentOrders,
+  approvePaymentOrder,
+  rejectPaymentOrder,
+  createPaymentOrder,
+  VIP_PLANS,
+  AI_MODELS,
+  getUserModel,
+  setUserModel,
+  botToken: token,
 });
 
 // Установка кнопки меню WebApp (если URL сконфигурирован)
@@ -3100,6 +3619,7 @@ if (activeWebAppUrl) {
 const BOT_COMMANDS = [
   { command: "start", description: "⚡ Главное меню" },
   { command: "vip", description: "⭐️ VIP статус и безлимит" },
+  { command: "model", description: "🧠 Выбор нейро-модели (VIP)" },
   { command: "love", description: "💚 Твой статус и энергия" },
   { command: "quiz", description: "🎯 Викторина для тебя и группы" },
   { command: "duel", description: "⚔️ Битва они-молний" },

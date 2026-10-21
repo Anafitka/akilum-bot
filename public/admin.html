@@ -574,9 +574,10 @@
     <!-- Вкладки -->
     <nav class="tabs-bar">
       <button class="tab-btn active" onclick="switchTab('vips')">👑 Управление VIP</button>
+      <button class="tab-btn" onclick="switchTab('payments')">🧾 Чеки и Платежи <span id="badgePendingCount" style="display:none; background: #ef4444; color: white; padding: 2px 7px; border-radius: 12px; font-size: 11px; margin-left: 5px;">0</span></button>
       <button class="tab-btn" onclick="switchTab('broadcast')">📢 Рассылка (Broadcast)</button>
       <button class="tab-btn" onclick="switchTab('users')">👥 Все пользователи</button>
-      <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки бота</button>
+      <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки и Реквизиты</button>
     </nav>
 
     <!-- Вкладка 1: Управление VIP -->
@@ -587,17 +588,28 @@
           <label class="form-label">Telegram User ID</label>
           <input type="text" id="vipUserId" class="form-input" placeholder="Например: 123456789" required>
         </div>
-        <div style="min-width: 170px;">
+        <div style="min-width: 190px;">
           <label class="form-label">Тариф / Срок</label>
           <select id="vipDays" class="form-input">
-            <option value="7">⚡ 7 дней (Пробный)</option>
+            <option value="1">⚡ 1 день (Импульс)</option>
+            <option value="3">🍓 3 дня (Уикенд с Лам)</option>
+            <option value="7">🎒 7 дней (Неделя зачетов)</option>
             <option value="30" selected>⭐️ 30 дней (Месяц)</option>
-            <option value="90">💎 90 дней (Квартал)</option>
-            <option value="-1">👑 Навсегда (Forever)</option>
+            <option value="90">💎 90 дней (Квартал / Семестр)</option>
+            <option value="-1">👑 Навсегда (Forever VIP)</option>
           </select>
         </div>
         <button type="submit" class="btn-action">👑 Выдать VIP</button>
       </form>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">
+        <span style="font-size:12px; color:var(--text-secondary);">Быстрый выбор:</span>
+        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='1'">1 день</button>
+        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='3'">3 дня</button>
+        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='7'">7 дней</button>
+        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='30'">30 дней</button>
+        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='90'">90 дней</button>
+        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='-1'">👑 Навсегда</button>
+      </div>
 
       <h2 class="panel-title" style="margin-top: 28px;">📋 Список активных VIP-пользователей</h2>
       <div class="table-responsive">
@@ -614,6 +626,36 @@
           </thead>
           <tbody id="vipsTableBody">
             <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка VIP пользователей...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Вкладка: Чеки и Платежи (Карты/СБП) -->
+    <div id="tab-payments" class="card-panel" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 class="panel-title" style="margin-bottom:0;">🧾 Заявки на оплату по картам / СБП</h2>
+        <button class="btn-sm" onclick="loadPaymentsData()">🔄 Обновить чеки</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+        Когда пользователи переводят деньги по номеру карты/СБП и присылают чек в бота, они появляются здесь с фото чека. Одобряйте заявку в 1 клик!
+      </p>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Пользователь</th>
+              <th>Тариф</th>
+              <th>Сумма</th>
+              <th>Чек</th>
+              <th>Статус</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsTableBody">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 24px;">Загрузка заявок...</td></tr>
           </tbody>
         </table>
       </div>
@@ -666,6 +708,36 @@
       </div>
     </div>
 
+    <!-- Вкладка: Чеки и Платежи (Карты/СБП) -->
+    <div id="tab-payments" class="card-panel" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 class="panel-title" style="margin-bottom:0;">🧾 Заявки на оплату по картам / СБП</h2>
+        <button class="btn-sm" onclick="loadPaymentsData()">🔄 Обновить чеки</button>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
+        Когда пользователи переводят деньги по номеру карты/СБП и присылают чек в бота, они появляются здесь с фото чека. Одобряйте заявку в 1 клик!
+      </p>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Пользователь</th>
+              <th>Тариф</th>
+              <th>Сумма</th>
+              <th>Чек</th>
+              <th>Статус</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="paymentsTableBody">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 24px;">Загрузка заявок...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Вкладка 4: Настройки бота -->
     <div id="tab-settings" class="card-panel" style="display: none;">
       <h2 class="panel-title">⚙️ Глобальные настройки системы</h2>
@@ -677,6 +749,30 @@
         </div>
         <button class="btn-action" onclick="saveSettings()">💾 Сохранить лимит</button>
       </div>
+
+      <h2 class="panel-title" style="margin-top: 28px;">💳 Реквизиты для оплаты картами / СБП</h2>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
+        Эти реквизиты бот и WebApp показывают пользователям, когда они выбирают «Оплата картой / СБП».
+      </p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label class="form-label">Банк / Платежная система</label>
+          <input type="text" id="reqBankName" class="form-input" placeholder="Сбер / Т-Банк / MBANK">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Номер карты</label>
+          <input type="text" id="reqCardNumber" class="form-input" placeholder="2200 7000 1234 5678">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Номер СБП / Телефона</label>
+          <input type="text" id="reqPhoneNumber" class="form-input" placeholder="+7 999 123-45-67">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Имя получателя</label>
+          <input type="text" id="reqRecipientName" class="form-input" placeholder="Akilum (Создатель)">
+        </div>
+      </div>
+      <button class="btn-action" onclick="saveRequisites()">💾 Сохранить реквизиты</button>
 
       <h2 class="panel-title" style="margin-top: 24px;">🔧 Быстрые действия</h2>
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -790,12 +886,18 @@
 
     function switchTab(tabName) {
       document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
-      event.target.classList.add("active");
+      if (window.event && window.event.target) {
+        window.event.target.classList.add("active");
+      }
 
       document.getElementById("tab-vips").style.display = tabName === "vips" ? "block" : "none";
+      document.getElementById("tab-payments").style.display = tabName === "payments" ? "block" : "none";
       document.getElementById("tab-broadcast").style.display = tabName === "broadcast" ? "block" : "none";
       document.getElementById("tab-users").style.display = tabName === "users" ? "block" : "none";
       document.getElementById("tab-settings").style.display = tabName === "settings" ? "block" : "none";
+
+      if (tabName === "payments") loadPaymentsData();
+      if (tabName === "settings") loadRequisitesData();
     }
 
     async function loadDashboardData() {
@@ -811,9 +913,132 @@
           }
         }
         loadVipsTable();
+        loadPaymentsData();
         loadUsersTable();
+        loadRequisitesData();
       } catch (e) {
         console.error(e);
+      }
+    }
+
+    async function loadPaymentsData() {
+      const tbody = document.getElementById("paymentsTableBody");
+      try {
+        const data = await apiRequest("/api/admin/payments");
+        const payments = data?.payments || [];
+
+        const pendingCount = payments.filter(p => p.status === "pending").length;
+        const badge = document.getElementById("badgePendingCount");
+        if (badge) {
+          badge.innerText = pendingCount;
+          badge.style.display = pendingCount > 0 ? "inline-block" : "none";
+        }
+
+        if (payments.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Заявок по чекам пока нет.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = payments.map(p => {
+          let statusHtml = "";
+          let actionsHtml = "";
+          if (p.status === "pending") {
+            statusHtml = `<span style="background: rgba(234, 179, 8, 0.2); color: #facc15; padding: 4px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">⏳ На проверке</span>`;
+            actionsHtml = `
+              <button class="btn-sm" style="background: rgba(0, 255, 136, 0.2); color: var(--neon-emerald); border-color: rgba(0, 255, 136, 0.4);" onclick="approvePayment('${p.id}')">✅ Одобрить</button>
+              <button class="btn-sm" style="color: #fca5a5" onclick="rejectPayment('${p.id}')">❌ Отклонить</button>
+            `;
+          } else if (p.status === "approved") {
+            statusHtml = `<span class="status-active">✅ Одобрен</span>`;
+            actionsHtml = `<span style="font-size: 11px; color: var(--text-muted);">Выдан</span>`;
+          } else {
+            statusHtml = `<span class="status-expired">❌ Отклонен</span>`;
+            actionsHtml = `<span style="font-size: 11px; color: var(--text-muted);">-</span>`;
+          }
+
+          const photoHtml = p.photoFileId
+            ? `<a href="/api/admin/photo?fileId=${encodeURIComponent(p.photoFileId)}&token=${getToken()}" target="_blank" style="color: var(--neon-cyan); text-decoration: underline; font-weight: 600;">🖼 Чек (фото)</a>`
+            : `<span style="color: var(--text-muted)">Без фото</span>`;
+
+          const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
+
+          return `
+            <tr>
+              <td><code style="font-size: 11px;">#${p.id.slice(-6)}</code><br><span style="font-size: 10px; color: var(--text-muted);">${dateStr}</span></td>
+              <td><b>${p.name || "Пользователь"}</b><br><span style="font-size: 11px; color: var(--text-muted);"><code>${p.userId}</code> ${p.username ? `@${p.username}` : ""}</span></td>
+              <td><b>${p.planTitle || "VIP"}</b></td>
+              <td><span style="color: var(--neon-gold); font-weight: 700;">${p.amount} ${p.currency || "RUB"}</span></td>
+              <td>${photoHtml}</td>
+              <td>${statusHtml}</td>
+              <td>${actionsHtml}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        console.error("loadPaymentsData error:", e);
+      }
+    }
+
+    async function approvePayment(orderId) {
+      if (!confirm("Подтвердить платёж и выдать VIP пользователю?")) return;
+      try {
+        const res = await apiRequest("/api/admin/approve-payment", "POST", { orderId });
+        if (res.ok) {
+          showToast("✅ Платёж подтвержден! VIP выдан пользователю.");
+          loadPaymentsData();
+          loadVipsTable();
+          loadDashboardData();
+        } else {
+          alert(res.error || "Ошибка подтверждения");
+        }
+      } catch (e) {
+        alert("Ошибка сервера при одобрении платежа");
+      }
+    }
+
+    async function rejectPayment(orderId) {
+      if (!confirm("Отклонить чек? Пользователь получит уведомление об ошибке оплаты.")) return;
+      try {
+        const res = await apiRequest("/api/admin/reject-payment", "POST", { orderId });
+        if (res.ok) {
+          showToast("❌ Чек отклонен.");
+          loadPaymentsData();
+        } else {
+          alert(res.error || "Ошибка отклонения");
+        }
+      } catch (e) {
+        alert("Ошибка сервера при отклонении");
+      }
+    }
+
+    async function loadRequisitesData() {
+      try {
+        const res = await apiRequest("/api/admin/requisites");
+        if (res.ok && res.requisites) {
+          const r = res.requisites;
+          if (document.getElementById("reqBankName")) document.getElementById("reqBankName").value = r.bankName || "";
+          if (document.getElementById("reqCardNumber")) document.getElementById("reqCardNumber").value = r.cardNumber || "";
+          if (document.getElementById("reqPhoneNumber")) document.getElementById("reqPhoneNumber").value = r.phoneNumber || "";
+          if (document.getElementById("reqRecipientName")) document.getElementById("reqRecipientName").value = r.recipientName || "";
+        }
+      } catch (e) {}
+    }
+
+    async function saveRequisites() {
+      const bankName = document.getElementById("reqBankName").value.trim();
+      const cardNumber = document.getElementById("reqCardNumber").value.trim();
+      const phoneNumber = document.getElementById("reqPhoneNumber").value.trim();
+      const recipientName = document.getElementById("reqRecipientName").value.trim();
+
+      try {
+        const res = await apiRequest("/api/admin/requisites", "POST", {
+          requisites: { bankName, cardNumber, phoneNumber, recipientName }
+        });
+        if (res.ok) {
+          showToast("💳 Реквизиты успешно сохранены!");
+        }
+      } catch (e) {
+        alert("Ошибка сохранения реквизитов");
       }
     }
 

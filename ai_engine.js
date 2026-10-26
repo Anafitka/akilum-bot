@@ -113,23 +113,20 @@ if (groqPool.size > 0) {
   console.log(`🚀 [AI Engine] Загружено Groq ключей в пул: ${groqPool.size} (ультра-скорость включена!)`);
 }
 
-// Модели Gemini по приоритету (у каждой модели свой независимый лимит квот в Google!)
+// Модели Gemini по приоритету (реальные быстрые модели без 404 задержек)
 const GEMINI_MODELS = [
-  "gemini-3.5-flash-lite",
-  "gemini-3.5-flash",
-  "gemini-3.6-flash",
-  "gemini-3-flash-preview",
-  "gemini-3.1-flash-lite",
-  "gemini-3.7-flash",
-  "gemini-3.8-flash",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
   "gemini-flash-latest",
 ];
 
-// Модели Groq по приоритету скорости и качества (120B модель обеспечивает безупречный русский язык без ошибок)
+// Модели Groq по приоритету скорости и качества
+// llama-3.3-70b-versatile — мгновенный отклик (~0.3с) без скрытых reasoning-токенов, никогда не обрывает текст на полуслове!
 const GROQ_MODELS = [
+  "llama-3.3-70b-versatile",
   "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
-  "qwen/qwen3.8-27b",
+  "llama-3.1-8b-instant",
 ];
 
 // Преобразование истории Gemini в формат сообщений OpenAI/Groq
@@ -155,31 +152,35 @@ function toOpenAIMessages(contents, systemPrompt) {
 /**
  * Вызов Groq Cloud API (~0.3-0.6 секунд ответ)
  */
-async function callGroq(messages, maxTokens = 350, timeoutMs = 6000) {
+async function callGroq(messages, maxTokens = 900, timeoutMs = 14000) {
   const keyItem = groqPool.getAvailable();
   if (!keyItem) return null;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  // Для reasoning-моделей (gpt-oss-120b) требуется достаточный лимит токенов (минимум 450)
-  const effectiveMaxTokens = Math.max(maxTokens, 450);
+  const effectiveTimeout = Math.max(timeoutMs, 12000);
+  const timer = setTimeout(() => controller.abort(), effectiveTimeout);
 
   try {
     for (const model of GROQ_MODELS) {
       try {
+        const isReasoningModel = model.includes("gpt-oss") || model.includes("qwen") || model.includes("deepseek");
+        // Для reasoning-моделей выделяем минимум 2500 токенов, чтобы внутренние рассуждения не съедали сам ответ
+        const tokenLimit = isReasoningModel ? Math.max(maxTokens * 3, 2500) : Math.max(maxTokens, 900);
+
+        const payload = {
+          model,
+          messages,
+          max_tokens: tokenLimit,
+          temperature: 0.72,
+        };
+
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${keyItem.key}`,
           },
-          body: JSON.stringify({
-            model,
-            messages,
-            max_tokens: effectiveMaxTokens,
-            temperature: 0.75,
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal,
         });
 
@@ -219,10 +220,12 @@ const SAFETY_SETTINGS = [
 /**
  * Вызов Google Gemini с умной ротацией моделей и ключей из пула
  */
-async function callGemini(contents, systemPrompt, maxTokens = 120, timeoutMs = 15000) {
+async function callGemini(contents, systemPrompt, maxTokens = 1000, timeoutMs = 18000) {
   if (geminiPool.size === 0) return null;
 
-  const maxKeyAttempts = Math.min(geminiPool.size, 4);
+  const maxKeyAttempts = Math.min(geminiPool.size, 3);
+  // Для Gemini 2.5 Flash важно иметь запас токенов (минимум 2048), чтобы ответ никогда не обрывался на полуслове
+  const safeMaxTokens = Math.max(maxTokens * 2, 2048);
 
   for (let k = 0; k < maxKeyAttempts; k++) {
     const keyItem = geminiPool.getAvailable();
@@ -241,7 +244,7 @@ async function callGemini(contents, systemPrompt, maxTokens = 120, timeoutMs = 1
           contents,
           config: {
             systemInstruction: systemPrompt,
-            maxOutputTokens: maxTokens,
+            maxOutputTokens: safeMaxTokens,
             safetySettings: SAFETY_SETTINGS,
           },
         });
@@ -253,16 +256,7 @@ async function callGemini(contents, systemPrompt, maxTokens = 120, timeoutMs = 1
         }
       } catch (err) {
         const errMsg = err.message || "";
-        const isQuota =
-          errMsg.includes("429") ||
-          errMsg.includes("RESOURCE_EXHAUSTED") ||
-          errMsg.includes("quota");
-        const is503 = errMsg.includes("503") || errMsg.includes("UNAVAILABLE");
-        const isTimeout = errMsg.includes("Timeout");
-
         console.warn(`⚠️ [Gemini] Модель ${model} вернула ошибку: ${errMsg.slice(0, 100)}`);
-
-        // Пробуем следующую модель в списке, не прерывая цикл!
         continue;
       }
     }
@@ -314,8 +308,8 @@ async function callPollinations(messages, timeoutMs = 8000) {
 async function generateLumResponse({
   contents,
   systemPrompt,
-  maxOutputTokens = 120,
-  timeoutMs = 15000,
+  maxOutputTokens = 900,
+  timeoutMs = 18000,
   isMultimodal = false,
 }) {
   // 1. Для голосовых сообщений, кружочков и фото — Gemini Key Pool
@@ -330,7 +324,7 @@ async function generateLumResponse({
 
   // Слой 1: Groq Cloud (если указан хотя бы 1 бесплатный ключ — скорость молнии ~300мс)
   if (groqPool.size > 0) {
-    const groqReply = await callGroq(openAIMessages, maxOutputTokens, 5000);
+    const groqReply = await callGroq(openAIMessages, maxOutputTokens, Math.min(timeoutMs, 14000));
     if (groqReply) return groqReply;
   }
 
@@ -339,7 +333,7 @@ async function generateLumResponse({
   if (geminiReply) return geminiReply;
 
   // Слой 3: Pollinations AI (аварийный резерв без ключей)
-  const pollReply = await callPollinations(openAIMessages, 7000);
+  const pollReply = await callPollinations(openAIMessages, 9000);
   if (pollReply) return pollReply;
 
   return null;

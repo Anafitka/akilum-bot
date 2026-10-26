@@ -564,8 +564,21 @@ function recordInteraction(userId, meta = {}) {
   stats[id].count += 1;
   stats[id].lastSeen = Date.now();
   if (meta.name) stats[id].name = meta.name;
-  if (meta.username) stats[id].username = meta.username;
-  if (stats[id].count % 2 === 0 && stats[id].loveLevel < 100) {
+  if (meta.username) {
+    const cleanUname = String(meta.username).replace(/^@/, "");
+    stats[id].username = cleanUname;
+    // Если админ выдал любовь/ненависть или бонусы по @username до первого сообщения — переносим на ID
+    const unameKey = `@${cleanUname.toLowerCase()}`;
+    if (stats[unameKey] && unameKey !== id) {
+      const pending = stats[unameKey];
+      if (pending.loveLevel !== undefined) stats[id].loveLevel = pending.loveLevel;
+      if (pending.loveLocked !== undefined) stats[id].loveLocked = pending.loveLocked;
+      if (pending.bolts) stats[id].bolts = (stats[id].bolts || 0) + pending.bolts;
+      if (pending.customTitle) stats[id].customTitle = pending.customTitle;
+      delete stats[unameKey];
+    }
+  }
+  if (!stats[id].loveLocked && stats[id].loveLevel >= 0 && stats[id].count % 2 === 0 && stats[id].loveLevel < 100) {
     stats[id].loveLevel += 1;
   }
   saveUserStats();
@@ -602,7 +615,9 @@ function giveUserLove(userId, percent) {
     stats[id] = { count: 0, loveLevel: 75, bolts: 0, firstSeen: Date.now() };
   }
   const val = parseInt(percent, 10);
-  stats[id].loveLevel = Math.max(0, Math.min(100, isNaN(val) ? 100 : val));
+  // Поддержка диапазона от -100% (лютая ненависть) до +100% (безумная любовь до ужаса)
+  stats[id].loveLevel = Math.max(-100, Math.min(100, isNaN(val) ? 75 : val));
+  stats[id].loveLocked = true;
   saveUserStats();
   return stats[id].loveLevel;
 }
@@ -625,7 +640,12 @@ function giveUserCustomTitle(userId, title) {
 
 function renderProgressBar(percentage) {
   const totalBars = 10;
-  const filledBars = Math.round((percentage / 100) * totalBars);
+  const num = Number(percentage) || 0;
+  if (num < 0) {
+    const absFilled = Math.min(totalBars, Math.round((Math.abs(num) / 100) * totalBars));
+    return "💢".repeat(Math.min(3, Math.ceil(absFilled / 4))) + " " + "▓".repeat(absFilled) + "░".repeat(totalBars - absFilled);
+  }
+  const filledBars = Math.min(totalBars, Math.max(0, Math.round((num / 100) * totalBars)));
   const emptyBars = totalBars - filledBars;
   return "█".repeat(filledBars) + "░".repeat(emptyBars);
 }

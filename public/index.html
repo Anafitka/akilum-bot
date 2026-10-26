@@ -3,73 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Akilum • AI Assistant</title>
+  <title>Akilum • AI Companion</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-base: #060811;
-      --bg-surface: rgba(15, 23, 42, 0.72);
-      --bg-surface-elevated: rgba(30, 41, 59, 0.85);
+      --bg-base: #07090e;
+      --bg-surface: rgba(17, 21, 32, 0.78);
+      --bg-elevated: rgba(26, 32, 48, 0.88);
       --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-glow: rgba(0, 255, 136, 0.35);
-      --neon-emerald: #00ff88;
-      --neon-cyan: #00f0ff;
-      --neon-gold: #ffd700;
-      --neon-purple: #a855f7;
-      --neon-pink: #ec4899;
+      --border-highlight: rgba(255, 255, 255, 0.15);
+      --accent-emerald: #10b981;
+      --accent-emerald-glow: rgba(16, 185, 129, 0.25);
+      --accent-cyan: #06b6d4;
+      --accent-gold: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #8b5cf6;
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
-      --text-tertiary: #64748b;
-      --gold-gradient: linear-gradient(135deg, #ffd700, #ff9100);
-      --emerald-gradient: linear-gradient(135deg, #00ff88, #00d2ff);
-      --purple-gradient: linear-gradient(135deg, #a855f7, #6366f1);
-      --card-radius: 20px;
+      --text-muted: #64748b;
+      --gold-gradient: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+      --primary-gradient: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      --card-radius: 18px;
     }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
+
     body {
       background: var(--bg-base);
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
-      padding-bottom: 96px;
+      padding-bottom: 92px;
+      -webkit-font-smoothing: antialiased;
     }
-    /* Dynamic Mesh Gradient Background */
-    .mesh-glow {
+
+    .ambient-bg {
       position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: 
-        radial-gradient(circle at 15% 15%, rgba(0, 255, 136, 0.09) 0%, transparent 45%),
-        radial-gradient(circle at 85% 25%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 50% 85%, rgba(168, 85, 247, 0.07) 0%, transparent 55%);
+      inset: 0;
+      background:
+        radial-gradient(600px circle at 15% 10%, rgba(16, 185, 129, 0.08), transparent 45%),
+        radial-gradient(500px circle at 85% 20%, rgba(139, 92, 246, 0.07), transparent 50%),
+        radial-gradient(600px circle at 50% 90%, rgba(6, 182, 212, 0.05), transparent 55%);
       pointer-events: none;
       z-index: 0;
     }
-    .grid-lines {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-      background-size: 32px 32px;
-      pointer-events: none;
-      z-index: 0;
-    }
+
     .container {
       position: relative;
       z-index: 1;
-      padding: 16px;
+      padding: 14px 16px;
       max-width: 460px;
       margin: 0 auto;
+    }
+
+    /* Toast Notification */
+    .app-toast {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-120%);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(16, 185, 129, 0.45);
+      color: #fff;
+      padding: 11px 18px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(16px);
+      z-index: 2000;
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 92vw;
+      text-align: center;
+      pointer-events: none;
+    }
+    .app-toast.show {
+      transform: translateX(-50%) translateY(0);
     }
 
     /* Top Bar */
@@ -77,188 +96,235 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
-      padding: 2px;
+      margin-bottom: 14px;
+      gap: 8px;
     }
     .brand-wrap {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
     .top-bot-avatar {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      padding: 2px;
-      background: linear-gradient(135deg, var(--neon-emerald), var(--neon-cyan));
-      box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
-      position: relative;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      padding: 1.5px;
+      background: var(--primary-gradient);
+      flex-shrink: 0;
     }
     .top-bot-avatar img {
       width: 100%;
       height: 100%;
-      border-radius: 50%;
+      border-radius: 10.5px;
       object-fit: cover;
       display: block;
     }
     .brand-text h1 {
-      font-size: 17px;
-      font-weight: 800;
+      font-size: 15.5px;
+      font-weight: 700;
       color: #fff;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       letter-spacing: -0.3px;
     }
     .verified-badge {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 16px;
-      height: 16px;
-      background: var(--neon-cyan);
-      color: #060811;
+      width: 15px;
+      height: 15px;
+      background: var(--accent-emerald);
+      color: #07090e;
       border-radius: 50%;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 900;
     }
     .brand-text span {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-secondary);
-      font-family: 'JetBrains Mono', monospace;
     }
-    .energy-pill {
-      background: rgba(0, 255, 136, 0.1);
-      border: 1px solid rgba(0, 255, 136, 0.28);
-      color: var(--neon-emerald);
-      font-size: 12px;
-      font-weight: 700;
-      padding: 6px 12px;
-      border-radius: 20px;
+
+    .top-actions {
       display: flex;
       align-items: center;
       gap: 6px;
-      letter-spacing: 0.3px;
-      box-shadow: 0 0 12px rgba(0, 255, 136, 0.15);
-      cursor: pointer;
-    }
-    .energy-pill.vip {
-      background: rgba(255, 215, 0, 0.12);
-      border-color: rgba(255, 215, 0, 0.4);
-      color: var(--neon-gold);
-      box-shadow: 0 0 14px rgba(255, 215, 0, 0.25);
     }
 
-    /* Tab Switcher Logic */
+    /* Header Language Pill */
+    .lang-Segmented {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .lang-pill-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 7px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    .lang-pill-btn.active {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+    }
+
+    .energy-pill {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .energy-pill.vip {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+    }
+
+    /* Tab Views */
     .tab-view {
       display: none;
-      animation: tabFadeIn 0.22s ease-out;
+      animation: fadeIn 0.2s ease-out;
     }
     .tab-view.active {
       display: block;
     }
-    @keyframes tabFadeIn {
-      from { opacity: 0; transform: translateY(6px); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Hero / Interactive Clicker Card */
+    /* Hero Card */
     .hero-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--card-radius);
-      padding: 22px 18px;
-      text-align: center;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
-      margin-bottom: 16px;
+      padding: 18px 16px;
+      margin-bottom: 14px;
       backdrop-filter: blur(20px);
-      position: relative;
-      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    }
+    .hero-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
     }
     .hero-avatar-wrap {
-      width: 108px;
-      height: 108px;
-      border-radius: 50%;
-      padding: 3.5px;
-      background: linear-gradient(135deg, var(--neon-emerald), var(--neon-cyan), var(--neon-gold));
-      box-shadow: 0 0 28px rgba(0, 255, 136, 0.45);
-      margin: 0 auto 14px;
-      cursor: pointer;
+      width: 68px;
+      height: 68px;
+      border-radius: 18px;
+      padding: 2px;
+      background: var(--primary-gradient);
       position: relative;
-      transition: transform 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
     }
     .hero-avatar-wrap:active {
-      transform: scale(0.92);
-      box-shadow: 0 0 38px var(--neon-emerald);
+      transform: scale(0.94);
     }
     .hero-avatar-img {
       width: 100%;
       height: 100%;
-      border-radius: 50%;
+      border-radius: 16px;
       object-fit: cover;
       display: block;
     }
     .avatar-status-dot {
       position: absolute;
-      bottom: 4px;
-      right: 6px;
-      width: 18px;
-      height: 18px;
-      background: var(--neon-emerald);
-      border: 3px solid #0f172a;
+      bottom: -2px;
+      right: -2px;
+      width: 14px;
+      height: 14px;
+      background: var(--accent-emerald);
+      border: 2.5px solid #0b0f19;
       border-radius: 50%;
-      box-shadow: 0 0 8px var(--neon-emerald);
+    }
+    .hero-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .hero-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
     .hero-name {
-      font-size: 22px;
+      font-size: 17px;
       font-weight: 800;
       color: #fff;
-      letter-spacing: -0.4px;
+      letter-spacing: -0.3px;
+    }
+    .hero-role-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.14);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
     }
     .hero-quote-box {
-      margin-top: 8px;
-      font-size: 13px;
-      color: var(--neon-cyan);
-      min-height: 20px;
-      font-weight: 500;
-      padding: 0 10px;
+      margin-top: 5px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      line-height: 1.4;
     }
+
     .stat-bar {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      margin-top: 18px;
-      padding-top: 14px;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
       border-top: 1px solid var(--border-subtle);
     }
     .stat-col {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 8px 6px;
       text-align: center;
     }
     .stat-val {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: 800;
-      color: var(--neon-gold);
+      color: #fff;
     }
     .stat-lbl {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-secondary);
       margin-top: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 500;
     }
 
     /* VIP Promo Banner */
     .vip-banner {
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 145, 0, 0.08));
-      border: 1px solid rgba(255, 215, 0, 0.35);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(17, 24, 39, 0.92));
+      border: 1px solid rgba(245, 158, 11, 0.32);
       border-radius: var(--card-radius);
-      padding: 14px 18px;
+      padding: 13px 15px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       cursor: pointer;
-      box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
       transition: transform 0.15s ease;
     }
     .vip-banner:active {
@@ -267,95 +333,166 @@
     .vip-banner-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 11px;
     }
     .vip-banner-icon {
-      font-size: 32px;
-      filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+      font-size: 26px;
     }
     .vip-banner-text h3 {
-      font-size: 14px;
-      font-weight: 800;
+      font-size: 13.5px;
+      font-weight: 700;
       color: #fff;
     }
     .vip-banner-text p {
       font-size: 11px;
-      color: var(--neon-gold);
+      color: #fbbf24;
       margin-top: 2px;
     }
     .vip-banner-cta {
       background: var(--gold-gradient);
-      color: #060811;
-      font-size: 12px;
+      color: #07090e;
+      font-size: 11.5px;
       font-weight: 800;
-      padding: 8px 14px;
-      border-radius: 12px;
+      padding: 7px 12px;
+      border-radius: 10px;
       white-space: nowrap;
-      box-shadow: 0 4px 14px rgba(255, 215, 0, 0.35);
     }
 
     /* Section Header */
     .section-head {
-      font-size: 13px;
-      font-weight: 800;
+      font-size: 11.5px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1.2px;
+      letter-spacing: 0.9px;
       color: var(--text-secondary);
-      margin: 20px 0 12px;
+      margin: 16px 0 10px;
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-    .section-head::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(to right, rgba(255, 255, 255, 0.1), transparent);
+      justify-content: space-between;
     }
 
-    /* Interactive Tool Grid */
+    /* Language Switcher Row */
+    .lang-row-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .lang-card-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 10px 8px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+    .lang-card-btn.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #fff;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.15);
+    }
+
+    /* Personalities Grid */
+    .models-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-bottom: 16px;
+    }
+    .model-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      position: relative;
+    }
+    .model-box:active {
+      transform: scale(0.98);
+    }
+    .model-box.active-model {
+      border-color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.08);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.15);
+    }
+    .model-box-badge {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+    }
+    .model-box-badge.free {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+    .model-box-icon {
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+    .model-box h5 {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .model-box p {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+      line-height: 1.3;
+    }
+
+    /* Tool Grid */
     .tool-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
     }
     .tool-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 18px;
-      padding: 16px 14px;
+      border-radius: 15px;
+      padding: 14px 13px;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 8px;
+      gap: 7px;
       cursor: pointer;
-      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-      backdrop-filter: blur(14px);
-      position: relative;
-      overflow: hidden;
+      transition: all 0.16s ease;
     }
     .tool-card:active {
-      transform: scale(0.96);
-      border-color: var(--neon-emerald);
-      background: rgba(0, 255, 136, 0.08);
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+      transform: scale(0.97);
+      border-color: var(--border-highlight);
+      background: var(--bg-elevated);
     }
     .tool-icon-wrap {
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
     }
     .tool-card h4 {
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
       color: #fff;
-      letter-spacing: -0.2px;
     }
     .tool-card p {
       font-size: 11px;
@@ -363,407 +500,211 @@
       line-height: 1.35;
     }
 
-    /* ================= SHOP TAB ================= */
-    .shop-header {
-      text-align: center;
-      margin-bottom: 22px;
-      padding: 10px 0;
-    }
-    .shop-crown {
-      font-size: 46px;
-      filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.7));
-      animation: crownBounce 3s ease-in-out infinite alternate;
-    }
-    @keyframes crownBounce {
-      from { transform: translateY(0); }
-      to { transform: translateY(-7px); }
-    }
-    .shop-title {
-      font-size: 23px;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: -0.4px;
-      margin-top: 8px;
-    }
-    .shop-sub {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 4px;
-      line-height: 1.45;
-    }
-
-    .plan-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--card-radius);
-      padding: 20px 18px;
-      margin-bottom: 14px;
-      position: relative;
-      backdrop-filter: blur(20px);
-      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-      overflow: hidden;
-      transition: transform 0.15s ease;
-    }
-    .plan-card.featured {
-      border: 1.5px solid rgba(255, 215, 0, 0.55);
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.09), rgba(15, 23, 42, 0.9));
-      box-shadow: 0 0 30px rgba(255, 215, 0, 0.22);
-    }
-    .plan-ribbon {
-      position: absolute;
-      top: 14px; right: 14px;
-      background: var(--gold-gradient);
-      color: #060811;
-      font-size: 10px;
-      font-weight: 800;
-      padding: 4px 10px;
-      border-radius: 8px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .plan-ribbon.cyan {
-      background: var(--emerald-gradient);
-    }
-    .plan-head {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .plan-icon {
-      font-size: 34px;
-    }
-    .plan-head h3 {
-      font-size: 17px;
-      font-weight: 800;
-      color: #fff;
-    }
-    .plan-price {
-      font-size: 22px;
-      font-weight: 900;
-      color: var(--neon-gold);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      margin-top: 2px;
-    }
-    .plan-price span {
-      font-size: 13px;
-      color: var(--text-secondary);
-      font-weight: 500;
-    }
-    .plan-features {
-      list-style: none;
-      margin: 14px 0 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .plan-features li {
-      font-size: 12.5px;
-      color: var(--text-primary);
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-    .plan-features li svg {
-      width: 15px;
-      height: 15px;
-      color: var(--neon-emerald);
-      flex-shrink: 0;
-    }
-    .checkout-btn {
-      width: 100%;
-      background: var(--gold-gradient);
-      border: none;
-      color: #060811;
-      font-size: 14.5px;
-      font-weight: 800;
-      padding: 14px;
-      border-radius: 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
-      transition: all 0.15s ease;
-    }
-    .checkout-btn:active {
-      transform: scale(0.97);
-      filter: brightness(1.1);
-    }
-    .checkout-btn.secondary {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
-      box-shadow: none;
-    }
-    .checkout-btn.secondary:active {
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    /* ==========================================
-       ✨ CLEAN LUXURY SHOP STYLES
-       ========================================== */
+    /* Shop Styles */
     .shop-hero-card {
-      position: relative;
-      background: linear-gradient(135deg, rgba(20, 24, 40, 0.9), rgba(12, 16, 28, 0.95));
-      border: 1px solid rgba(0, 255, 136, 0.25);
-      border-radius: 20px;
-      padding: 16px 14px;
+      background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(11, 15, 25, 0.98));
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: var(--card-radius);
+      padding: 16px;
       margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 14px;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    }
-    .shop-hero-glow {
-      position: absolute;
-      top: -40px; right: -40px;
-      width: 120px; height: 120px;
-      background: radial-gradient(circle, rgba(0, 255, 136, 0.2), transparent 70%);
-      pointer-events: none;
     }
     .shop-hero-avatar {
       position: relative;
-      width: 52px; height: 52px;
+      width: 52px;
+      height: 52px;
       flex-shrink: 0;
     }
     .shop-hero-avatar img {
-      width: 100%; height: 100%;
-      border-radius: 16px;
-      border: 2px solid var(--neon-emerald);
+      width: 100%;
+      height: 100%;
+      border-radius: 14px;
+      border: 1.5px solid #fbbf24;
       object-fit: cover;
     }
     .shop-hero-crown {
       position: absolute;
-      top: -8px; right: -8px;
-      font-size: 16px;
-      filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+      top: -7px;
+      right: -7px;
+      font-size: 15px;
     }
     .shop-hero-text h2 {
       font-size: 15px;
       font-weight: 800;
       color: #fff;
-      margin: 0 0 3px 0;
+      margin-bottom: 3px;
     }
     .shop-hero-text p {
       font-size: 11.5px;
       color: var(--text-secondary);
       line-height: 1.35;
-      margin: 0;
     }
 
     .perks-row {
       display: flex;
       gap: 6px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
       overflow-x: auto;
-      padding-bottom: 2px;
       scrollbar-width: none;
     }
     .perks-row::-webkit-scrollbar { display: none; }
     .perk-pill {
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border-subtle);
-      border-radius: 20px;
+      border-radius: 10px;
       padding: 5px 10px;
       font-size: 11px;
       color: #e2e8f0;
-      display: flex;
-      align-items: center;
-      gap: 5px;
       white-space: nowrap;
       font-weight: 600;
     }
 
-    /* Switcher: MBANK vs Cards vs Stars */
     .pay-method-switcher {
       display: flex;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--border-subtle);
-      border-radius: 14px;
+      border-radius: 12px;
       padding: 3px;
       gap: 4px;
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
     .pay-toggle-btn {
       flex: 1;
-      padding: 9px 4px;
-      border: none;
-      border-radius: 11px;
+      padding: 8px 4px;
+      border: 1px solid transparent;
+      border-radius: 9px;
       font-size: 11.5px;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text-secondary);
       background: transparent;
       cursor: pointer;
-      transition: all 0.2s ease;
-      text-align: center;
+      transition: all 0.18s ease;
     }
     .pay-toggle-btn.active {
-      background: rgba(0, 255, 136, 0.16);
-      border: 1px solid rgba(0, 255, 136, 0.4);
-      color: var(--neon-emerald);
-      box-shadow: 0 0 14px rgba(0, 255, 136, 0.2);
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #34d399;
     }
-    .pay-toggle-btn.active.stars-tab {
-      background: rgba(255, 215, 0, 0.16);
-      border-color: rgba(255, 215, 0, 0.4);
-      color: var(--neon-gold);
-      box-shadow: 0 0 14px rgba(255, 215, 0, 0.2);
+    .pay-toggle-btn.active.stars-mode {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
     }
 
-    /* 2-column Compact Plans Grid */
     .plans-grid-clean {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
     .clean-plan-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      padding: 13px 11px;
+      border-radius: 15px;
+      padding: 13px 12px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      position: relative;
-      transition: transform 0.15s, border-color 0.2s;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease;
     }
     .clean-plan-card:active {
       transform: scale(0.98);
     }
     .clean-plan-card.featured-card {
-      border-color: rgba(255, 215, 0, 0.45);
-      background: linear-gradient(145deg, rgba(255, 215, 0, 0.05), rgba(15, 23, 42, 0.8));
-      box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+      border-color: rgba(245, 158, 11, 0.45);
+      background: linear-gradient(145deg, rgba(245, 158, 11, 0.07), rgba(17, 21, 32, 0.9));
     }
     .clean-plan-top {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       margin-bottom: 6px;
     }
     .clean-plan-icon {
-      font-size: 20px;
+      font-size: 18px;
     }
     .clean-plan-badge {
       font-size: 9px;
-      font-weight: 800;
+      font-weight: 700;
       padding: 2px 6px;
       border-radius: 6px;
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.07);
       color: #cbd5e1;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
     }
     .clean-plan-card.featured-card .clean-plan-badge {
-      background: rgba(255, 215, 0, 0.2);
-      color: var(--neon-gold);
-      border: 1px solid rgba(255, 215, 0, 0.35);
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
     }
     .clean-plan-name {
-      font-size: 12.5px;
-      font-weight: 800;
+      font-size: 13px;
+      font-weight: 700;
       color: #fff;
       margin-bottom: 2px;
     }
     .clean-plan-desc {
-      font-size: 10px;
+      font-size: 10.5px;
       color: var(--text-secondary);
       line-height: 1.3;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       min-height: 26px;
     }
     .clean-plan-price {
       font-size: 15px;
-      font-weight: 900;
-      color: var(--neon-emerald);
+      font-weight: 800;
+      color: #34d399;
       margin-bottom: 8px;
     }
     .clean-plan-card.featured-card .clean-plan-price {
-      color: var(--neon-gold);
+      color: #fbbf24;
     }
     .clean-plan-btn {
       width: 100%;
-      padding: 8px 4px;
+      padding: 8px;
       border-radius: 9px;
-      border: 1px solid rgba(0, 255, 136, 0.3);
-      background: rgba(0, 255, 136, 0.1);
-      color: var(--neon-emerald);
-      font-size: 11px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      font-size: 11.5px;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s;
-    }
-    .clean-plan-btn:active {
-      background: var(--neon-emerald);
-      color: #060811;
     }
     .clean-plan-card.featured-card .clean-plan-btn {
       background: var(--gold-gradient);
       border: none;
-      color: #060811;
-      font-weight: 800;
+      color: #07090e;
     }
 
-    /* Model Showcase Grid */
-    .models-showcase {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
-      margin-bottom: 20px;
-    }
-    .model-box {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 16px;
-      padding: 12px;
+    .checkout-btn {
+      width: 100%;
+      background: var(--gold-gradient);
+      border: none;
+      color: #07090e;
+      font-size: 13.5px;
+      font-weight: 700;
+      padding: 13px;
+      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s;
-      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
     }
-    .model-box.active-model {
-      border-color: var(--neon-emerald);
-      box-shadow: 0 0 16px rgba(0, 255, 136, 0.25);
-      background: rgba(0, 255, 136, 0.05);
-    }
-    .model-box-badge {
-      position: absolute;
-      top: 8px; right: 8px;
-      font-size: 9px;
-      font-weight: 800;
-      padding: 2px 6px;
-      border-radius: 6px;
-      background: rgba(255, 215, 0, 0.2);
-      color: var(--neon-gold);
-    }
-    .model-box-icon {
-      font-size: 22px;
-      margin-bottom: 4px;
-    }
-    .model-box h5 {
-      font-size: 12px;
-      font-weight: 800;
+    .checkout-btn.secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
       color: #fff;
     }
-    .model-box p {
-      font-size: 10.5px;
-      color: var(--text-secondary);
-      margin-top: 2px;
-      line-height: 1.3;
-    }
 
-    /* ================= MODAL ACTION SHEETS ================= */
+    /* Action Sheets */
     .sheet-overlay {
       position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.78);
-      backdrop-filter: blur(14px);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(10px);
       display: none;
       align-items: flex-end;
       justify-content: center;
@@ -771,132 +712,101 @@
     }
     .sheet-overlay.open {
       display: flex;
-      animation: sheetBackdrop 0.2s ease-out;
-    }
-    @keyframes sheetBackdrop {
-      from { opacity: 0; }
-      to { opacity: 1; }
     }
     .sheet-card {
-      background: #0f172a;
+      background: #0f1420;
       border: 1px solid var(--border-subtle);
       border-bottom: none;
-      border-radius: 26px 26px 0 0;
-      padding: 22px 20px 34px;
-      max-width: 480px;
+      border-radius: 22px 22px 0 0;
+      padding: 18px 18px 30px;
+      max-width: 460px;
       width: 100%;
-      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
-      animation: sheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       max-height: 85vh;
       overflow-y: auto;
     }
-    @keyframes sheetSlideUp {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
     .sheet-handle {
-      width: 38px;
+      width: 36px;
       height: 4px;
-      background: rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.18);
       border-radius: 4px;
-      margin: 0 auto 16px;
+      margin: 0 auto 14px;
     }
     .sheet-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
     .sheet-title {
-      font-size: 18px;
-      font-weight: 800;
+      font-size: 16px;
+      font-weight: 700;
       color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
     .sheet-close {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
       border: none;
       color: #fff;
       width: 28px;
       height: 28px;
       border-radius: 50%;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
     }
     .sheet-input {
       width: 100%;
-      background: rgba(2, 6, 23, 0.8);
-      border: 1.5px solid rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      padding: 13px 14px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border-highlight);
+      border-radius: 12px;
+      padding: 12px 14px;
       color: #fff;
-      font-size: 14px;
+      font-size: 13.5px;
       margin-bottom: 12px;
       outline: none;
-      transition: border-color 0.15s;
     }
     .sheet-input:focus {
-      border-color: var(--neon-emerald);
-      box-shadow: 0 0 14px rgba(0, 255, 136, 0.25);
+      border-color: var(--accent-emerald);
     }
-    .chips-row {
+    .chips-row, .sheet-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 7px;
-      margin-bottom: 16px;
+      gap: 6px;
+      margin-bottom: 12px;
     }
     .chip {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
       color: var(--text-primary);
       font-size: 11.5px;
       font-weight: 600;
-      padding: 6px 12px;
-      border-radius: 12px;
+      padding: 6px 11px;
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.12s;
     }
-    .chip:active, .chip.active {
-      background: rgba(0, 255, 136, 0.18);
-      border-color: var(--neon-emerald);
-      color: #fff;
+    .chip.active, .chip:active {
+      background: rgba(16, 185, 129, 0.18);
+      border-color: var(--accent-emerald);
     }
     .sheet-action-btn {
       width: 100%;
-      background: var(--emerald-gradient);
+      background: var(--primary-gradient);
       border: none;
-      color: #060811;
-      font-size: 14.5px;
-      font-weight: 800;
-      padding: 14px;
-      border-radius: 14px;
+      color: #07090e;
+      font-size: 13.5px;
+      font-weight: 700;
+      padding: 13px;
+      border-radius: 12px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
-    }
-    .sheet-action-btn:active {
-      transform: scale(0.97);
     }
 
-    /* Live Rates Table in Sheet */
     .rates-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      gap: 8px;
       margin-bottom: 14px;
     }
     .rate-card {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
       padding: 12px;
       text-align: center;
     }
@@ -906,38 +816,27 @@
       margin-bottom: 4px;
     }
     .rate-val {
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--neon-cyan);
+      font-size: 15px;
+      font-weight: 700;
+      color: #38bdf8;
       font-family: 'JetBrains Mono', monospace;
     }
 
-    /* Floating sparks on tap */
-    .spark {
-      position: absolute;
-      pointer-events: none;
-      animation: flySpark 0.75s forwards ease-out;
-      font-size: 22px;
-      z-index: 999;
-    }
-    @keyframes flySpark {
-      0% { transform: translate(0, 0) scale(1); opacity: 1; }
-      100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
-    }
-
-    /* Bottom Navigation Bar */
+    /* Bottom Navigation */
     .bottom-nav {
       position: fixed;
-      bottom: 0; left: 0; width: 100%;
-      height: 72px;
-      background: rgba(9, 14, 26, 0.94);
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(25px);
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 68px;
+      background: rgba(10, 13, 22, 0.94);
+      border-top: 1px solid var(--border-subtle);
+      backdrop-filter: blur(20px);
       display: flex;
       justify-content: space-around;
       align-items: center;
       z-index: 100;
-      padding-bottom: env(safe-area-inset-bottom, 8px);
+      padding-bottom: env(safe-area-inset-bottom, 6px);
     }
     .nav-btn {
       display: flex;
@@ -949,41 +848,35 @@
       background: none;
       border: none;
       cursor: pointer;
-      gap: 4px;
-      transition: all 0.2s ease;
+      gap: 3px;
       position: relative;
       flex: 1;
     }
     .nav-btn .nav-icon {
-      font-size: 22px;
-      transition: transform 0.15s ease;
+      font-size: 20px;
     }
     .nav-btn.active {
-      color: var(--neon-emerald);
-    }
-    .nav-btn.active .nav-icon {
-      transform: scale(1.15);
-      filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
+      color: #34d399;
     }
     .nav-badge {
       position: absolute;
       top: -3px;
-      right: 22%;
-      background: var(--neon-pink);
-      color: #fff;
-      font-size: 9px;
+      right: 24%;
+      background: var(--accent-gold);
+      color: #07090e;
+      font-size: 8.5px;
       font-weight: 800;
-      padding: 2px 5px;
-      border-radius: 10px;
+      padding: 1.5px 5px;
+      border-radius: 8px;
     }
   </style>
 </head>
 <body>
-  <div class="mesh-glow"></div>
-  <div class="grid-lines"></div>
+  <div class="ambient-bg"></div>
+  <div id="appToast" class="app-toast"></div>
 
   <div class="container">
-    <!-- Top Bar -->
+    <!-- Top Bar with Instant Language Switcher -->
     <div class="top-bar">
       <div class="brand-wrap">
         <div class="top-bot-avatar">
@@ -994,452 +887,391 @@
           <span>@akilum_bot</span>
         </div>
       </div>
-      <div class="energy-pill" id="badgeEnergy" onclick="switchTab('shop')">
-        <span>🔋</span>
-        <span id="badgeEnergyText">30/30</span>
+
+      <div class="top-actions">
+        <div class="lang-Segmented">
+          <button class="lang-pill-btn active" id="topLang-ru" onclick="handleSelectLanguage('ru')">RU</button>
+          <button class="lang-pill-btn" id="topLang-en" onclick="handleSelectLanguage('en')">EN</button>
+          <button class="lang-pill-btn" id="topLang-jp" onclick="handleSelectLanguage('jp')">JP</button>
+        </div>
+        <div class="energy-pill" id="badgeEnergy" onclick="switchTab('shop')">
+          <span>⚡</span>
+          <span id="badgeEnergyText">30/30</span>
+        </div>
       </div>
     </div>
 
-    <!-- ================= TAB 1: ГЛАВНАЯ (HOME) ================= -->
+    <!-- ================= TAB 1: HOME ================= -->
     <div class="tab-view active" id="tab-home">
-      <!-- Hero Interactive Card -->
+      <!-- Clean Hero Status Card -->
       <div class="hero-card">
-        <div class="hero-avatar-wrap" id="heroAvatar">
-          <img src="/avatar.jpg" alt="Akilum" class="hero-avatar-img" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'" />
-          <div class="avatar-status-dot"></div>
+        <div class="hero-top">
+          <div class="hero-avatar-wrap" id="heroAvatar">
+            <img src="/avatar.jpg" alt="Akilum" class="hero-avatar-img" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'" />
+            <div class="avatar-status-dot"></div>
+          </div>
+          <div class="hero-info">
+            <div class="hero-name-row">
+              <div class="hero-name">Lum (Akilum)</div>
+              <span class="hero-role-badge" id="activeCharBadge">🌸 Нежная</span>
+            </div>
+            <div class="hero-quote-box" id="heroQuote" data-i18n="hero_quote">«Привет, Дарлинг! Я готова общаться, решать задачи и помогать 24/7 ⚡»</div>
+          </div>
         </div>
-        <div class="hero-name">Akilum</div>
-        <div class="hero-quote-box" id="heroQuote">«Тапни по мне, Дарлинг, поделюсь зарядом!»</div>
-        
+
         <div class="stat-bar">
           <div class="stat-col">
-            <div class="stat-val" id="clickCounter">0</div>
-            <div class="stat-lbl">Искорок</div>
-          </div>
-          <div class="stat-col">
-            <div class="stat-val" id="loveCounter">85%</div>
-            <div class="stat-lbl">Связь</div>
+            <div class="stat-val" id="loveCounter">75%</div>
+            <div class="stat-lbl" data-i18n="stat_attitude">Отношение Лам</div>
           </div>
           <div class="stat-col">
             <div class="stat-val" id="energyCounter">30/30</div>
-            <div class="stat-lbl">Энергия</div>
+            <div class="stat-lbl" data-i18n="stat_energy">Энергия</div>
+          </div>
+          <div class="stat-col">
+            <div class="stat-val" id="langCounter">🇷🇺 RU</div>
+            <div class="stat-lbl" data-i18n="stat_lang">Язык</div>
           </div>
         </div>
       </div>
 
-      <!-- VIP Banner -->
+      <!-- VIP Promo Banner -->
       <div class="vip-banner" onclick="switchTab('shop')">
         <div class="vip-banner-left">
           <div class="vip-banner-icon">👑</div>
           <div class="vip-banner-text">
-            <h3>VIP Премиум — Все возможности Лам</h3>
-            <p>6 характеров, 3 языка (RU/EN/JP) и безлимит 24/7</p>
+            <h3 data-i18n="vip_banner_title">VIP Премиум — Все возможности</h3>
+            <p data-i18n="vip_banner_sub">Все 6 характеров, 3 языка и безлимит 24/7</p>
           </div>
         </div>
-        <div class="vip-banner-cta">Открыть VIP ⭐️</div>
+        <div class="vip-banner-cta" data-i18n="vip_banner_btn">Открыть VIP</div>
       </div>
 
-      <!-- Language & Personality Quick Bar on Home -->
-      <div class="section-head">🌐 Язык и 🎭 Характер Лам</div>
-      <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <button class="pay-toggle-btn active" id="homeLang-ru" onclick="handleSelectLanguage('ru')" style="flex:1; padding:10px 6px; font-size:12px;">🇷🇺 Русский</button>
-        <button class="pay-toggle-btn" id="homeLang-en" onclick="handleSelectLanguage('en')" style="flex:1; padding:10px 6px; font-size:12px;">🇬🇧 English</button>
-        <button class="pay-toggle-btn" id="homeLang-jp" onclick="handleSelectLanguage('jp')" style="flex:1; padding:10px 6px; font-size:12px;">🇯🇵 日本語</button>
+      <!-- Language Selector -->
+      <div class="section-head" data-i18n="sec_lang">🌐 Язык общения Лам</div>
+      <div class="lang-row-bar">
+        <button class="lang-card-btn active" id="homeLang-ru" onclick="handleSelectLanguage('ru')">🇷🇺 Русский</button>
+        <button class="lang-card-btn" id="homeLang-en" onclick="handleSelectLanguage('en')">🇬🇧 English</button>
+        <button class="lang-card-btn" id="homeLang-jp" onclick="handleSelectLanguage('jp')">🇯🇵 日本語</button>
       </div>
-      <div class="models-showcase" style="margin-bottom: 18px;">
+
+      <!-- 6 Personalities Selector -->
+      <div class="section-head" data-i18n="sec_chars">🎭 Характер Лам</div>
+      <div class="models-showcase">
         <div class="model-box active-model" id="homeChar-tender" onclick="handleSelectPersonality('tender')">
-          <div class="model-box-badge">БЕСПЛАТНО</div>
+          <div class="model-box-badge free">FREE</div>
           <div class="model-box-icon">🌸</div>
-          <h5>Нежная Вайфу</h5>
-          <p>Ласковая, заботливая и верная Лам</p>
+          <h5 data-i18n="char_tender_title">Нежная Вайфу</h5>
+          <p data-i18n="char_tender_desc">Ласковая, заботливая и преданная Лам</p>
         </div>
         <div class="model-box" id="homeChar-tsundere" onclick="handleSelectPersonality('tsundere')">
           <div class="model-box-badge">👑 VIP</div>
           <div class="model-box-icon">⚡</div>
-          <h5>Цундере Лам</h5>
-          <p>Кусается, краснеет и ревнует: «Бака!»</p>
+          <h5 data-i18n="char_tsundere_title">Цундере Лам</h5>
+          <p data-i18n="char_tsundere_desc">Дерзкая, краснеет и ревнует: «Бака!»</p>
         </div>
         <div class="model-box" id="homeChar-yandere" onclick="handleSelectPersonality('yandere')">
           <div class="model-box-badge">👑 VIP</div>
           <div class="model-box-icon">🔥</div>
-          <h5>Одержимая Яндере</h5>
-          <p>Безумная страсть: «Ты только мой!»</p>
+          <h5 data-i18n="char_yandere_title">Одержимая Яндере</h5>
+          <p data-i18n="char_yandere_desc">Безумная страсть: «Ты только мой!»</p>
         </div>
         <div class="model-box" id="homeChar-bold" onclick="handleSelectPersonality('bold')">
           <div class="model-box-badge">👑 VIP</div>
           <div class="model-box-icon">😈</div>
-          <h5>Дерзкая Госпожа</h5>
-          <p>Властная королева и дерзкий флирт</p>
+          <h5 data-i18n="char_bold_title">Дерзкая Госпожа</h5>
+          <p data-i18n="char_bold_desc">Властная королева и острый флирт</p>
         </div>
         <div class="model-box" id="homeChar-sensei" onclick="handleSelectPersonality('sensei')">
           <div class="model-box-badge">👑 VIP</div>
           <div class="model-box-icon">🎓</div>
-          <h5>Строгая Сенсей</h5>
-          <p>Идеально объяснит любую тему и ДЗ</p>
+          <h5 data-i18n="char_sensei_title">Строгая Сенсей</h5>
+          <p data-i18n="char_sensei_desc">Умная наставница для учёбы и кода</p>
         </div>
         <div class="model-box" id="homeChar-mysterious" onclick="handleSelectPersonality('mysterious')">
           <div class="model-box-badge">👑 VIP</div>
           <div class="model-box-icon">🌙</div>
-          <h5>Гот-Лам</h5>
-          <p>Мистика, тайны и ночные разговоры</p>
+          <h5 data-i18n="char_goth_title">Загадочная Гот-Лам</h5>
+          <p data-i18n="char_goth_desc">Мистика, тайны и ночные разговоры</p>
         </div>
       </div>
 
-      <!-- Interactive Tools Grid -->
-      <div class="section-head">📚 Учёба и Инструменты</div>
+      <!-- Tools Grid -->
+      <div class="section-head" data-i18n="sec_tools">📚 Учёба и Инструменты</div>
       <div class="tool-grid">
         <div class="tool-card" onclick="openSheet('solver')">
           <div class="tool-icon-wrap">📚</div>
-          <h4>АнтиГДЗ Решебник</h4>
-          <p>Пошаговый разбор любых задач и тестов</p>
+          <h4 data-i18n="tool_solver_t">Решебник ДЗ</h4>
+          <p data-i18n="tool_solver_d">Пошаговый разбор задач и тестов</p>
         </div>
         <div class="tool-card" onclick="openSheet('code')">
           <div class="tool-icon-wrap">💻</div>
-          <h4>Информатика & Код</h4>
-          <p>Код с окном копирования в 1 тап</p>
+          <h4 data-i18n="tool_code_t">Написать Код</h4>
+          <p data-i18n="tool_code_d">Python, JS, C++, HTML/CSS в 1 клик</p>
         </div>
         <div class="tool-card" onclick="openSheet('cheat')">
           <div class="tool-icon-wrap">📝</div>
-          <h4>Шпаргалка</h4>
-          <p>Ультра-выжимка формул для урока</p>
+          <h4 data-i18n="tool_cheat_t">Шпаргалка</h4>
+          <p data-i18n="tool_cheat_d">Краткая выжимка формул и правил</p>
         </div>
         <div class="tool-card" onclick="openSheet('pdf')">
           <div class="tool-icon-wrap">📄</div>
-          <h4>Сборщик в PDF</h4>
-          <p>Собрать фото тетрадей в файл</p>
+          <h4 data-i18n="tool_pdf_t">Сборщик в PDF</h4>
+          <p data-i18n="tool_pdf_d">Склеить фото конспектов в документ</p>
         </div>
-      </div>
-
-      <div class="section-head">🎬 Медиа & Загрузки</div>
-      <div class="tool-grid">
         <div class="tool-card" onclick="openSheet('downloader')">
           <div class="tool-icon-wrap">🎬</div>
-          <h4>Скачать видео</h4>
-          <p>TikTok, YouTube, Reels без водяных знаков</p>
+          <h4 data-i18n="tool_dl_t">Скачать видео</h4>
+          <p data-i18n="tool_dl_d">TikTok, Shorts, Reels без знаков</p>
         </div>
         <div class="tool-card" onclick="openSheet('music')">
           <div class="tool-icon-wrap">🎵</div>
-          <h4>Поиск музыки</h4>
-          <p>Найти трек и слушать MP3 превью</p>
+          <h4 data-i18n="tool_music_t">Поиск музыки</h4>
+          <p data-i18n="tool_music_d">Найти трек и слушать превью</p>
         </div>
       </div>
     </div>
 
-    <!-- ================= TAB 2: МАГАЗИН VIP (SHOP) ================= -->
+    <!-- ================= TAB 2: SHOP ================= -->
     <div class="tab-view" id="tab-shop">
-      <!-- Clean Luxury Hero Card -->
       <div class="shop-hero-card">
-        <div class="shop-hero-glow"></div>
         <div class="shop-hero-avatar">
           <img src="/avatar.jpg" alt="Lum" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'" />
           <div class="shop-hero-crown">👑</div>
         </div>
         <div class="shop-hero-text">
-          <h2>VIP Премиум — Все возможности</h2>
-          <p>Открой все 6 характеров Лам, 3 языка (RU / EN / JP), безлимитное общение 24/7, решение ДЗ по фото и золотую корону ✨</p>
+          <h2 data-i18n="shop_title">VIP Премиум — Полный доступ</h2>
+          <p data-i18n="shop_sub">Открой все 6 характеров Лам, 3 языка (RU / EN / JP), безлимитное общение 24/7 и решение ДЗ по фото ✨</p>
         </div>
       </div>
 
-      <!-- Key Perks Summary -->
       <div class="perks-row">
-        <div class="perk-pill">🎭 <span>Все 6 Характеров</span></div>
-        <div class="perk-pill">🌐 <span>RU / EN / JP</span></div>
-        <div class="perk-pill">♾️ <span>Безлимит 24/7</span></div>
-        <div class="perk-pill">👑 <span>Золотая корона</span></div>
+        <div class="perk-pill">🎭 6 Характеров</div>
+        <div class="perk-pill">🌐 RU / EN / JP</div>
+        <div class="perk-pill">♾️ Безлимит 24/7</div>
+        <div class="perk-pill">👑 VIP Корона</div>
       </div>
 
-      <!-- Currency / Payment Switcher -->
       <div class="pay-method-switcher">
-        <button class="pay-toggle-btn active" id="btnMethodMbank" onclick="switchPayMethod('mbank')">
-          🇰🇬 Сомы
-        </button>
-        <button class="pay-toggle-btn" id="btnMethodCard" onclick="switchPayMethod('card')">
-          🇷🇺 Рубли
-        </button>
-        <button class="pay-toggle-btn" id="btnMethodUsd" onclick="switchPayMethod('usd')">
-          🇺🇸 USD ($)
-        </button>
-        <button class="pay-toggle-btn stars-tab" id="btnMethodStars" onclick="switchPayMethod('stars')">
-          ⭐️ Stars
-        </button>
+        <button class="pay-toggle-btn active" id="btnMethodMbank" onclick="switchPayMethod('mbank')">🇰🇬 KGS</button>
+        <button class="pay-toggle-btn" id="btnMethodCard" onclick="switchPayMethod('card')">🇷🇺 RUB</button>
+        <button class="pay-toggle-btn" id="btnMethodUsd" onclick="switchPayMethod('usd')">🇺🇸 USD</button>
+        <button class="pay-toggle-btn stars-tab" id="btnMethodStars" onclick="switchPayMethod('stars')">⭐️ Stars</button>
       </div>
 
-      <!-- 2-Column Compact Clean Plans Grid -->
       <div class="plans-grid-clean">
-        <!-- 1. Plan: 1 Day -->
         <div class="clean-plan-card" onclick="handlePlanBuy('vip_1day')">
           <div>
             <div class="clean-plan-top">
               <span class="clean-plan-icon">⚡</span>
-              <span class="clean-plan-badge">1 день</span>
+              <span class="clean-plan-badge">24h</span>
             </div>
-            <div class="clean-plan-name">Импульс</div>
-            <div class="clean-plan-desc">Закрыть контрольную или ДЗ на 24 часа</div>
+            <div class="clean-plan-name">Импульс (1 день)</div>
+            <div class="clean-plan-desc">Полный доступ на 24 часа</div>
           </div>
           <div>
             <div class="clean-plan-price" id="price-vip_1day">40 сом</div>
-            <button class="clean-plan-btn" id="btn-vip_1day">Выбрать</button>
+            <button class="clean-plan-btn" id="btn-vip_1day" data-i18n="btn_select">Выбрать</button>
           </div>
         </div>
 
-        <!-- 2. Plan: 3 Days -->
         <div class="clean-plan-card" onclick="handlePlanBuy('vip_3days')">
           <div>
             <div class="clean-plan-top">
               <span class="clean-plan-icon">🍓</span>
-              <span class="clean-plan-badge">3 дня</span>
+              <span class="clean-plan-badge">3d</span>
             </div>
-            <div class="clean-plan-name">Уикенд с Лам</div>
-            <div class="clean-plan-desc">3 дня отдыха, домашка наперед и тепло</div>
+            <div class="clean-plan-name">Уикенд (3 дня)</div>
+            <div class="clean-plan-desc">Три дня безлимита и характеров</div>
           </div>
           <div>
             <div class="clean-plan-price" id="price-vip_3days">80 сом</div>
-            <button class="clean-plan-btn" id="btn-vip_3days">Выбрать</button>
+            <button class="clean-plan-btn" id="btn-vip_3days" data-i18n="btn_select">Выбрать</button>
           </div>
         </div>
 
-        <!-- 3. Plan: 7 Days -->
         <div class="clean-plan-card" onclick="handlePlanBuy('vip_week')">
           <div>
             <div class="clean-plan-top">
               <span class="clean-plan-icon">🎒</span>
-              <span class="clean-plan-badge">7 дней</span>
+              <span class="clean-plan-badge">7d</span>
             </div>
-            <div class="clean-plan-name">Ударная неделя</div>
-            <div class="clean-plan-desc">Супер-мощь перед зачетами и срезами</div>
+            <div class="clean-plan-name">Неделя (7 дней)</div>
+            <div class="clean-plan-desc">Целая неделя без ограничений</div>
           </div>
           <div>
             <div class="clean-plan-price" id="price-vip_week">150 сом</div>
-            <button class="clean-plan-btn" id="btn-vip_week">Выбрать</button>
+            <button class="clean-plan-btn" id="btn-vip_week" data-i18n="btn_select">Выбрать</button>
           </div>
         </div>
 
-        <!-- 4. Plan: 30 Days (Featured) -->
         <div class="clean-plan-card featured-card" onclick="handlePlanBuy('vip_month')">
           <div>
             <div class="clean-plan-top">
               <span class="clean-plan-icon">⭐️</span>
-              <span class="clean-plan-badge">Месяц 👑</span>
+              <span class="clean-plan-badge">HIT 👑</span>
             </div>
-            <div class="clean-plan-name">VIP Дарлинг</div>
-            <div class="clean-plan-desc">Месяц без забот, корона и безлимит</div>
+            <div class="clean-plan-name">VIP Месяц (30 дн.)</div>
+            <div class="clean-plan-desc">Самый популярный тариф + Корона</div>
           </div>
           <div>
             <div class="clean-plan-price" id="price-vip_month">300 сом</div>
-            <button class="clean-plan-btn" id="btn-vip_month">Выбрать VIP</button>
+            <button class="clean-plan-btn" id="btn-vip_month" data-i18n="btn_select_vip">Выбрать VIP</button>
           </div>
         </div>
 
-        <!-- 5. Plan: 90 Days -->
         <div class="clean-plan-card" onclick="handlePlanBuy('vip_quarter')">
           <div>
             <div class="clean-plan-top">
               <span class="clean-plan-icon">💎</span>
-              <span class="clean-plan-badge">Семестр</span>
+              <span class="clean-plan-badge">90d</span>
             </div>
-            <div class="clean-plan-name">Четверть</div>
-            <div class="clean-plan-desc">3 месяца спокойствия и оценок 5+</div>
+            <div class="clean-plan-name">Квартал (90 дней)</div>
+            <div class="clean-plan-desc">3 месяца максимальной выгоды</div>
           </div>
           <div>
             <div class="clean-plan-price" id="price-vip_quarter">600 сом</div>
-            <button class="clean-plan-btn" id="btn-vip_quarter">Выбрать</button>
+            <button class="clean-plan-btn" id="btn-vip_quarter" data-i18n="btn_select">Выбрать</button>
           </div>
         </div>
 
-        <!-- 6. Plan: Forever -->
         <div class="clean-plan-card" onclick="handlePlanBuy('vip_forever')">
           <div>
             <div class="clean-plan-top">
               <span class="clean-plan-icon">👑</span>
-              <span class="clean-plan-badge">Навсегда</span>
+              <span class="clean-plan-badge">∞</span>
             </div>
-            <div class="clean-plan-name">Бог Империи</div>
-            <div class="clean-plan-desc">Вечный пожизненный VIP без подписок</div>
+            <div class="clean-plan-name">Навсегда (Forever)</div>
+            <div class="clean-plan-desc">Пожизненный VIP без повторных оплат</div>
           </div>
           <div>
             <div class="clean-plan-price" id="price-vip_forever">1000 сом</div>
-            <button class="clean-plan-btn" id="btn-vip_forever">Выбрать</button>
+            <button class="clean-plan-btn" id="btn-vip_forever" data-i18n="btn_select">Выбрать</button>
           </div>
-        </div>
-      </div>
-
-      <!-- Showcase of 6 Personalities & 3 Languages -->
-      <div class="section-head">🌐 Язык общения Лам</div>
-      <div style="display:flex; gap:8px; margin-bottom:16px;">
-        <button class="pay-toggle-btn active" id="shopLang-ru" onclick="handleSelectLanguage('ru')" style="flex:1; padding:10px 6px; font-size:12px;">🇷🇺 Русский</button>
-        <button class="pay-toggle-btn" id="shopLang-en" onclick="handleSelectLanguage('en')" style="flex:1; padding:10px 6px; font-size:12px;">🇬🇧 English</button>
-        <button class="pay-toggle-btn" id="shopLang-jp" onclick="handleSelectLanguage('jp')" style="flex:1; padding:10px 6px; font-size:12px;">🇯🇵 日本語</button>
-      </div>
-
-      <div class="section-head">🎭 6 Эксклюзивных Характеров Лам</div>
-      <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:10px;">Меняй личность Лам под своё настроение в 1 тап (все характеры открыты в VIP 👑):</p>
-      <div class="models-showcase">
-        <div class="model-box active-model" id="modelBox-tender" onclick="handleSelectPersonality('tender')">
-          <div class="model-box-badge">БЕСПЛАТНО</div>
-          <div class="model-box-icon">🌸</div>
-          <h5>Нежная Вайфу</h5>
-          <p>Ласковая, заботливая и преданная Лам</p>
-        </div>
-        <div class="model-box" id="modelBox-tsundere" onclick="handleSelectPersonality('tsundere')">
-          <div class="model-box-badge">👑 VIP</div>
-          <div class="model-box-icon">⚡</div>
-          <h5>Цундере Лам</h5>
-          <p>Дерзкая, краснеет и вредничает: «Бака!»</p>
-        </div>
-        <div class="model-box" id="modelBox-yandere" onclick="handleSelectPersonality('yandere')">
-          <div class="model-box-badge">👑 VIP</div>
-          <div class="model-box-icon">🔥</div>
-          <h5>Одержимая Яндере</h5>
-          <p>Безумно влюблена и никому тебя не отдаст</p>
-        </div>
-        <div class="model-box" id="modelBox-bold" onclick="handleSelectPersonality('bold')">
-          <div class="model-box-badge">👑 VIP</div>
-          <div class="model-box-icon">😈</div>
-          <h5>Дерзкая Госпожа</h5>
-          <p>Уверенная, властная и дразнящая королева</p>
-        </div>
-        <div class="model-box" id="modelBox-sensei" onclick="handleSelectPersonality('sensei')">
-          <div class="model-box-badge">👑 VIP</div>
-          <div class="model-box-icon">🎓</div>
-          <h5>Строгая Сенсей</h5>
-          <p>Умная наставница для учёбы, кода и языков</p>
-        </div>
-        <div class="model-box" id="modelBox-mysterious" onclick="handleSelectPersonality('mysterious')">
-          <div class="model-box-badge">👑 VIP</div>
-          <div class="model-box-icon">🌙</div>
-          <h5>Загадочная Гот-Лам</h5>
-          <p>Мистическая атмосфера и глубокие разговоры</p>
         </div>
       </div>
     </div>
 
-    <!-- ================= TAB 3: ИГРЫ И ГРУППА (GAMES) ================= -->
+    <!-- ================= TAB 3: GAMES ================= -->
     <div class="tab-view" id="tab-games">
-      <div class="section-head">🎮 Интерактивные Игры</div>
+      <div class="section-head" data-i18n="sec_games">🎮 Мини-Игры и Развлечения</div>
       <div class="tool-grid">
         <div class="tool-card" onclick="openSheet('quiz')">
           <div class="tool-icon-wrap">🎯</div>
           <h4>Викторина Quiz</h4>
-          <p>Интерактивный тест с выбором темы и баллами</p>
+          <p>Интерактивный тест с выбором темы</p>
         </div>
         <div class="tool-card" onclick="openSheet('duel')">
           <div class="tool-icon-wrap">⚔️</div>
           <h4>Дуэль молний</h4>
-          <p>Битва HP и вольт между игроками чата</p>
+          <p>Битва на молниях в чате</p>
         </div>
         <div class="tool-card" onclick="openSheet('roulette')">
           <div class="tool-icon-wrap">🎰</div>
           <h4>Они-Рулетка</h4>
-          <p>Кто дежурный или учит стих</p>
+          <p>Случайный выбор и челленджи</p>
         </div>
         <div class="tool-card" onclick="openSheet('roast')">
           <div class="tool-icon-wrap">🔥</div>
           <h4>Они-Прожарка</h4>
-          <p>Юморной подкол одноклассника</p>
+          <p>Остроумный дружеский подкол</p>
         </div>
         <div class="tool-card" onclick="openSheet('rates')">
           <div class="tool-icon-wrap">💎</div>
           <h4>Курсы валют</h4>
-          <p>Живые котировки доллара, сомов и крипты</p>
+          <p>USD, KGS, RUB, TON и Bitcoin</p>
         </div>
         <div class="tool-card" onclick="openSheet('weather')">
           <div class="tool-icon-wrap">⛅</div>
           <h4>Метео-радар</h4>
-          <p>Живая погода и совет от они-принцессы</p>
+          <p>Точный прогноз погоды по городам</p>
         </div>
         <div class="tool-card" onclick="openSheet('art')">
           <div class="tool-icon-wrap">🎨</div>
           <h4>Нейро-Арт</h4>
-          <p>Генерация стикеров и аватарок</p>
+          <p>Генерация аниме и киберпанк артов</p>
         </div>
         <div class="tool-card" onclick="sendToBot('шар судьбы: ждет ли меня сегодня удача?')">
           <div class="tool-icon-wrap">🔮</div>
-          <h4>Шар 8-Ball</h4>
-          <p>Космический шар судьбы от Лам</p>
+          <h4>Шар Судьбы</h4>
+          <p>Предсказание от Лам в 1 клик</p>
         </div>
       </div>
     </div>
 
-    <!-- ================= TAB 4: ПРОФИЛЬ (PROFILE) ================= -->
+    <!-- ================= TAB 4: PROFILE ================= -->
     <div class="tab-view" id="tab-profile">
       <div class="hero-card" style="margin-bottom: 14px;">
-        <div style="font-size: 19px; font-weight: 800;" id="profileName">Дарлинг</div>
-        <div style="font-size: 13px; color: var(--neon-cyan); margin-top: 4px;" id="profileStatus">Любимый Дарлинг 💕</div>
+        <div style="font-size: 18px; font-weight: 800;" id="profileName">Дарлинг</div>
+        <div style="font-size: 12.5px; color: #34d399; margin-top: 4px; font-weight: 600;" id="profileStatus">Любимый Дарлинг 💕</div>
 
-        <div style="margin-top: 18px; text-align: left; display: flex; flex-direction: column; gap: 10px;">
+        <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
-            <span style="color: var(--text-secondary);">Статус VIP:</span>
-            <span style="font-weight: 700; color: #fff;" id="profileVip">Не активен</span>
+            <span style="color: var(--text-secondary);" data-i18n="prof_vip">Статус подписки:</span>
+            <span style="font-weight: 700; color: #fff;" id="profileVip">Базовый</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
-            <span style="color: var(--text-secondary);">Энергия молний:</span>
-            <span style="font-weight: 700; color: var(--neon-emerald);" id="profileEnergy">30 / 30</span>
+            <span style="color: var(--text-secondary);" data-i18n="prof_energy">Дневная энергия:</span>
+            <span style="font-weight: 700; color: #34d399;" id="profileEnergy">30 / 30</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
-            <span style="color: var(--text-secondary);">Уровень связи:</span>
-            <span style="font-weight: 700; color: var(--neon-gold);" id="profileLove">85%</span>
+            <span style="color: var(--text-secondary);" data-i18n="prof_love">Отношение Лам (-100..+100%):</span>
+            <span style="font-weight: 700; color: #fbbf24;" id="profileLove">75%</span>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 13px;">
-            <span style="color: var(--text-secondary);">Выпущено молний:</span>
+            <span style="color: var(--text-secondary);" data-i18n="prof_bolts">Разрядов молний:</span>
             <span style="font-weight: 700; color: #fff;" id="profileBolts">0 ⚡</span>
           </div>
         </div>
       </div>
 
-      <button class="checkout-btn" onclick="switchTab('shop')" style="margin-bottom: 10px;">
-        ⭐️ Открыть магазин VIP
+      <button class="checkout-btn" onclick="switchTab('shop')" style="margin-bottom: 10px;" data-i18n="btn_open_shop">
+        ⭐️ Управление VIP подпиской
       </button>
 
-      <button class="checkout-btn secondary" onclick="shareWithFriends()">
+      <button class="checkout-btn secondary" onclick="shareWithFriends()" data-i18n="btn_share">
         💌 Поделиться ботом с друзьями
       </button>
     </div>
   </div>
 
   <!-- ================= ACTION SHEETS ================= -->
-  
-  <!-- Sheet: Solver -->
   <div class="sheet-overlay" id="sheet-solver">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">📚 АнтиГДЗ • Решебник задач</div>
+        <div class="sheet-title">📚 Решебник задач</div>
         <button class="sheet-close" onclick="closeSheet('solver')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери предмет или введи условие задачи для пошагового решения:</p>
       <div class="chips-row">
         <span class="chip" onclick="setSolverPrompt('Алгебра: реши уравнение ')">➗ Алгебра</span>
         <span class="chip" onclick="setSolverPrompt('Геометрия: найди площадь ')">📐 Геометрия</span>
-        <span class="chip" onclick="setSolverPrompt('Физика: найди скорость ')">⚛️ Физика</span>
-        <span class="chip" onclick="setSolverPrompt('Химия: расставь коэффициенты ')">🧪 Химия</span>
+        <span class="chip" onclick="setSolverPrompt('Физика: задача ')">⚛️ Физика</span>
+        <span class="chip" onclick="setSolverPrompt('Химия: уравнение ')">🧪 Химия</span>
       </div>
-      <input type="text" class="sheet-input" id="solverInput" placeholder="Введи уравнение или задачу..." />
-      <button class="sheet-action-btn" onclick="submitSolver()">⚡ Решить задачу</button>
+      <input type="text" class="sheet-input" id="solverInput" placeholder="Введи условие задачи или пример..." />
+      <button class="sheet-action-btn" onclick="submitSolver()">⚡ Решить пошагово</button>
     </div>
   </div>
 
-  <!-- Sheet: Code -->
   <div class="sheet-overlay" id="sheet-code">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">💻 Информатика & Код</div>
+        <div class="sheet-title">💻 Генератор Кода</div>
         <button class="sheet-close" onclick="closeSheet('code')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери язык и задачу (код будет в окне с кнопкой копирования):</p>
       <div class="chips-row" id="codeLangChips">
         <span class="chip active" onclick="selectCodeLang(this, 'Python')">Python</span>
-        <span class="chip" onclick="selectCodeLang(this, 'C++')">C++</span>
         <span class="chip" onclick="selectCodeLang(this, 'JavaScript')">JavaScript</span>
+        <span class="chip" onclick="selectCodeLang(this, 'C++')">C++</span>
         <span class="chip" onclick="selectCodeLang(this, 'HTML/CSS')">HTML/CSS</span>
-        <span class="chip" onclick="selectCodeLang(this, 'Pascal')">Pascal</span>
       </div>
-      <input type="text" class="sheet-input" id="codeInput" placeholder="Что запрограммировать? (напр. калькулятор, бот)" />
+      <input type="text" class="sheet-input" id="codeInput" placeholder="Что нужно написать?" />
       <button class="sheet-action-btn" onclick="submitCode()">⚡ Сгенерировать код</button>
     </div>
   </div>
 
-  <!-- Sheet: Cheat -->
   <div class="sheet-overlay" id="sheet-cheat">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
@@ -1447,62 +1279,46 @@
         <div class="sheet-title">📝 Экспресс-Шпаргалка</div>
         <button class="sheet-close" onclick="closeSheet('cheat')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери тему для быстрой подсказки перед уроком:</p>
       <div class="chips-row">
-        <span class="chip" onclick="setCheatPrompt('формулы по физике 8 класс')">⚛️ Физика</span>
+        <span class="chip" onclick="setCheatPrompt('формулы по физике')">⚛️ Физика</span>
         <span class="chip" onclick="setCheatPrompt('тригонометрические формулы')">📐 Тригонометрия</span>
-        <span class="chip" onclick="setCheatPrompt('даты Вторая мировая война')">🌍 История</span>
-        <span class="chip" onclick="setCheatPrompt('правила правописания Н и НН')">🇷🇺 Русский</span>
+        <span class="chip" onclick="setCheatPrompt('времена в английском языке')">🇬🇧 English</span>
       </div>
-      <input type="text" class="sheet-input" id="cheatInput" placeholder="Или напиши свою тему шпоры..." />
-      <button class="sheet-action-btn" onclick="submitCheat()">⚡ Собрать шпору</button>
+      <input type="text" class="sheet-input" id="cheatInput" placeholder="Тема шпаргалки..." />
+      <button class="sheet-action-btn" onclick="submitCheat()">⚡ Создать шпаргалку</button>
     </div>
   </div>
 
-  <!-- Sheet: PDF -->
   <div class="sheet-overlay" id="sheet-pdf">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">📄 Сборщик домашки в PDF</div>
+        <div class="sheet-title">📄 Сборщик фото в PDF</div>
         <button class="sheet-close" onclick="closeSheet('pdf')">✕</button>
       </div>
-      <p style="font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-bottom: 16px;">
-        1. Отправляй боту фото страниц тетрадей с подписью <code>pdf</code>.<br>
-        2. Akilum аккуратно скрепит все страницы своими они-лучами.<br>
-        3. Напиши «собери в pdf» — и получи единый файл для отправки учителю! 🎓
+      <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">
+        Отправляй боту фотографии тетрадей или конспектов с подписью <code>pdf</code>, а затем нажми кнопку сборки — получишь готовый PDF-документ.
       </p>
       <button class="sheet-action-btn" onclick="sendToBot('/pdf')">📸 Открыть сборщик в чате</button>
     </div>
   </div>
 
-  <!-- Sheet: Downloader -->
   <div class="sheet-overlay" id="sheet-downloader">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">🎬 Скачать видео без водяных знаков</div>
+        <div class="sheet-title">🎬 Скачать видео</div>
         <button class="sheet-close" onclick="closeSheet('downloader')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Вставь ссылку на TikTok, YouTube Shorts или Reels:</p>
-      
-      <div class="sheet-chips" style="margin-bottom: 12px;">
-        <div class="chip" onclick="setDownloadUrl('https://vt.tiktok.com/ZSjR1v2bL/')">⚡ Тест TikTok</div>
-        <div class="chip" onclick="setDownloadUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')">🎬 Тест YouTube</div>
-      </div>
-
       <div style="position: relative; margin-bottom: 10px;">
-        <input type="text" class="sheet-input" id="downloadInput" placeholder="https://vt.tiktok.com/... или shorts..." style="padding-right: 80px; margin-bottom: 0;" />
-        <button type="button" onclick="pasteFromClipboard()" style="position: absolute; right: 6px; top: 6px; bottom: 6px; border: none; background: rgba(0,255,163,0.15); color: var(--accent-green); font-size: 11px; font-weight: 700; border-radius: 8px; padding: 0 10px; cursor: pointer;">Вставить</button>
+        <input type="text" class="sheet-input" id="downloadInput" placeholder="Ссылка на TikTok, Shorts или Reels..." style="padding-right: 84px; margin-bottom: 0;" />
+        <button type="button" onclick="pasteFromClipboard()" style="position: absolute; right: 6px; top: 6px; bottom: 6px; border: none; background: rgba(16,185,129,0.18); color: #34d399; font-size: 11px; font-weight: 700; border-radius: 8px; padding: 0 10px; cursor: pointer;">Вставить</button>
       </div>
-
-      <div id="downloadAlert" style="display: none; color: #ff5252; font-size: 12px; margin-bottom: 10px; text-align: center;"></div>
-
+      <div id="downloadAlert" style="display: none; color: #f43f5e; font-size: 12px; margin-bottom: 10px;"></div>
       <button class="sheet-action-btn" onclick="submitDownload()">⚡ Скачать видео в чат</button>
     </div>
   </div>
 
-  <!-- Sheet: Music -->
   <div class="sheet-overlay" id="sheet-music">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
@@ -1510,77 +1326,59 @@
         <div class="sheet-title">🎵 Поиск музыки</div>
         <button class="sheet-close" onclick="closeSheet('music')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">Введи название трека или нажми на популярный хит:</p>
-      
-      <div class="sheet-chips" style="margin-bottom: 12px;">
-        <div class="chip" onclick="searchMusicInApp('Macan')">🔥 Macan</div>
-        <div class="chip" onclick="searchMusicInApp('Miyagi')">👑 Miyagi</div>
-        <div class="chip" onclick="searchMusicInApp('Queen')">🎸 Queen</div>
-        <div class="chip" onclick="searchMusicInApp('The Weeknd')">✨ The Weeknd</div>
-        <div class="chip" onclick="searchMusicInApp('Король и Шут')">⚡ Киш</div>
-      </div>
-
       <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-        <input type="text" class="sheet-input" id="musicInput" placeholder="Название или артист..." style="margin-bottom: 0; flex: 1;" />
-        <button class="sheet-action-btn" style="width: auto; padding: 0 16px; margin-top: 0; white-space: nowrap;" onclick="searchMusicInApp()">🔍 Найти</button>
+        <input type="text" class="sheet-input" id="musicInput" placeholder="Исполнитель или название трека..." style="margin-bottom: 0; flex: 1;" />
+        <button class="sheet-action-btn" style="width: auto; padding: 0 16px;" onclick="searchMusicInApp()">🔍</button>
       </div>
-
-      <!-- Music Player Result Card -->
-      <div id="musicResultCard" style="display: none; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 12px; margin-bottom: 14px;">
+      <div id="musicResultCard" style="display: none; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 12px; margin-bottom: 12px;">
         <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
-          <img id="musicCover" src="" style="width: 52px; height: 52px; border-radius: 12px; object-fit: cover; background: #222;" />
+          <img id="musicCover" src="" style="width: 48px; height: 48px; border-radius: 10px; object-fit: cover;" />
           <div style="overflow: hidden; flex: 1;">
-            <div id="musicTitle" style="font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;"></div>
-            <div id="musicArtist" style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+            <div id="musicTitle" style="font-weight: 700; font-size: 13.5px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+            <div id="musicArtist" style="font-size: 12px; color: var(--text-secondary);"></div>
           </div>
         </div>
-        <audio id="musicAudio" controls style="width: 100%; height: 36px; border-radius: 8px; outline: none; margin-bottom: 8px;"></audio>
-        <button class="sheet-action-btn" style="margin-top: 4px; background: linear-gradient(135deg, #00c6ff, #0072ff);" onclick="sendFoundMusicToBot()">💬 Отправить в чат Telegram</button>
+        <audio id="musicAudio" controls style="width: 100%; height: 34px; margin-bottom: 8px;"></audio>
+        <button class="sheet-action-btn" onclick="sendFoundMusicToBot()">💬 Отправить трек в чат</button>
       </div>
-
-      <button class="sheet-action-btn" id="directMusicSendBtn" onclick="submitMusic()">💬 Отправить запрос боту</button>
+      <button class="sheet-action-btn" onclick="submitMusic()">💬 Найти полную версию в боте</button>
     </div>
   </div>
 
-  <!-- Sheet: Live Rates -->
   <div class="sheet-overlay" id="sheet-rates">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">💎 Курсы валют & Криптовалют</div>
+        <div class="sheet-title">💎 Курсы валют</div>
         <button class="sheet-close" onclick="closeSheet('rates')">✕</button>
       </div>
-      <div class="rates-grid" id="liveRatesContainer">
-        <div class="rate-card"><div class="rate-title">USD → KGS (сом)</div><div class="rate-val" id="rateUsdKgs">~87.5</div></div>
-        <div class="rate-card"><div class="rate-title">USD → RUB (руб)</div><div class="rate-val" id="rateUsdRub">~92.0</div></div>
+      <div class="rates-grid">
+        <div class="rate-card"><div class="rate-title">USD → KGS</div><div class="rate-val" id="rateUsdKgs">~87.5</div></div>
+        <div class="rate-card"><div class="rate-title">USD → RUB</div><div class="rate-val" id="rateUsdRub">~92.0</div></div>
         <div class="rate-card"><div class="rate-title">Toncoin (TON)</div><div class="rate-val" id="rateTon">~$5.20</div></div>
-        <div class="rate-card"><div class="rate-title">Bitcoin (BTC)</div><div class="rate-val" id="rateBtc">~$65,000</div></div>
+        <div class="rate-card"><div class="rate-title">Bitcoin (BTC)</div><div class="rate-val" id="rateBtc">~$89,000</div></div>
       </div>
-      <button class="sheet-action-btn" onclick="sendToBot('курс')">💬 Отправить полный радар в чат</button>
+      <button class="sheet-action-btn" onclick="sendToBot('курс')">💬 Полная сводка в чат</button>
     </div>
   </div>
 
-  <!-- Sheet: Weather -->
   <div class="sheet-overlay" id="sheet-weather">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">⛅ Метео-радар</div>
+        <div class="sheet-title">⛅ Погода</div>
         <button class="sheet-close" onclick="closeSheet('weather')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Введи город для живого прогноза:</p>
       <div class="chips-row">
         <span class="chip" onclick="document.getElementById('weatherInput').value='Бишкек'">Бишкек</span>
         <span class="chip" onclick="document.getElementById('weatherInput').value='Москва'">Москва</span>
         <span class="chip" onclick="document.getElementById('weatherInput').value='Алматы'">Алматы</span>
-        <span class="chip" onclick="document.getElementById('weatherInput').value='Ош'">Ош</span>
       </div>
       <input type="text" class="sheet-input" id="weatherInput" placeholder="Город..." value="Бишкек" />
-      <button class="sheet-action-btn" onclick="submitWeather()">⛅ Узнать погоду</button>
+      <button class="sheet-action-btn" onclick="submitWeather()">⛅ Показать прогноз</button>
     </div>
   </div>
 
-  <!-- Sheet: Quiz -->
   <div class="sheet-overlay" id="sheet-quiz">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
@@ -1588,19 +1386,16 @@
         <div class="sheet-title">🎯 Викторина (Quiz)</div>
         <button class="sheet-close" onclick="closeSheet('quiz')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Выбери тему для запуска интерактивного Telegram-опроса:</p>
       <div class="chips-row">
-        <span class="chip" onclick="document.getElementById('quizInput').value='школьная программа'">📚 Школа</span>
-        <span class="chip" onclick="document.getElementById('quizInput').value='IT и программирование'">💻 IT</span>
-        <span class="chip" onclick="document.getElementById('quizInput').value='логика и эрудиция'">🧠 Логика</span>
-        <span class="chip" onclick="document.getElementById('quizInput').value='история и география'">🌍 История</span>
+        <span class="chip" onclick="document.getElementById('quizInput').value='аниме и игры'">🎌 Аниме</span>
+        <span class="chip" onclick="document.getElementById('quizInput').value='IT и технологии'">💻 IT</span>
+        <span class="chip" onclick="document.getElementById('quizInput').value='логика и эрудиция'">🧠 Эрудиция</span>
       </div>
-      <input type="text" class="sheet-input" id="quizInput" placeholder="Тема викторины..." value="школьная программа" />
-      <button class="sheet-action-btn" onclick="submitQuiz()">🚀 Запустить опрос</button>
+      <input type="text" class="sheet-input" id="quizInput" placeholder="Тема викторины..." value="аниме и игры" />
+      <button class="sheet-action-btn" onclick="submitQuiz()">🚀 Запустить викторину</button>
     </div>
   </div>
 
-  <!-- Sheet: Duel -->
   <div class="sheet-overlay" id="sheet-duel">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
@@ -1608,28 +1403,23 @@
         <div class="sheet-title">⚔️ Дуэль молний</div>
         <button class="sheet-close" onclick="closeSheet('duel')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Кого вызвать на они-битву молний? (имя или ник):</p>
-      <input type="text" class="sheet-input" id="duelInput" placeholder="Имя соперника (или оставь пустым)..." />
-      <button class="sheet-action-btn" onclick="submitDuel()">⚡ В бой!</button>
+      <input type="text" class="sheet-input" id="duelInput" placeholder="Имя или @username соперника..." />
+      <button class="sheet-action-btn" onclick="submitDuel()">⚡ Вызвать на бой</button>
     </div>
   </div>
 
-  <!-- Sheet: Roulette -->
   <div class="sheet-overlay" id="sheet-roulette">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">🎰 Они-Рулетка наказаний</div>
+        <div class="sheet-title">🎰 Они-Рулетка</div>
         <button class="sheet-close" onclick="closeSheet('roulette')">✕</button>
       </div>
-      <p style="font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-bottom: 16px;">
-        Рулетка выберет случайного участника чата и шутливое задание (кто пойдёт к доске, кто дежурный, кто принесет шоколадку Лам)! ⚡
-      </p>
-      <button class="sheet-action-btn" onclick="sendToBot('/roulette')">🎲 Крутить рулетку в чате</button>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">Испытай удачу в чате с Лам!</p>
+      <button class="sheet-action-btn" onclick="sendToBot('/roulette')">🎲 Крутить рулетку</button>
     </div>
   </div>
 
-  <!-- Sheet: Roast -->
   <div class="sheet-overlay" id="sheet-roast">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
@@ -1637,144 +1427,335 @@
         <div class="sheet-title">🔥 Они-Прожарка</div>
         <button class="sheet-close" onclick="closeSheet('roast')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Кого прожарить с добрым школьным юмором без мата?</p>
-      <input type="text" class="sheet-input" id="roastInput" placeholder="Имя друга или одноклассника..." />
-      <button class="sheet-action-btn" onclick="submitRoast()">🔥 Прожарить молнией!</button>
+      <input type="text" class="sheet-input" id="roastInput" placeholder="Кого прожарить?" />
+      <button class="sheet-action-btn" onclick="submitRoast()">🔥 Прожарить</button>
     </div>
   </div>
 
-  <!-- Sheet: Art -->
   <div class="sheet-overlay" id="sheet-art">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title">🎨 Нейро-Арт генератор</div>
+        <div class="sheet-title">🎨 Нейро-Арт</div>
         <button class="sheet-close" onclick="closeSheet('art')">✕</button>
       </div>
-      <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Опиши картинку, аватарку или стикер:</p>
-      <input type="text" class="sheet-input" id="artInput" placeholder="Киберпанк кот, неоновый арт..." />
-      <button class="sheet-action-btn" onclick="submitArt()">🎨 Нарисовать шедевр</button>
+      <input type="text" class="sheet-input" id="artInput" placeholder="Описание арта или персонажа..." />
+      <button class="sheet-action-btn" onclick="submitArt()">🎨 Сгенерировать арт</button>
     </div>
   </div>
 
-  <!-- Sheet: Card / SBP Payment Modal -->
+  <!-- Card Payment Sheet -->
   <div class="sheet-overlay" id="sheet-card-pay">
     <div class="sheet-card">
       <div class="sheet-handle"></div>
       <div class="sheet-header">
-        <div class="sheet-title" id="cardPayTitle">💳 Оплата тарифа</div>
+        <div class="sheet-title" id="cardPayTitle">💳 Оплата VIP</div>
         <button class="sheet-close" onclick="closeSheet('card-pay')">✕</button>
       </div>
 
-      <div style="background: rgba(0, 255, 136, 0.08); border: 1px solid rgba(0, 255, 136, 0.3); border-radius: 16px; padding: 12px; margin-bottom: 12px; text-align: center;">
-        <div style="font-size: 11px; color: var(--text-secondary);">К оплате:</div>
-        <div style="font-size: 26px; font-weight: 800; color: var(--neon-gold);" id="cardPayAmount">40 сом</div>
-        <div style="font-size: 12px; color: var(--neon-emerald); font-weight:700;" id="cardPayPlanName">Тариф: Импульс (1 день)</div>
+      <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 14px; padding: 12px; margin-bottom: 12px; text-align: center;">
+        <div style="font-size: 11px; color: var(--text-secondary);">Сумма к оплате:</div>
+        <div style="font-size: 24px; font-weight: 800; color: #fbbf24;" id="cardPayAmount">300 сом</div>
+        <div style="font-size: 12px; color: #34d399; font-weight: 600;" id="cardPayPlanName">Тариф: VIP Месяц</div>
       </div>
 
-      <!-- Compact Card Block with Copy -->
-      <div style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 12px; margin-bottom: 12px;">
-        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Номер карты (MasterCard):</div>
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Номер карты (<span id="cardPayBank">MasterCard</span>):</div>
         <div style="display:flex; justify-content:space-between; align-items:center; gap: 8px;">
-          <input type="text" id="cardPayCardNum" style="background:transparent; border:none; color:#fff; font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:800; outline:none; width:100%;" readonly value="5302 0009 7083 9639">
-          <button type="button" class="btn-action" style="padding: 6px 12px; font-size: 11px; white-space:nowrap; background: var(--neon-emerald); color: #000; font-weight: 700; border-radius: 8px;" onclick="copyCardNumber()">Скопировать 📋</button>
+          <input type="text" id="cardPayCardNum" style="background:transparent; border:none; color:#fff; font-family:'JetBrains Mono', monospace; font-size:15px; font-weight:700; outline:none; width:100%;" readonly value="5302 0009 7083 9639">
+          <button type="button" style="padding: 6px 12px; font-size: 11px; border:none; background: #10b981; color: #07090e; font-weight: 700; border-radius: 8px; cursor:pointer;" onclick="copyCardNumber()">Копировать</button>
         </div>
       </div>
 
-
-      <!-- Simple Receipt Block -->
-      <div style="background: rgba(0, 255, 136, 0.04); border: 1px dashed rgba(0, 255, 136, 0.3); border-radius: 14px; padding: 12px; margin-bottom: 10px; text-align: center;">
-        <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 8px;">Переведите сумму и прикрепите чек:</div>
-
+      <div style="background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 12px; margin-bottom: 10px; text-align: center;">
+        <div style="font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 8px;">После перевода прикрепите скриншот чека:</div>
         <input type="file" id="receiptFileInput" accept="image/*" style="display:none;" onchange="handleReceiptFileSelected(event)">
-
-        <button type="button" class="btn-action" style="width: 100%; margin-bottom: 8px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border-subtle); color: #fff; font-size: 12px; font-weight: 600; padding: 10px;" onclick="document.getElementById('receiptFileInput').click()">
-          📁 Выбрать фото чека
+        <button type="button" style="width: 100%; margin-bottom: 8px; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-subtle); border-radius: 10px; color: #fff; font-size: 12px; font-weight: 600; padding: 10px; cursor:pointer;" onclick="document.getElementById('receiptFileInput').click()">
+          📁 Выбрать скриншот чека
         </button>
 
-        <div id="receiptPreviewBox" style="display:none; margin-bottom: 8px; text-align: center;">
-          <img id="receiptPreviewImg" src="" style="max-height: 90px; border-radius: 8px; border: 1px solid var(--neon-emerald); margin-bottom: 4px; object-fit: contain;">
-          <div style="font-size: 11px; color: var(--neon-emerald); font-weight: 600;" id="receiptFileName">Чек выбран</div>
+        <div id="receiptPreviewBox" style="display:none; margin-bottom: 8px;">
+          <img id="receiptPreviewImg" src="" style="max-height: 85px; border-radius: 8px; border: 1px solid #10b981; margin-bottom: 4px; object-fit: contain;">
+          <div style="font-size: 11px; color: #34d399; font-weight: 600;" id="receiptFileName">Чек прикреплен</div>
         </div>
 
-        <button type="button" class="checkout-btn" id="btnSubmitReceipt" style="width: 100%; display:none; margin-bottom: 4px;" onclick="submitReceiptProof()">
-          🚀 Отправить чек на проверку
+        <button type="button" class="checkout-btn" id="btnSubmitReceipt" style="width: 100%; display:none;" onclick="submitReceiptProof()">
+          🚀 Отправить чек Создателю
         </button>
       </div>
 
-      <button type="button" class="checkout-btn" style="width: 100%; background: transparent; border: 1px solid rgba(255,255,255,0.15); color: var(--text-secondary); font-size: 12px; padding: 8px;" onclick="submitReceiptToChat()">
-        💬 Или скинуть чек прямо в чат с ботом
+      <button type="button" class="checkout-btn secondary" style="font-size: 12px; padding: 9px;" onclick="submitReceiptToChat()">
+        💬 Или отправить скриншот прямо в чат
       </button>
     </div>
   </div>
 
-  <!-- Bottom Navigation Bar -->
+  <!-- Bottom Navigation -->
   <div class="bottom-nav">
     <button class="nav-btn active" onclick="switchTab('home')" id="nav-home">
       <span class="nav-icon">⚡</span>
-      <span>Главная</span>
+      <span data-i18n="nav_home">Главная</span>
     </button>
     <button class="nav-btn" onclick="switchTab('shop')" id="nav-shop">
       <span class="nav-badge">VIP</span>
-      <span class="nav-icon">⭐️</span>
-      <span>Магазин</span>
+      <span class="nav-icon">👑</span>
+      <span data-i18n="nav_shop">Премиум</span>
     </button>
     <button class="nav-btn" onclick="switchTab('games')" id="nav-games">
       <span class="nav-icon">🎮</span>
-      <span>Игры</span>
+      <span data-i18n="nav_games">Игры</span>
     </button>
     <button class="nav-btn" onclick="switchTab('profile')" id="nav-profile">
       <span class="nav-icon">👤</span>
-      <span>Профиль</span>
+      <span data-i18n="nav_profile">Профиль</span>
     </button>
   </div>
 
   <script>
     const tg = window.Telegram?.WebApp;
     if (tg) {
-      tg.expand();
-      tg.setHeaderColor('#060811');
-      tg.setBackgroundColor('#060811');
-      tg.enableClosingConfirmation?.();
+      tg.ready?.();
+      tg.expand?.();
+      tg.setHeaderColor?.('#07090e');
+      tg.setBackgroundColor?.('#07090e');
     }
 
-    const user = tg?.initDataUnsafe?.user;
-    const userId = user?.id || null;
-    const firstName = user?.first_name || "Дарлинг";
-
+    const urlParams = new URLSearchParams(window.location.search);
+    const tgUser = tg?.initDataUnsafe?.user;
+    const resolvedUid = tgUser?.id || urlParams.get('uid') || localStorage.getItem('akilum_uid') || null;
+    if (resolvedUid) localStorage.setItem('akilum_uid', String(resolvedUid));
+    const userId = resolvedUid;
+    const firstName = tgUser?.first_name || "Дарлинг";
     document.getElementById('profileName').textContent = firstName;
 
-    // Tab Switching
+    function showAppToast(msg) {
+      const el = document.getElementById('appToast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => el.classList.remove('show'), 2800);
+    }
+
+    // Complete UI i18n dictionary (RU / EN / JP)
+    const UI_I18N = {
+      ru: {
+        hero_quote: "«Привет, Дарлинг! Я готова общаться, решать задачи и помогать 24/7 ⚡»",
+        stat_attitude: "Отношение Лам",
+        stat_energy: "Энергия",
+        stat_lang: "Язык",
+        vip_banner_title: "VIP Премиум — Все возможности",
+        vip_banner_sub: "Все 6 характеров, 3 языка и безлимит 24/7",
+        vip_banner_btn: "Открыть VIP",
+        sec_lang: "🌐 Язык общения Лам",
+        sec_chars: "🎭 Характер Лам",
+        char_tender_title: "Нежная Вайфу",
+        char_tender_desc: "Ласковая, заботливая и преданная Лам",
+        char_tsundere_title: "Цундере Лам",
+        char_tsundere_desc: "Дерзкая, краснеет и ревнует: «Бака!»",
+        char_yandere_title: "Одержимая Яндере",
+        char_yandere_desc: "Безумная страсть: «Ты только мой!»",
+        char_bold_title: "Дерзкая Госпожа",
+        char_bold_desc: "Властная королева и острый флирт",
+        char_sensei_title: "Строгая Сенсей",
+        char_sensei_desc: "Умная наставница для учёбы и кода",
+        char_goth_title: "Загадочная Гот-Лам",
+        char_goth_desc: "Мистика, тайны и ночные разговоры",
+        sec_tools: "📚 Учёба и Инструменты",
+        tool_solver_t: "Решебник ДЗ",
+        tool_solver_d: "Пошаговый разбор задач и тестов",
+        tool_code_t: "Написать Код",
+        tool_code_d: "Python, JS, C++, HTML/CSS в 1 клик",
+        tool_cheat_t: "Шпаргалка",
+        tool_cheat_d: "Краткая выжимка формул и правил",
+        tool_pdf_t: "Сборщик в PDF",
+        tool_pdf_d: "Склеить фото конспектов в документ",
+        tool_dl_t: "Скачать видео",
+        tool_dl_d: "TikTok, Shorts, Reels без знаков",
+        tool_music_t: "Поиск музыки",
+        tool_music_d: "Найти трек и слушать превью",
+        shop_title: "VIP Премиум — Полный доступ",
+        shop_sub: "Открой все 6 характеров Лам, 3 языка (RU / EN / JP), безлимитное общение 24/7 и решение ДЗ по фото ✨",
+        btn_select: "Выбрать",
+        btn_select_vip: "Выбрать VIP",
+        sec_games: "🎮 Мини-Игры и Развлечения",
+        prof_vip: "Статус подписки:",
+        prof_energy: "Дневная энергия:",
+        prof_love: "Отношение Лам (-100..+100%):",
+        prof_bolts: "Разрядов молний:",
+        btn_open_shop: "⭐️ Управление VIP подпиской",
+        btn_share: "💌 Поделиться ботом с друзьями",
+        nav_home: "Главная",
+        nav_shop: "Премиум",
+        nav_games: "Игры",
+        nav_profile: "Профиль",
+        toast_lang: "🌐 Язык Лам и меню переключен на Русский 🇷🇺"
+      },
+      en: {
+        hero_quote: "«Hey Darling! I'm ready to chat, solve tasks, and help you 24/7 ⚡»",
+        stat_attitude: "Lum's Attitude",
+        stat_energy: "Energy",
+        stat_lang: "Language",
+        vip_banner_title: "VIP Premium — Full Access",
+        vip_banner_sub: "All 6 personalities, 3 languages & 24/7 unlimited",
+        vip_banner_btn: "Get VIP",
+        sec_lang: "🌐 Conversation Language",
+        sec_chars: "🎭 Lum's Personality",
+        char_tender_title: "Sweet Waifu",
+        char_tender_desc: "Loving, caring, and devoted Lum",
+        char_tsundere_title: "Tsundere Lum",
+        char_tsundere_desc: "Sassy, blushes & gets jealous: 'Baka!'",
+        char_yandere_title: "Obsessed Yandere",
+        char_yandere_desc: "Mad devotion: 'You belong only to me!'",
+        char_bold_title: "Playful Queen",
+        char_bold_desc: "Confident, dominant & teasing",
+        char_sensei_title: "Strict Sensei",
+        char_sensei_desc: "Smart mentor for study, math & code",
+        char_goth_title: "Mystic Goth Lum",
+        char_goth_desc: "Dark aesthetic & deep night talks",
+        sec_tools: "📚 Study & AI Tools",
+        tool_solver_t: "Homework Solver",
+        tool_solver_d: "Step-by-step math & science solutions",
+        tool_code_t: "Code Generator",
+        tool_code_d: "Python, JS, C++, HTML/CSS in 1 tap",
+        tool_cheat_t: "Cheat Sheet",
+        tool_cheat_d: "Ultra-compact formulas & rules",
+        tool_pdf_t: "PDF Builder",
+        tool_pdf_d: "Merge notebook photos into PDF",
+        tool_dl_t: "Video Downloader",
+        tool_dl_d: "TikTok, Shorts, Reels without watermark",
+        tool_music_t: "Music Finder",
+        tool_music_d: "Search songs & play audio previews",
+        shop_title: "VIP Premium — All Features",
+        shop_sub: "Unlock all 6 personalities, 3 languages (RU / EN / JP), 24/7 unlimited chat & photo solver ✨",
+        btn_select: "Select",
+        btn_select_vip: "Get VIP",
+        sec_games: "🎮 Mini-Games & Fun",
+        prof_vip: "Subscription:",
+        prof_energy: "Daily Energy:",
+        prof_love: "Lum's Attitude (-100..+100%):",
+        prof_bolts: "Lightning Bolts:",
+        btn_open_shop: "⭐️ Manage VIP Subscription",
+        btn_share: "💌 Share Bot with Friends",
+        nav_home: "Home",
+        nav_shop: "Premium",
+        nav_games: "Games",
+        nav_profile: "Profile",
+        toast_lang: "🌐 Language switched to English 🇬🇧"
+      },
+      jp: {
+        hero_quote: "「ダーリン、こんにちは！いつでもおしゃべりや勉強のお手伝いをするっちゃ⚡」",
+        stat_attitude: "ラムの好感度",
+        stat_energy: "エネルギー",
+        stat_lang: "言語",
+        vip_banner_title: "VIPプレミアム — 全機能解放",
+        vip_banner_sub: "全6種類の性格・3言語・24時間無制限チャット",
+        vip_banner_btn: "VIPを開く",
+        sec_lang: "🌐 会話の言語 (Language)",
+        sec_chars: "🎭 ラムの性格モード",
+        char_tender_title: "優しいワイフ",
+        char_tender_desc: "甘えん坊で一途なダーリン大好きラム",
+        char_tsundere_title: "ツンデレ・ラム",
+        char_tsundere_desc: "素直になれない照れ屋：「バカ！」",
+        char_yandere_title: "ヤンデレ・ラム",
+        char_yandere_desc: "究極の独占欲：「ダーリンはうちだけのもの」",
+        char_bold_title: "小悪魔クイーン",
+        char_bold_desc: "強気で妖艶なドSお姉さんモード",
+        char_sensei_title: "厳格な先生",
+        char_sensei_desc: "勉強・数学・コードを完璧に指導",
+        char_goth_title: "ミステリアス・ゴス",
+        char_goth_desc: "神秘的な夜の深いおしゃべり",
+        sec_tools: "📚 学習＆AIツール",
+        tool_solver_t: "宿題ソルバー",
+        tool_solver_d: "数学・物理・化学をステップ解説",
+        tool_code_t: "コード生成",
+        tool_code_d: "Python, JS, C++をワンタップ作成",
+        tool_cheat_t: "暗記シート",
+        tool_cheat_d: "テスト直前の公式＆要点まとめ",
+        tool_pdf_t: "PDF作成",
+        tool_pdf_d: "ノートの写真をPDFに結合",
+        tool_dl_t: "動画保存",
+        tool_dl_d: "TikTok・Shortsを透かしなしで保存",
+        tool_music_t: "音楽検索",
+        tool_music_d: "曲を探してプレビュー再生",
+        shop_title: "VIPプレミアム — 全機能アンロック",
+        shop_sub: "全6種類の性格、3言語（RU / EN / JP）、24時間無制限トーク＆写真解答を解放 ✨",
+        btn_select: "選択する",
+        btn_select_vip: "VIPを選択",
+        sec_games: "🎮 ミニゲーム＆エンタメ",
+        prof_vip: "VIPステータス:",
+        prof_energy: "本日のエネルギー:",
+        prof_love: "ラムの好感度 (-100..+100%):",
+        prof_bolts: "電撃カウント:",
+        btn_open_shop: "⭐️ VIPプレミアムを開く",
+        btn_share: "💌 友達にボットをシェア",
+        nav_home: "ホーム",
+        nav_shop: "VIPショップ",
+        nav_games: "ゲーム",
+        nav_profile: "プロフィール",
+        toast_lang: "🌐 言語を日本語に切り替えました 🇯🇵"
+      }
+    };
+
+    const PERSONALITY_BADGES = {
+      tender: "🌸 Нежная",
+      tsundere: "⚡ Цундере",
+      yandere: "🔥 Яндере",
+      bold: "😈 Госпожа",
+      sensei: "🎓 Сенсей",
+      mysterious: "🌙 Гот-Лам"
+    };
+
+    const PERSONALITY_NAMES = {
+      tender: "🌸 Нежная Вайфу",
+      tsundere: "⚡ Цундере Лам",
+      yandere: "🔥 Одержимая Яндере",
+      bold: "😈 Дерзкая Госпожа",
+      sensei: "🎓 Строгая Сенсей",
+      mysterious: "🌙 Загадочная Гот-Лам"
+    };
+
+    let currentLang = localStorage.getItem('akilum_lang') || 'ru';
+
+    function applyTranslations(langKey) {
+      const dict = UI_I18N[langKey] || UI_I18N.ru;
+      currentLang = langKey;
+      localStorage.setItem('akilum_lang', langKey);
+      document.documentElement.lang = langKey === 'jp' ? 'ja' : langKey;
+
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key]) el.textContent = dict[key];
+      });
+
+      const langLabels = { ru: "🇷🇺 RU", en: "🇬🇧 EN", jp: "🇯🇵 JP" };
+      const lc = document.getElementById('langCounter');
+      if (lc) lc.textContent = langLabels[langKey] || "🇷🇺 RU";
+    }
+
     function switchTab(tabId) {
       document.querySelectorAll('.tab-view').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
 
-      const targetTab = document.getElementById('tab-' + tabId);
-      const targetNav = document.getElementById('nav-' + tabId);
-      if (targetTab) targetTab.classList.add('active');
-      if (targetNav) targetNav.classList.add('active');
+      document.getElementById('tab-' + tabId)?.classList.add('active');
+      document.getElementById('nav-' + tabId)?.classList.add('active');
 
       if (tabId === 'shop') {
         loadRequisites();
         fetchActiveModel();
       }
-
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // Modal Sheet Management
     function openSheet(id) {
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      const sheet = document.getElementById('sheet-' + id);
-      if (sheet) sheet.classList.add('open');
-
+      document.getElementById('sheet-' + id)?.classList.add('open');
       if (id === 'rates') fetchLiveRates();
     }
 
     function closeSheet(id) {
-      const sheet = document.getElementById('sheet-' + id);
-      if (sheet) sheet.classList.remove('open');
+      document.getElementById('sheet-' + id)?.classList.remove('open');
     }
 
     document.querySelectorAll('.sheet-overlay').forEach(sheet => {
@@ -1783,30 +1764,70 @@
       });
     });
 
-    // Real-time Status Loader
+    function formatLoveDisplay(pct) {
+      const val = Number(pct);
+      const num = Number.isFinite(val) ? val : 75;
+      const loveEl = document.getElementById('loveCounter');
+      const profLoveEl = document.getElementById('profileLove');
+      const prefix = num > 0 ? `+${num}%` : `${num}%`;
+
+      let color = '#fbbf24';
+      let label = prefix;
+      if (num <= -50) {
+        color = '#f43f5e';
+        label = `🤬 ${num}%`;
+      } else if (num < 0) {
+        color = '#38bdf8';
+        label = `❄️ ${num}%`;
+      } else if (num >= 95) {
+        color = '#ec4899';
+        label = `❤️‍🔥 +${num}%`;
+      } else {
+        color = '#34d399';
+        label = `💕 +${num}%`;
+      }
+
+      if (loveEl) {
+        loveEl.textContent = label;
+        loveEl.style.color = color;
+      }
+      if (profLoveEl) {
+        profLoveEl.textContent = label;
+        profLoveEl.style.color = color;
+      }
+    }
+
     async function fetchUserStatus() {
       if (!userId) return;
       try {
-        const usernameParam = encodeURIComponent(user?.username || '');
+        const usernameParam = encodeURIComponent(tgUser?.username || '');
         const nameParam = encodeURIComponent(firstName || '');
         const res = await fetch(`/api/user-status?userId=${userId}&username=${usernameParam}&name=${nameParam}`);
         const data = await res.json();
         if (data.ok) {
           const isVip = data.isVip;
-          const energyStr = isVip ? "∞ Безлимит" : `${data.remainingEnergy}/${data.maxEnergy}`;
-          
+          const energyStr = isVip ? "∞ VIP" : `${data.remainingEnergy}/${data.maxEnergy}`;
+
           document.getElementById('badgeEnergyText').textContent = isVip ? "VIP 👑" : `${data.remainingEnergy}/${data.maxEnergy}`;
           document.getElementById('energyCounter').textContent = energyStr;
-          document.getElementById('loveCounter').textContent = `${data.loveLevel}%`;
-          document.getElementById('profileLove').textContent = `${data.loveLevel}%`;
           document.getElementById('profileEnergy').textContent = energyStr;
-          document.getElementById('profileBolts').textContent = `${data.bolts} ⚡`;
+          document.getElementById('profileBolts').textContent = `${data.bolts || 0} ⚡`;
+
+          formatLoveDisplay(data.loveLevel);
 
           if (data.personality) highlightActivePersonality(data.personality);
-          if (data.language) highlightActiveLanguage(data.language);
+          if (data.language) {
+            highlightActiveLanguage(data.language);
+            applyTranslations(data.language);
+          }
 
           if (data.customTitle) {
             document.getElementById('profileStatus').textContent = data.customTitle;
+          } else if (data.loveLevel <= -50) {
+            document.getElementById('profileStatus').textContent = "🤬 Враг Лам (Ненависть)";
+            document.getElementById('profileStatus').style.color = "#f43f5e";
+          } else if (data.loveLevel >= 95) {
+            document.getElementById('profileStatus').textContent = "❤️‍🔥 Безумная любовь Лам";
           } else {
             document.getElementById('profileStatus').textContent = isVip ? "👑 VIP Дарлинг ⭐️" : "Любимый Дарлинг 💕";
           }
@@ -1814,20 +1835,22 @@
           if (isVip) {
             const badge = document.getElementById('badgeEnergy');
             badge.classList.add('vip');
-            badge.innerHTML = `<span>👑</span> <span>VIP Дарлинг</span>`;
-            document.getElementById('profileVip').textContent = "👑 Активен";
-            document.getElementById('profileVip').style.color = "var(--neon-gold)";
+            badge.innerHTML = `<span>👑</span> <span>VIP</span>`;
+            document.getElementById('profileVip').textContent = "👑 VIP Активен";
+            document.getElementById('profileVip').style.color = "#fbbf24";
           }
         }
       } catch (err) {
         console.warn("Status fetch notice:", err.message);
       }
     }
+
+    applyTranslations(currentLang);
+    highlightActiveLanguage(currentLang);
     fetchUserStatus();
     loadRequisites();
     fetchActiveModel();
 
-    // Fetch Live Rates
     async function fetchLiveRates() {
       try {
         const res = await fetch('/api/rates');
@@ -1842,47 +1865,6 @@
       } catch (e) {}
     }
 
-    // Clicker functionality
-    let clicks = 0;
-    const quotes = [
-      "БЗ-З-Т! Молния в сердце! ⚡",
-      "Дарлинг, ты самый классный! 💕",
-      "Учи уроки, а то током ударю! ⚡",
-      "Заряд 100 000 Вольт получен! ⚡✨",
-      "Akilum всегда рядом с тобой в Telegram! 🥰",
-      "Никому тебя не отдам! 💚"
-    ];
-
-    const avatarWrap = document.getElementById('heroAvatar');
-    const quoteEl = document.getElementById('heroQuote');
-    const counterEl = document.getElementById('clickCounter');
-
-    avatarWrap.addEventListener('click', (e) => {
-      clicks++;
-      counterEl.textContent = clicks;
-
-      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-      quoteEl.textContent = `«${quotes[Math.floor(Math.random() * quotes.length)]}»`;
-      createSpark(e.clientX, e.clientY);
-    });
-
-    function createSpark(x, y) {
-      const spark = document.createElement('div');
-      spark.className = 'spark';
-      spark.textContent = ['⚡', '✨', '💖', '💥', '💚'][Math.floor(Math.random() * 5)];
-      spark.style.left = `${x - 12}px`;
-      spark.style.top = `${y - 12}px`;
-      
-      const dx = `${(Math.random() - 0.5) * 140}px`;
-      const dy = `${-Math.random() * 90 - 30}px`;
-      spark.style.setProperty('--dx', dx);
-      spark.style.setProperty('--dy', dy);
-
-      document.body.appendChild(spark);
-      setTimeout(() => spark.remove(), 750);
-    }
-
-    // Code language selection
     let selectedCodeLang = 'Python';
     function selectCodeLang(el, lang) {
       selectedCodeLang = lang;
@@ -1891,41 +1873,37 @@
     }
 
     function setSolverPrompt(text) {
-      document.getElementById('solverInput').value = text;
-      document.getElementById('solverInput').focus();
+      const inp = document.getElementById('solverInput');
+      inp.value = text;
+      inp.focus();
     }
     function setCheatPrompt(text) {
-      document.getElementById('cheatInput').value = text;
-      document.getElementById('cheatInput').focus();
+      const inp = document.getElementById('cheatInput');
+      inp.value = text;
+      inp.focus();
     }
 
-    // Action Submissions to Bot
     function submitSolver() {
       const val = document.getElementById('solverInput').value.trim();
       sendToBot(val ? `реши: ${val}` : "Реши задачу");
       closeSheet('solver');
     }
-
     function submitCode() {
       const val = document.getElementById('codeInput').value.trim();
       sendToBot(`код: ${val || "быстрая сортировка"} на ${selectedCodeLang}`);
       closeSheet('code');
     }
-
     function submitCheat() {
       const val = document.getElementById('cheatInput').value.trim();
-      sendToBot(`шпора: ${val || "физика 8 класс"}`);
+      sendToBot(`шпора: ${val || "физика"}`);
       closeSheet('cheat');
     }
 
     let currentMusicTrack = null;
-
     async function searchMusicInApp(query) {
       const input = document.getElementById('musicInput');
-      const q = (query || input.value || '').trim() || 'Macan';
+      const q = (query || input.value || '').trim() || 'Miyagi';
       input.value = q;
-      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-
       const card = document.getElementById('musicResultCard');
       const title = document.getElementById('musicTitle');
       const artist = document.getElementById('musicArtist');
@@ -1933,10 +1911,9 @@
       const audio = document.getElementById('musicAudio');
 
       try {
-        title.textContent = 'Ищу трек...';
-        artist.textContent = 'Подключаюсь к радару...';
+        title.textContent = 'Поиск...';
+        artist.textContent = '';
         card.style.display = 'block';
-
         const res = await fetch(`/api/music-search?q=${encodeURIComponent(q)}`);
         const json = await res.json();
         if (json.ok && json.track) {
@@ -1951,13 +1928,10 @@
             audio.style.display = 'none';
           }
         } else {
-          title.textContent = 'Трек не найден';
-          artist.textContent = 'Попробуй ввести точнее название';
+          title.textContent = 'Не найдено';
           audio.style.display = 'none';
         }
-      } catch (e) {
-        console.warn('Music search error:', e);
-      }
+      } catch (e) {}
     }
 
     function sendFoundMusicToBot() {
@@ -1969,38 +1943,25 @@
       closeSheet('music');
     }
 
-    function setDownloadUrl(url) {
-      const input = document.getElementById('downloadInput');
-      input.value = url;
-      document.getElementById('downloadAlert').style.display = 'none';
-      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-    }
-
     async function pasteFromClipboard() {
       try {
         if (navigator?.clipboard?.readText) {
           const text = await navigator.clipboard.readText();
           if (text) {
             document.getElementById('downloadInput').value = text.trim();
-            document.getElementById('downloadAlert').style.display = 'none';
-            if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
             return;
           }
         }
       } catch (e) {}
-      if (tg?.showAlert) {
-        tg.showAlert('Зажми поле ввода и нажми «Вставить»');
-      }
+      showAppToast("Вставьте ссылку в поле ввода");
     }
 
     function submitDownload() {
-      const input = document.getElementById('downloadInput');
-      const val = input.value.trim();
+      const val = document.getElementById('downloadInput').value.trim();
       const alertEl = document.getElementById('downloadAlert');
       if (!val) {
-        alertEl.textContent = 'Вставь ссылку на видео (TikTok, Shorts, Reels)!';
+        alertEl.textContent = 'Вставьте ссылку на видео!';
         alertEl.style.display = 'block';
-        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
         return;
       }
       alertEl.style.display = 'none';
@@ -2010,43 +1971,36 @@
 
     function submitMusic() {
       const val = document.getElementById('musicInput').value.trim();
-      sendToBot(`найди трек ${val || "Macan"}`);
+      sendToBot(`найди трек ${val || "Miyagi"}`);
       closeSheet('music');
     }
-
     function submitWeather() {
       const val = document.getElementById('weatherInput').value.trim();
       sendToBot(`погода в ${val || "Бишкек"}`);
       closeSheet('weather');
     }
-
     function submitQuiz() {
       const val = document.getElementById('quizInput').value.trim();
-      sendToBot(`/quiz ${val || "школьная программа"}`);
+      sendToBot(`/quiz ${val || "аниме"}`);
       closeSheet('quiz');
     }
-
     function submitDuel() {
       const val = document.getElementById('duelInput').value.trim();
       sendToBot(`/duel ${val}`);
       closeSheet('duel');
     }
-
     function submitRoast() {
       const val = document.getElementById('roastInput').value.trim();
       sendToBot(`/roast ${val}`);
       closeSheet('roast');
     }
-
     function submitArt() {
       const val = document.getElementById('artInput').value.trim();
-      sendToBot(`нарисуй ${val || "красивый киберпанк арт"}`);
+      sendToBot(`нарисуй ${val || "аниме арт"}`);
       closeSheet('art');
     }
 
-    // ==========================================
-    // 💳 VIP SHOP, КАРТЫ, СБП И TELEGRAM STARS
-    // ==========================================
+    // VIP Shop & Payments
     let currentPayMethod = 'mbank';
     let cachedRequisites = null;
     let currentSelectedPlan = null;
@@ -2054,45 +2008,32 @@
 
     const VIP_PLANS_FRONT = {
       vip_1day: { id: "vip_1day", title: "Импульс (1 день)", som: 40, rub: 39, usd: 0.49, stars: 15 },
-      vip_3days: { id: "vip_3days", title: "Уикенд с Лам (3 дня)", som: 80, rub: 79, usd: 0.99, stars: 29 },
-      vip_week: { id: "vip_week", title: "Ударная неделя (7 дней)", som: 150, rub: 149, usd: 1.89, stars: 49 },
+      vip_3days: { id: "vip_3days", title: "Уикенд (3 дня)", som: 80, rub: 79, usd: 0.99, stars: 29 },
+      vip_week: { id: "vip_week", title: "Неделя (7 дней)", som: 150, rub: 149, usd: 1.89, stars: 49 },
       vip_month: { id: "vip_month", title: "VIP Месяц (30 дней)", som: 300, rub: 299, usd: 3.69, stars: 99 },
-      vip_quarter: { id: "vip_quarter", title: "Четверть (90 дней)", som: 600, rub: 590, usd: 7.49, stars: 199 },
-      vip_forever: { id: "vip_forever", title: "Бог Они-Империи (Навсегда)", som: 1000, rub: 990, usd: 12.49, stars: 299 },
+      vip_quarter: { id: "vip_quarter", title: "Квартал (90 дней)", som: 600, rub: 590, usd: 7.49, stars: 199 },
+      vip_forever: { id: "vip_forever", title: "Навсегда (Forever)", som: 1000, rub: 990, usd: 12.49, stars: 299 },
     };
 
     function switchPayMethod(method) {
       currentPayMethod = method;
-      const btnMbank = document.getElementById('btnMethodMbank');
-      const btnCard = document.getElementById('btnMethodCard');
-      const btnUsd = document.getElementById('btnMethodUsd');
-      const btnStars = document.getElementById('btnMethodStars');
-
-      if (btnMbank) btnMbank.className = method === 'mbank' ? 'pay-toggle-btn active' : 'pay-toggle-btn';
-      if (btnCard) btnCard.className = method === 'card' ? 'pay-toggle-btn active card-mode' : 'pay-toggle-btn';
-      if (btnUsd) btnUsd.className = method === 'usd' ? 'pay-toggle-btn active usd-mode' : 'pay-toggle-btn';
-      if (btnStars) btnStars.className = method === 'stars' ? 'pay-toggle-btn active stars-mode' : 'pay-toggle-btn stars-tab';
+      ['Mbank', 'Card', 'Usd', 'Stars'].forEach(m => {
+        const key = m.toLowerCase();
+        const btn = document.getElementById('btnMethod' + m);
+        if (btn) {
+          btn.className = key === method
+            ? (method === 'stars' ? 'pay-toggle-btn active stars-mode' : 'pay-toggle-btn active')
+            : 'pay-toggle-btn';
+        }
+      });
 
       for (const [key, plan] of Object.entries(VIP_PLANS_FRONT)) {
         const priceEl = document.getElementById(`price-${key}`);
-        const btnEl = document.getElementById(`btn-${key}`);
         if (priceEl) {
-          if (method === 'mbank') {
-            priceEl.innerHTML = `${plan.som} сом`;
-          } else if (method === 'card') {
-            priceEl.innerHTML = `${plan.rub} ₽`;
-          } else if (method === 'usd') {
-            priceEl.innerHTML = `$${plan.usd}`;
-          } else {
-            priceEl.innerHTML = `${plan.stars} ⭐️`;
-          }
-        }
-        if (btnEl) {
-          if (method === 'stars') {
-            btnEl.innerHTML = `⭐️ Оплатить`;
-          } else {
-            btnEl.innerHTML = `Выбрать`;
-          }
+          if (method === 'mbank') priceEl.textContent = `${plan.som} сом`;
+          else if (method === 'card') priceEl.textContent = `${plan.rub} ₽`;
+          else if (method === 'usd') priceEl.textContent = `$${plan.usd}`;
+          else priceEl.textContent = `${plan.stars} ⭐️`;
         }
       }
     }
@@ -2101,17 +2042,14 @@
       try {
         const res = await fetch('/api/requisites');
         const data = await res.json();
-        if (data.ok && data.requisites) {
-          cachedRequisites = data.requisites;
-        }
+        if (data.ok && data.requisites) cachedRequisites = data.requisites;
       } catch (e) {}
     }
 
-    async function handlePlanBuy(planId) {
+    function handlePlanBuy(planId) {
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
       const plan = VIP_PLANS_FRONT[planId];
       if (!plan) return;
-
       if (currentPayMethod === 'stars') {
         buyStarsItem(plan.id, plan.stars, plan.title);
       } else {
@@ -2122,115 +2060,86 @@
     async function openCardPayModal(plan) {
       currentSelectedPlan = plan;
       selectedReceiptBase64 = null;
-      const previewBox = document.getElementById('receiptPreviewBox');
-      const submitBtn = document.getElementById('btnSubmitReceipt');
-      if (previewBox) previewBox.style.display = 'none';
-      if (submitBtn) submitBtn.style.display = 'none';
+      document.getElementById('receiptPreviewBox').style.display = 'none';
+      document.getElementById('btnSubmitReceipt').style.display = 'none';
 
       if (!cachedRequisites) await loadRequisites();
-      const r = cachedRequisites || {
-        bankName: "MasterCard",
-        cardNumber: "5302 0009 7083 9639",
-      };
+      const r = cachedRequisites || { bankName: "MasterCard", cardNumber: "5302 0009 7083 9639" };
 
-      const titleEl = document.getElementById('cardPayTitle');
-      if (currentPayMethod === 'mbank') {
-        if (titleEl) titleEl.innerText = "🇰🇬 Оплата картой (Сомы)";
-        document.getElementById('cardPayAmount').innerText = `${plan.som} сом`;
-      } else if (currentPayMethod === 'usd') {
-        if (titleEl) titleEl.innerText = "🇺🇸 Оплата картой MasterCard (USD $)";
-        document.getElementById('cardPayAmount').innerText = `$${plan.usd}`;
-      } else {
-        if (titleEl) titleEl.innerText = "🇷🇺 Оплата картой (Рубли)";
-        document.getElementById('cardPayAmount').innerText = `${plan.rub} ₽`;
-      }
+      const amountEl = document.getElementById('cardPayAmount');
+      if (currentPayMethod === 'mbank') amountEl.textContent = `${plan.som} сом`;
+      else if (currentPayMethod === 'usd') amountEl.textContent = `$${plan.usd}`;
+      else amountEl.textContent = `${plan.rub} ₽`;
 
-      document.getElementById('cardPayPlanName').innerText = `Тариф: ${plan.title}`;
-      if (document.getElementById('cardPayBank')) document.getElementById('cardPayBank').innerText = r.bankName || "MasterCard";
+      document.getElementById('cardPayPlanName').textContent = `Тариф: ${plan.title}`;
+      document.getElementById('cardPayBank').textContent = r.bankName || "MasterCard";
       document.getElementById('cardPayCardNum').value = r.cardNumber || "5302 0009 7083 9639";
-
       openSheet('card-pay');
     }
 
     function copyCardNumber() {
       const num = document.getElementById('cardPayCardNum').value;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(num.replace(/\s+/g, ''));
-      }
+      navigator.clipboard?.writeText(num.replace(/\s+/g, ''));
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-      alert("✅ Номер карты скопирован!");
+      showAppToast("✅ Номер карты скопирован");
     }
 
     function handleReceiptFileSelected(event) {
       const file = event.target.files?.[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = function(e) {
         selectedReceiptBase64 = e.target.result;
-        const previewImg = document.getElementById('receiptPreviewImg');
-        const previewBox = document.getElementById('receiptPreviewBox');
-        const submitBtn = document.getElementById('btnSubmitReceipt');
-        const fileNameEl = document.getElementById('receiptFileName');
-
-        if (previewImg) previewImg.src = selectedReceiptBase64;
-        if (fileNameEl) fileNameEl.innerText = file.name || "Чек выбран";
-        if (previewBox) previewBox.style.display = 'block';
-        if (submitBtn) {
-          submitBtn.style.display = 'block';
-          submitBtn.innerText = "🚀 Отправить чек на подтверждение Создателю";
-          submitBtn.disabled = false;
-        }
+        document.getElementById('receiptPreviewImg').src = selectedReceiptBase64;
+        document.getElementById('receiptFileName').textContent = file.name || "Чек прикреплен";
+        document.getElementById('receiptPreviewBox').style.display = 'block';
+        const btn = document.getElementById('btnSubmitReceipt');
+        btn.style.display = 'flex';
+        btn.disabled = false;
+        btn.textContent = "🚀 Отправить чек Создателю";
       };
       reader.readAsDataURL(file);
     }
 
     async function submitReceiptProof() {
       if (!selectedReceiptBase64) {
-        alert("Пожалуйста, сначала выбери скриншот или фото чека!");
+        showAppToast("Сначала прикрепите скриншот чека");
         return;
       }
       const submitBtn = document.getElementById('btnSubmitReceipt');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerText = "⏳ Отправка чека на проверку...";
-      }
+      submitBtn.disabled = true;
+      submitBtn.textContent = "⏳ Отправка...";
 
       try {
         const payload = {
           userId: userId || 'anonymous',
-          name: tg?.initDataUnsafe?.user?.first_name || 'Дарлинг',
-          username: tg?.initDataUnsafe?.user?.username || '',
+          name: firstName,
+          username: tgUser?.username || '',
           planId: currentSelectedPlan ? currentSelectedPlan.id : 'vip_month',
           currency: currentPayMethod,
-          amount: currentSelectedPlan ? (currentPayMethod === 'mbank' ? `${currentSelectedPlan.som} сом` : (currentPayMethod === 'usd' ? `$${currentSelectedPlan.usd}` : `${currentSelectedPlan.rub} ₽`)) : 'VIP',
+          amount: currentSelectedPlan
+            ? (currentPayMethod === 'mbank' ? `${currentSelectedPlan.som} сом` : (currentPayMethod === 'usd' ? `$${currentSelectedPlan.usd}` : `${currentSelectedPlan.rub} ₽`))
+            : 'VIP',
           imageBase64: selectedReceiptBase64,
         };
-
         const res = await fetch('/api/submit-receipt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-
         if (data.ok) {
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-          alert(`🎉 ЧЕК ПРИНЯТ НА ПРОВЕРКУ!\nНомер заявки #${data.orderId || ''}.\nСоздатель проверит платёж в течение 1–5 минут и активирует твой VIP-статус! 👑✨`);
+          showAppToast(`✅ Чек #${data.orderId || ''} отправлен Создателю!`);
           closeSheet('card-pay');
         } else {
-          alert(data.error || "Ошибка отправки чека. Попробуй отправить фото в чат с ботом!");
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = "🚀 Отправить чек на подтверждение Создателю";
-          }
+          showAppToast(data.error || "Ошибка отправки чека");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "🚀 Отправить чек Создателю";
         }
       } catch (err) {
-        alert("Ошибка сети. Попробуй отправить чек прямо в чат с ботом!");
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerText = "🚀 Отправить чек на подтверждение Создателю";
-        }
+        showAppToast("Ошибка сети. Отправьте чек в чат с ботом!");
+        submitBtn.disabled = false;
       }
     }
 
@@ -2249,32 +2158,17 @@
           });
         }
       } catch (e) {}
-
       closeSheet('card-pay');
-      if (tg?.showAlert) {
-        tg.showAlert("📸 Отправь фото или скриншот чека прямо в чат с ботом!");
-      }
       sendToBot("/vip");
     }
 
-    const PERSONALITY_NAMES = {
-      tender: "🌸 Нежная Вайфу",
-      tsundere: "⚡ Цундере Лам",
-      yandere: "🔥 Одержимая Яндере",
-      bold: "😈 Дерзкая Госпожа",
-      sensei: "🎓 Строгая Сенсей",
-      mysterious: "🌙 Загадочная Гот-Лам"
-    };
-
-    const LANGUAGE_NAMES = {
-      ru: "🇷🇺 Русский",
-      en: "🇬🇧 English",
-      jp: "🇯🇵 日本語 (Японский)"
-    };
-
     async function handleSelectPersonality(personalityKey) {
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-      if (!userId) return;
+      if (!userId) {
+        highlightActivePersonality(personalityKey);
+        showAppToast(`🎭 ${PERSONALITY_NAMES[personalityKey] || personalityKey}`);
+        return;
+      }
 
       try {
         const res = await fetch('/api/set-personality', {
@@ -2286,71 +2180,52 @@
         if (data.ok) {
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
           highlightActivePersonality(personalityKey);
-          const pName = PERSONALITY_NAMES[personalityKey] || personalityKey;
-          alert(`✨ Характер Лам переключен: ${pName}!\nНапиши ей в чате и почувствуй разницу 💕`);
+          showAppToast(`🎭 Характер Лам: ${PERSONALITY_NAMES[personalityKey] || personalityKey}`);
         } else {
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-          alert(data.error || "👑 Этот эксклюзивный характер Лам доступен в VIP Премиум! Оформи подписку, чтобы открыть все 6 личностей и безлимит ✨");
+          showAppToast("👑 Этот характер доступен в VIP Премиум!");
           switchTab('shop');
         }
       } catch (e) {
-        alert("👑 Оформи VIP Премиум, чтобы открыть все 6 характеров Лам!");
+        showAppToast("👑 Доступно в VIP Премиум!");
         switchTab('shop');
       }
     }
 
-    const handleSelectModel = handleSelectPersonality;
-
     async function handleSelectLanguage(langKey) {
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-      if (!userId) {
-        highlightActiveLanguage(langKey);
-        return;
-      }
+      // 1. Immediately translate UI & highlight buttons
+      highlightActiveLanguage(langKey);
+      applyTranslations(langKey);
+      const dict = UI_I18N[langKey] || UI_I18N.ru;
+      showAppToast(dict.toast_lang);
 
+      // 2. Sync with backend bot
+      if (!userId) return;
       try {
-        const res = await fetch('/api/set-language', {
+        await fetch('/api/set-language', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, langKey }),
         });
-        const data = await res.json();
-        if (data.ok) {
-          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-          highlightActiveLanguage(langKey);
-          const lName = LANGUAGE_NAMES[langKey] || langKey;
-          alert(`🌐 Язык Лам переключен на: ${lName}!`);
-        }
       } catch (e) {}
     }
 
     function highlightActivePersonality(pKey) {
       ['tender', 'tsundere', 'yandere', 'bold', 'sensei', 'mysterious'].forEach(k => {
-        const el1 = document.getElementById(`modelBox-${k}`);
-        const el2 = document.getElementById(`homeChar-${k}`);
-        if (el1) {
-          if (k === pKey) el1.classList.add('active-model');
-          else el1.classList.remove('active-model');
-        }
-        if (el2) {
-          if (k === pKey) el2.classList.add('active-model');
-          else el2.classList.remove('active-model');
-        }
+        const el = document.getElementById(`homeChar-${k}`);
+        if (el) el.classList.toggle('active-model', k === pKey);
       });
+      const badge = document.getElementById('activeCharBadge');
+      if (badge && PERSONALITY_BADGES[pKey]) {
+        badge.textContent = PERSONALITY_BADGES[pKey];
+      }
     }
 
     function highlightActiveLanguage(langKey) {
       ['ru', 'en', 'jp'].forEach(k => {
-        const b1 = document.getElementById(`homeLang-${k}`);
-        const b2 = document.getElementById(`shopLang-${k}`);
-        if (b1) {
-          if (k === langKey) b1.classList.add('active');
-          else b1.classList.remove('active');
-        }
-        if (b2) {
-          if (k === langKey) b2.classList.add('active');
-          else b2.classList.remove('active');
-        }
+        document.getElementById(`homeLang-${k}`)?.classList.toggle('active', k === langKey);
+        document.getElementById(`topLang-${k}`)?.classList.toggle('active', k === langKey);
       });
     }
 
@@ -2365,83 +2240,56 @@
           }
           if (data.currentLanguage) {
             highlightActiveLanguage(data.currentLanguage);
+            applyTranslations(data.currentLanguage);
           }
         }
       } catch (e) {}
     }
 
-
-
-    // Telegram Stars Payment
     async function buyStarsItem(itemType, amount, itemName) {
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
       const btn = document.getElementById(`btn-${itemType}`);
       const originalText = btn ? btn.innerHTML : "";
-      if (btn) btn.innerHTML = `⏳ Создаю чек на ${amount} ⭐️...`;
+      if (btn) btn.innerHTML = `⏳...`;
 
       try {
         const res = await fetch(`/api/create-invoice?type=${itemType}&userId=${userId || ''}`);
         const data = await res.json();
-
-        if (data.ok && data.invoiceLink) {
+        if (data.ok && data.invoiceLink && tg?.openInvoice) {
           if (btn) btn.innerHTML = originalText;
-
-          if (tg?.openInvoice) {
-            tg.openInvoice(data.invoiceLink, (status) => {
-              if (status === 'paid') {
-                if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                alert(`🎉 ОПЛАТА УСПЕШНА!\nТвой ${itemName} активирован! Спасибо, мой VIP Дарлинг! 👑✨`);
-                fetchUserStatus();
-                fetchActiveModel();
-              } else if (status === 'failed') {
-                alert("❌ Ошибка при проведении оплаты Stars. Попробуй ещё раз!");
-              }
-            });
-            return;
-          }
+          tg.openInvoice(data.invoiceLink, (status) => {
+            if (status === 'paid') {
+              showAppToast(`🎉 ${itemName} активирован! 👑`);
+              fetchUserStatus();
+              fetchActiveModel();
+            }
+          });
+          return;
         }
-      } catch (e) {
-        console.warn("Invoice creation error:", e.message);
-      }
-
+      } catch (e) {}
       if (btn) btn.innerHTML = originalText;
       sendToBot('/vip');
     }
 
     async function sendToBot(commandText) {
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-
-      // 1. Отправляем запрос на сервер, чтобы бот начал отвечать в чате
       if (userId) {
         try {
           await fetch(`/api/action?userId=${userId}&text=${encodeURIComponent(commandText)}&userName=${encodeURIComponent(firstName)}`, {
             keepalive: true
           });
-        } catch (e) {
-          console.warn("Action fetch error:", e);
-        }
+        } catch (e) {}
       }
-
-      // 2. Если поддерживается tg.sendData (в режиме Reply клавиатуры) - пробуем
       try {
         if (tg?.sendData) tg.sendData(commandText);
       } catch (e) {}
-
-      // 3. Закрываем WebApp и мгновенно перенаправляем пользователя в чат
-      setTimeout(() => {
-        if (tg?.close) {
-          tg.close();
-        }
-      }, 80);
+      setTimeout(() => tg?.close?.(), 80);
     }
 
     function shareWithFriends() {
-      const shareUrl = `https://t.me/share/url?url=https://t.me/akilum_bot&text=${encodeURIComponent('Смотри, какой крутой ИИ-бот Akilum! Решает домашку, пишет код и развлекает в чате ⚡')}`;
-      if (tg?.openTelegramLink) {
-        tg.openTelegramLink(shareUrl);
-      } else {
-        window.open(shareUrl, '_blank');
-      }
+      const shareUrl = `https://t.me/share/url?url=https://t.me/akilum_bot&text=${encodeURIComponent('Попробуй ИИ-компаньона Лам (@akilum_bot)! 6 характеров, 3 языка, помощь с учёбой и кодом ⚡')}`;
+      if (tg?.openTelegramLink) tg.openTelegramLink(shareUrl);
+      else window.open(shareUrl, '_blank');
     }
   </script>
 </body>

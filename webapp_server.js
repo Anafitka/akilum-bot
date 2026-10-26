@@ -77,6 +77,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     setUserPersonality,
     getUserLanguage,
     setUserLanguage,
+    clearUserHistory,
     resolveTargetUser,
     giveUserBolts,
     giveUserLove,
@@ -316,7 +317,10 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         }
 
         const target = resolveTargetUser ? await resolveTargetUser(userId) : null;
-        const targetId = target ? target.userId : String(userId).replace(/[^\d]/g, "");
+        const cleanFallback = String(userId).trim().startsWith("@")
+          ? `@${String(userId).trim().replace(/^@/, "").toLowerCase()}`
+          : String(userId).replace(/[^\d]/g, "");
+        const targetId = target ? target.userId : cleanFallback;
 
         if (!targetId) {
           res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
@@ -328,7 +332,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
           removeUserVip(targetId);
         }
 
-        if (bot) {
+        if (bot && /^\d+$/.test(String(targetId))) {
           bot.api.sendMessage(
             Number(targetId),
             `ℹ️ <b>Уведомление:</b> Ваш VIP-статус был завершён/отозван Создателем бота. Спасибо, что были с нами! 💚`,
@@ -550,8 +554,8 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
-    // Наградить пользователя бонусами (VIP, Искорки, Любовь, Титул, Сброс энергии)
-    if (pathname === "/api/admin/give-reward" && req.method === "POST") {
+    // Наградить или изменить параметры пользователя (VIP, Искорки, Любовь -100..+100, Характер, Язык, Титул, ЛС от Лам)
+    if ((pathname === "/api/admin/give-reward" || pathname === "/api/admin/user-control") && req.method === "POST") {
       if (!checkAdminAuth(req, parsedUrl)) {
         res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
@@ -559,7 +563,19 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       }
       try {
         const body = await parseJsonBody(req);
-        const { userId, vipDays, bolts, loveLevel, customTitle, resetLimits } = body;
+        const {
+          userId,
+          vipDays,
+          bolts,
+          loveLevel,
+          customTitle,
+          personalityKey,
+          langKey,
+          resetLimits,
+          clearMemory,
+          dmText,
+          silent,
+        } = body;
         if (!userId) {
           res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
           res.end(JSON.stringify({ ok: false, error: "Укажите ID или @username пользователя!" }));
@@ -567,7 +583,10 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         }
 
         const target = resolveTargetUser ? await resolveTargetUser(userId) : null;
-        const targetId = target ? target.userId : String(userId).replace(/[^\d]/g, "");
+        const cleanFallback = String(userId).trim().startsWith("@")
+          ? `@${String(userId).trim().replace(/^@/, "").toLowerCase()}`
+          : String(userId).replace(/[^\d]/g, "");
+        const targetId = target ? target.userId : cleanFallback;
 
         if (!targetId) {
           res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
@@ -576,8 +595,9 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         }
 
         const targetName = target ? target.name : "Дарлинг";
-        const targetUsername = target ? target.username : "";
+        const targetUsername = target ? target.username : String(userId).replace(/^@/, "");
         const perksAwarded = [];
+        let changedLoveVal = null;
 
         // 1. VIP статус
         if (vipDays !== undefined && vipDays !== null && vipDays !== "") {
@@ -595,23 +615,47 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         // 2. Искорки / Молнии
         if (bolts !== undefined && bolts !== null && bolts !== "") {
           const bAmount = parseInt(bolts, 10);
-          if (!isNaN(bAmount) && bAmount > 0 && giveUserBolts) {
+          if (!isNaN(bAmount) && bAmount !== 0 && giveUserBolts) {
             const newTotal = giveUserBolts(targetId, bAmount);
-            perksAwarded.push(`⚡ +${bAmount} молний (всего: ${newTotal})`);
+            perksAwarded.push(`⚡ ${bAmount > 0 ? `+${bAmount}` : bAmount} молний (баланс: ${newTotal})`);
           }
         }
 
-        // 3. Уровень любви
+        // 3. Уровень любви / ненависти Лам (-100% .. +100%)
         if (loveLevel !== undefined && loveLevel !== null && loveLevel !== "") {
           const lVal = parseInt(loveLevel, 10);
           if (!isNaN(lVal) && giveUserLove) {
-            giveUserLove(targetId, lVal);
-            perksAwarded.push(`💖 Связь с Лам: ${lVal}%`);
+            const savedVal = giveUserLove(targetId, lVal);
+            changedLoveVal = savedVal;
+            if (clearUserHistory) clearUserHistory(targetId);
+            const label =
+              savedVal <= -50
+                ? `🤬 Ненависть Лам (${savedVal}%)`
+                : savedVal < 0
+                ? `❄️ Обида Лам (${savedVal}%)`
+                : savedVal >= 90
+                ? `❤️‍🔥 Любовь до ужаса (+${savedVal}%)`
+                : `💖 Отношение Лам (${savedVal}%)`;
+            perksAwarded.push(label);
           }
         }
 
-        // 4. Кастомный титул
-        if (customTitle !== undefined && customTitle !== null) {
+        // 4. Принудительная смена характера Лам
+        if (personalityKey && PERSONALITIES && PERSONALITIES[personalityKey]) {
+          if (setUserPersonality) setUserPersonality(targetId, personalityKey);
+          const p = PERSONALITIES[personalityKey];
+          perksAwarded.push(`🎭 Характер: ${p.emoji} ${p.name}`);
+        }
+
+        // 5. Принудительная смена языка Лам
+        if (langKey && LANGUAGES && LANGUAGES[langKey]) {
+          if (setUserLanguage) setUserLanguage(targetId, langKey);
+          const l = LANGUAGES[langKey];
+          perksAwarded.push(`🌐 Язык: ${l.emoji} ${l.name}`);
+        }
+
+        // 6. Кастомный титул
+        if (customTitle !== undefined && customTitle !== null && customTitle !== "") {
           if (giveUserCustomTitle) {
             const newTitle = giveUserCustomTitle(targetId, customTitle);
             if (newTitle) perksAwarded.push(`🏷 Титул: «${newTitle}»`);
@@ -619,24 +663,50 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
           }
         }
 
-        // 5. Сброс лимитов энергии
+        // 7. Сброс лимитов энергии
         if (resetLimits && resetUserDailyUsage) {
           resetUserDailyUsage(targetId);
           perksAwarded.push(`🔋 Полная перезарядка энергии`);
         }
 
-        // Оповещение в Telegram
-        if (bot && perksAwarded.length > 0) {
-          const perksList = perksAwarded.map(p => `• ${p}`).join("\n");
-          bot.api.sendMessage(
-            Number(targetId),
-            `✧ ─── ･ ｡ﾟ☆: *. 🎁 .* :☆ﾟ. ─── ✧\n` +
-            `🎉 <b>ВАМ ПРИШЕЛ ПОДАРОК ОТ СОЗДАТЕЛЯ!</b> 👑✨\n\n` +
-            `Создатель бота лично даровал вам особые привилегии:\n` +
-            `${perksList}\n\n` +
-            `<i>«Ты просто чудо, мой Дарлинг! Наслаждайся! 💚⚡»</i>`,
-            { parse_mode: "HTML" }
-          ).catch((e) => console.warn("Notify gift error:", e.message));
+        // 8. Очистка памяти диалога
+        if (clearMemory && clearUserHistory) {
+          clearUserHistory(targetId);
+          perksAwarded.push(`🧠 Память диалога очищена`);
+        }
+
+        // 9. Личное сообщение от лица Лам
+        if (dmText && String(dmText).trim() && bot && /^\d+$/.test(String(targetId))) {
+          await bot.api.sendMessage(Number(targetId), String(dmText).trim(), { parse_mode: "HTML" }).catch(() => {});
+          perksAwarded.push(`💬 Отправлено ЛС от Лам`);
+        }
+
+        // Оповещение в Telegram (если не включен тихий режим и не было только кастомного DM)
+        if (!silent && !dmText && bot && /^\d+$/.test(String(targetId)) && perksAwarded.length > 0) {
+          if (changedLoveVal !== null && perksAwarded.length === 1) {
+            const msgToUser =
+              changedLoveVal <= -50
+                ? `💢 <b>УРОВЕНЬ ОТНОШЕНИЯ ЛАМ УПАЛ ДО ${changedLoveVal}%!</b> ⚡🤬\n\n` +
+                  `<i>«Глаза бы мои тебя не видели! Ты меня бесишь до предела, даже не пытайся подлизываться, иначе испепелю молнией! ⚡»</i>`
+                : changedLoveVal < 0
+                ? `❄️ <b>Уровень отношения Лам: ${changedLoveVal}%</b> 😒\n\n` +
+                  `<i>«Я на тебя сильно обижена! И не жди от меня ласковых слов!»</i>`
+                : changedLoveVal >= 90
+                ? `❤️‍🔥 <b>ЛАМ ВЛЮБЛЕНА В ТЕБЯ ДО УЖАСА (+${changedLoveVal}%)!</b> 😍✨\n\n` +
+                  `<i>«Дарлинг, я схожу по тебе с ума каждую секунду! Ты мой единственный во всей Вселенной, никому тебя не отдам! 💖⚡»</i>`
+                : `💖 <b>Уровень связи с Лам обновлён: ${changedLoveVal}%!</b> ✨`;
+            bot.api.sendMessage(Number(targetId), msgToUser, { parse_mode: "HTML" }).catch(() => {});
+          } else {
+            const perksList = perksAwarded.map(p => `• ${p}`).join("\n");
+            bot.api.sendMessage(
+              Number(targetId),
+              `✧ ─── ･ ｡ﾟ☆: *. ⚡ .* :☆ﾟ. ─── ✧\n` +
+              `👑 <b>ОБНОВЛЕНИЕ ПРОФИЛЯ ОТ СОЗДАТЕЛЯ!</b> ✨\n\n` +
+              `${perksList}\n\n` +
+              `<i>Проверь изменения прямо сейчас в чате с Лам или через /love! 💚</i>`,
+              { parse_mode: "HTML" }
+            ).catch((e) => console.warn("Notify gift error:", e.message));
+          }
         }
 
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -663,6 +733,8 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         return;
       }
       const isVip = isUserVip ? isUserVip(target.userId) : false;
+      const personality = getUserPersonality ? getUserPersonality(target.userId) : "tender";
+      const language = getUserLanguage ? getUserLanguage(target.userId) : "ru";
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({
         ok: true,
@@ -671,10 +743,14 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
           name: target.name,
           username: target.username,
           isVip,
-          loveLevel: target.stats?.loveLevel || 75,
+          loveLevel: target.stats?.loveLevel !== undefined ? target.stats.loveLevel : 75,
           bolts: target.stats?.bolts || 0,
           customTitle: target.stats?.customTitle || "",
           count: target.stats?.count || 0,
+          personality,
+          language,
+          warns: getUserWarns ? getUserWarns(target.userId) : 0,
+          isBanned: isUserBanned ? isUserBanned(target.userId) : false,
         }
       }));
       return;
@@ -964,7 +1040,7 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
           isVip,
           maxEnergy,
           remainingEnergy: isVip ? 9999 : remainingEnergy,
-          loveLevel: isVip ? 100 : (stats.loveLevel || 85),
+          loveLevel: stats.loveLevel !== undefined ? stats.loveLevel : (isVip ? 100 : 85),
           bolts: stats.bolts || 0,
           count: stats.count || 1,
           customTitle: stats.customTitle || "",

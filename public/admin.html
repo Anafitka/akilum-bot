@@ -3,173 +3,194 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Akilum • Master Admin Panel</title>
+  <title>Akilum • Creator Control Center</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-base: #060811;
-      --bg-surface: rgba(15, 23, 42, 0.75);
-      --bg-card: rgba(22, 32, 54, 0.85);
+      --bg-base: #07090e;
+      --bg-surface: rgba(16, 21, 33, 0.85);
+      --bg-card: rgba(23, 30, 46, 0.9);
       --border-subtle: rgba(255, 255, 255, 0.08);
-      --border-glow: rgba(0, 255, 136, 0.35);
-      --neon-emerald: #00ff88;
-      --neon-cyan: #00f0ff;
-      --neon-gold: #ffd700;
-      --neon-purple: #a855f7;
+      --border-highlight: rgba(255, 255, 255, 0.16);
+      --neon-emerald: #10b981;
+      --neon-cyan: #06b6d4;
+      --neon-gold: #f59e0b;
+      --neon-purple: #8b5cf6;
       --neon-pink: #ec4899;
-      --neon-red: #ef4444;
+      --neon-red: #f43f5e;
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
       --text-muted: #64748b;
-      --gold-gradient: linear-gradient(135deg, #ffd700, #ff9100);
-      --emerald-gradient: linear-gradient(135deg, #00ff88, #00d2ff);
-      --purple-gradient: linear-gradient(135deg, #a855f7, #6366f1);
+      --gold-gradient: linear-gradient(135deg, #fbbf24, #d97706);
+      --emerald-gradient: linear-gradient(135deg, #10b981, #06b6d4);
+      --danger-gradient: linear-gradient(135deg, #f43f5e, #e11d48);
     }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
+
     body {
       background: var(--bg-base);
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
-      padding-bottom: 40px;
+      padding-bottom: 48px;
+      -webkit-font-smoothing: antialiased;
     }
-    .mesh-glow {
+
+    .ambient-glow {
       position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: 
-        radial-gradient(circle at 10% 20%, rgba(0, 255, 136, 0.07) 0%, transparent 40%),
-        radial-gradient(circle at 90% 15%, rgba(168, 85, 247, 0.09) 0%, transparent 45%),
-        radial-gradient(circle at 50% 85%, rgba(0, 240, 255, 0.06) 0%, transparent 50%);
+      inset: 0;
+      background:
+        radial-gradient(650px circle at 10% 15%, rgba(16, 185, 129, 0.07), transparent 45%),
+        radial-gradient(550px circle at 90% 15%, rgba(139, 92, 246, 0.07), transparent 45%),
+        radial-gradient(650px circle at 50% 85%, rgba(244, 63, 94, 0.05), transparent 50%);
       pointer-events: none;
       z-index: 0;
     }
-    .grid-lines {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-      background-size: 32px 32px;
-      pointer-events: none;
-      z-index: 0;
-    }
+
     .wrapper {
       position: relative;
       z-index: 1;
-      max-width: 1100px;
+      max-width: 1140px;
       margin: 0 auto;
-      padding: 24px 16px;
+      padding: 20px 16px;
     }
 
     /* Login Box */
     .login-container {
-      max-width: 420px;
-      margin: 80px auto;
+      max-width: 400px;
+      margin: 70px auto;
       background: var(--bg-surface);
-      border: 1px solid var(--border-glow);
-      border-radius: 24px;
-      padding: 36px 28px;
+      border: 1px solid var(--border-highlight);
+      border-radius: 20px;
+      padding: 32px 26px;
       backdrop-filter: blur(20px);
-      box-shadow: 0 0 50px rgba(0, 255, 136, 0.12);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
       text-align: center;
     }
     .login-logo {
-      font-size: 48px;
-      margin-bottom: 12px;
-      display: inline-block;
-      filter: drop-shadow(0 0 16px rgba(0, 255, 136, 0.6));
+      font-size: 42px;
+      margin-bottom: 10px;
     }
     .login-title {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 800;
-      background: var(--emerald-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 6px;
+      color: #fff;
+      margin-bottom: 4px;
     }
     .login-subtitle {
       font-size: 13px;
       color: var(--text-secondary);
-      margin-bottom: 26px;
+      margin-bottom: 24px;
     }
+
     .form-group {
       text-align: left;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
     .form-label {
       display: block;
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 700;
       color: var(--text-secondary);
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 8px;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
     }
     .form-input {
       width: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.45);
       border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 12px 14px;
-      color: var(--text-primary);
-      font-size: 14px;
+      border-radius: 10px;
+      padding: 11px 13px;
+      color: #fff;
+      font-size: 13.5px;
       outline: none;
-      transition: all 0.2s;
+      transition: border-color 0.18s;
     }
     .form-input:focus {
       border-color: var(--neon-emerald);
-      box-shadow: 0 0 14px rgba(0, 255, 136, 0.25);
     }
-    .btn-login {
-      width: 100%;
-      padding: 14px;
+    textarea.form-input {
+      min-height: 95px;
+      resize: vertical;
+    }
+
+    .btn-login, .btn-action {
       background: var(--emerald-gradient);
-      color: #060811;
-      font-size: 15px;
-      font-weight: 800;
+      color: #07090e;
+      font-weight: 700;
+      font-size: 13.5px;
       border: none;
-      border-radius: 14px;
+      border-radius: 10px;
+      padding: 11px 18px;
       cursor: pointer;
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-      transition: all 0.2s;
-      margin-top: 10px;
+      transition: transform 0.12s, opacity 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
-    .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+    .btn-login { width: 100%; margin-top: 8px; padding: 13px; }
+    .btn-action:active, .btn-login:active { transform: scale(0.98); }
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.16);
+      border: 1px solid rgba(244, 63, 94, 0.4);
+      color: #fda4af;
     }
+    .btn-gold {
+      background: var(--gold-gradient);
+      color: #07090e;
+    }
+
+    .btn-sm {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-sm:hover {
+      border-color: var(--border-highlight);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
     .error-msg {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid var(--neon-red);
-      color: #fca5a5;
+      background: rgba(244, 63, 94, 0.15);
+      border: 1px solid rgba(244, 63, 94, 0.35);
+      color: #fda4af;
       padding: 10px;
       border-radius: 10px;
-      font-size: 13px;
-      margin-bottom: 16px;
+      font-size: 12.5px;
+      margin-bottom: 14px;
       display: none;
     }
 
-    /* Dashboard Header */
+    /* Header */
     .dash-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 20px;
-      padding: 18px 24px;
-      margin-bottom: 24px;
-      backdrop-filter: blur(16px);
+      border-radius: 16px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 12px;
     }
     .dash-brand {
       display: flex;
@@ -179,198 +200,148 @@
     .dash-avatar {
       width: 48px;
       height: 48px;
-      border-radius: 50%;
-      background: var(--emerald-gradient);
-      padding: 2px;
-      box-shadow: 0 0 16px rgba(0, 255, 136, 0.4);
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1.5px solid var(--neon-emerald);
     }
     .dash-avatar img {
       width: 100%;
       height: 100%;
-      border-radius: 50%;
       object-fit: cover;
     }
     .dash-title-wrap h1 {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 800;
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
     .badge-online {
       font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: rgba(0, 255, 136, 0.15);
-      border: 1px solid var(--neon-emerald);
-      color: var(--neon-emerald);
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      padding: 2px 8px;
+      border-radius: 20px;
       font-weight: 700;
     }
     .badge-admin {
       font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      background: rgba(255, 215, 0, 0.15);
-      border: 1px solid var(--neon-gold);
-      color: var(--neon-gold);
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      padding: 2px 8px;
+      border-radius: 20px;
       font-weight: 700;
     }
-    .btn-logout {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      padding: 8px 16px;
-      border-radius: 12px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.2s;
-    }
-    .btn-logout:hover {
-      background: rgba(239, 68, 68, 0.15);
-      border-color: var(--neon-red);
-      color: #fca5a5;
-    }
 
-    /* Metric Cards */
+    /* Metrics */
     .metrics-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
     }
     .metric-card {
-      background: var(--bg-card);
+      background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 18px;
-      padding: 20px;
-      backdrop-filter: blur(12px);
-      position: relative;
-      overflow: hidden;
+      border-radius: 14px;
+      padding: 16px;
     }
-    .metric-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 3px;
-    }
-    .metric-card.green::before { background: var(--emerald-gradient); }
-    .metric-card.purple::before { background: var(--purple-gradient); }
-    .metric-card.gold::before { background: var(--gold-gradient); }
-    .metric-card.cyan::before { background: linear-gradient(135deg, #00f0ff, #3b82f6); }
-
     .metric-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .metric-label {
       font-size: 12px;
-      font-weight: 700;
       color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .metric-icon {
-      font-size: 20px;
+      font-weight: 600;
     }
     .metric-val {
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 800;
       color: #fff;
-      font-family: 'JetBrains Mono', monospace;
     }
     .metric-sub {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
-    /* Tabs Bar */
+    /* Tabs */
     .tabs-bar {
       display: flex;
       gap: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
       overflow-x: auto;
       padding-bottom: 4px;
     }
     .tab-btn {
-      padding: 10px 18px;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 14px;
       color: var(--text-secondary);
-      font-size: 13px;
+      font-size: 12.5px;
       font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 10px;
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
       white-space: nowrap;
-      transition: all 0.2s;
-    }
-    .tab-btn:hover {
-      background: rgba(255, 255, 255, 0.06);
-      color: #fff;
+      transition: all 0.15s;
     }
     .tab-btn.active {
-      background: var(--emerald-gradient);
-      color: #060811;
-      border-color: transparent;
-      box-shadow: 0 0 16px rgba(0, 255, 136, 0.35);
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #34d399;
     }
 
-    /* Content Cards */
     .card-panel {
-      background: var(--bg-card);
+      background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 20px;
-      padding: 24px;
-      backdrop-filter: blur(12px);
-      margin-bottom: 24px;
-    }
-    .panel-title {
-      font-size: 17px;
-      font-weight: 800;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    /* Form Controls */
-    .row-form {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: flex-end;
+      border-radius: 16px;
+      padding: 20px;
       margin-bottom: 20px;
     }
-    .flex-1 { flex: 1; min-width: 200px; }
-    .btn-action {
-      padding: 12px 20px;
-      background: var(--emerald-gradient);
-      color: #060811;
+    .panel-title {
+      font-size: 16px;
       font-weight: 800;
-      font-size: 14px;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .btn-action:hover {
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
-      transform: translateY(-1px);
-    }
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid var(--neon-red);
-      color: #fca5a5;
-    }
-    .btn-danger:hover {
-      background: var(--neon-red);
+      margin-bottom: 14px;
       color: #fff;
+    }
+    .row-form {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .flex-1 { flex: 1; min-width: 200px; }
+
+    /* Attitude Slider Box */
+    .attitude-box {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .attitude-slider {
+      width: 100%;
+      height: 8px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #f43f5e 0%, #38bdf8 45%, #94a3b8 50%, #34d399 75%, #ec4899 100%);
+      outline: none;
+      -webkit-appearance: none;
+      margin: 12px 0;
+      cursor: pointer;
+    }
+    .attitude-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #10b981;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+      cursor: pointer;
     }
 
     /* Tables */
@@ -380,241 +351,314 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      text-align: left;
-      font-size: 13px;
+      font-size: 12.5px;
     }
-    th {
-      padding: 12px 14px;
-      background: rgba(0, 0, 0, 0.35);
-      color: var(--text-secondary);
-      font-weight: 700;
+    th, td {
+      padding: 11px 10px;
+      text-align: left;
       border-bottom: 1px solid var(--border-subtle);
     }
-    td {
-      padding: 12px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      color: var(--text-primary);
+    th {
+      color: var(--text-secondary);
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 11.5px;
     }
-    .status-active {
-      display: inline-block;
-      padding: 2px 8px;
+    .status-forever {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      padding: 3px 8px;
       border-radius: 8px;
-      background: rgba(0, 255, 136, 0.15);
-      color: var(--neon-emerald);
       font-weight: 700;
       font-size: 11px;
     }
-    .status-forever {
-      display: inline-block;
-      padding: 2px 8px;
+    .status-active {
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      padding: 3px 8px;
       border-radius: 8px;
-      background: rgba(255, 215, 0, 0.15);
-      color: var(--neon-gold);
       font-weight: 700;
       font-size: 11px;
     }
     .status-expired {
-      display: inline-block;
-      padding: 2px 8px;
+      background: rgba(244, 63, 94, 0.18);
+      color: #fda4af;
+      padding: 3px 8px;
       border-radius: 8px;
-      background: rgba(239, 68, 68, 0.15);
-      color: #fca5a5;
       font-weight: 700;
       font-size: 11px;
-    }
-    .btn-sm {
-      padding: 4px 10px;
-      font-size: 11px;
-      border-radius: 8px;
-      cursor: pointer;
-      border: 1px solid var(--border-subtle);
-      background: rgba(255, 255, 255, 0.05);
-      color: #fff;
-      margin-right: 4px;
-      transition: all 0.15s;
-    }
-    .btn-sm:hover {
-      background: rgba(255, 255, 255, 0.12);
-    }
-
-    /* Broadcast Tab */
-    .template-chips {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-    .chip {
-      font-size: 12px;
-      padding: 6px 12px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .chip:hover {
-      background: rgba(0, 255, 136, 0.1);
-      border-color: var(--neon-emerald);
-      color: var(--neon-emerald);
-    }
-    textarea.form-input {
-      min-height: 120px;
-      resize: vertical;
-      font-family: inherit;
     }
 
     .toast-msg {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      background: #0f172a;
+      background: rgba(15, 23, 42, 0.96);
       border: 1px solid var(--neon-emerald);
       color: #fff;
-      padding: 14px 20px;
-      border-radius: 14px;
-      font-size: 14px;
+      padding: 13px 20px;
+      border-radius: 12px;
+      font-size: 13.5px;
       font-weight: 600;
-      box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
-      z-index: 1000;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+      z-index: 2000;
       display: none;
-      align-items: center;
-      gap: 10px;
     }
   </style>
 </head>
 <body>
-  <div class="mesh-glow"></div>
-  <div class="grid-lines"></div>
+  <div class="ambient-glow"></div>
 
-  <!-- Экран авторизации -->
+  <!-- Login Screen -->
   <div id="loginSection" class="login-container">
     <div class="login-logo">👑⚡</div>
-    <h1 class="login-title">Akilum Master Hub</h1>
-    <p class="login-subtitle">Центр управления они-принцессой Лам</p>
+    <h1 class="login-title">Akilum Creator Hub</h1>
+    <p class="login-subtitle">Панель полного управления ботом Лам</p>
 
     <div id="loginError" class="error-msg">Неверный логин или пароль</div>
 
     <form id="loginForm" onsubmit="handleLogin(event)">
       <div class="form-group">
         <label class="form-label">Логин Создателя</label>
-        <input type="text" id="loginUser" class="form-input" placeholder="Akilum" value="Akilum" required autocomplete="username">
+        <input type="text" id="loginUser" class="form-input" value="Akilum" required autocomplete="username">
       </div>
       <div class="form-group">
-        <label class="form-label">Секретный пароль</label>
-        <input type="password" id="loginPass" class="form-input" placeholder="••••••••••••" value="Clearson0078912" required autocomplete="current-password">
+        <label class="form-label">Пароль</label>
+        <input type="password" id="loginPass" class="form-input" value="Clearson0078912" required autocomplete="current-password">
       </div>
-      <button type="submit" class="btn-login">⚡ Войти в панель</button>
+      <button type="submit" class="btn-login">⚡ Войти в Центр Управления</button>
     </form>
   </div>
 
-  <!-- Главный Дашборд -->
+  <!-- Main Dashboard -->
   <div id="dashSection" class="wrapper" style="display: none;">
-    <!-- Шапка -->
     <header class="dash-header">
       <div class="dash-brand">
         <div class="dash-avatar">
-          <img src="/avatar.jpg" alt="Akilum">
+          <img src="/avatar.jpg" alt="Akilum" onerror="this.src='https://api.dicebear.com/7.x/bottts/svg?seed=Akilum'">
         </div>
         <div class="dash-title-wrap">
           <h1>
-            Akilum Admin
-            <span class="badge-online">● Онлайн</span>
-            <span class="badge-admin">👑 Создатель</span>
+            Akilum Creator Panel
+            <span class="badge-online">● Online</span>
+            <span class="badge-admin">👑 Всевластие</span>
           </h1>
           <p style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
-            Полный контроль над базой, VIP-подписками и рассылками
+            Управление VIP, отношением Лам (-100%..+100%), характерами, языками и чеками
           </p>
         </div>
       </div>
-      <div>
-        <button class="btn-logout" onclick="handleLogout()">🚪 Выйти</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-sm" onclick="loadDashboardData()">🔄 Обновить данные</button>
+        <button class="btn-sm" style="color:#fda4af;" onclick="handleLogout()">🚪 Выйти</button>
       </div>
     </header>
 
-    <!-- Метрики -->
+    <!-- Metrics -->
     <div class="metrics-grid">
-      <div class="metric-card green">
+      <div class="metric-card">
         <div class="metric-header">
-          <span class="metric-label">Пользователей</span>
-          <span class="metric-icon">👥</span>
+          <span class="metric-label">Всего пользователей</span>
+          <span>👥</span>
         </div>
         <div class="metric-val" id="statUsers">--</div>
-        <div class="metric-sub">Уникальных диалогов в базе</div>
+        <div class="metric-sub">В базе данных бота</div>
       </div>
-      <div class="metric-card cyan">
+      <div class="metric-card">
         <div class="metric-header">
-          <span class="metric-label">Активно за 24ч</span>
-          <span class="metric-icon">⚡</span>
+          <span class="metric-label">Активны сегодня</span>
+          <span>⚡</span>
         </div>
         <div class="metric-val" id="statActive">--</div>
-        <div class="metric-sub">Пользователей сегодня</div>
+        <div class="metric-sub">За последние 24 часа</div>
       </div>
-      <div class="metric-card gold">
+      <div class="metric-card">
         <div class="metric-header">
-          <span class="metric-label">VIP Дарлингов</span>
-          <span class="metric-icon">👑</span>
+          <span class="metric-label">Активных VIP</span>
+          <span>👑</span>
         </div>
-        <div class="metric-val" id="statVips">--</div>
-        <div class="metric-sub">С безлимитом и короной</div>
+        <div class="metric-val" id="statVips" style="color:#fbbf24;">--</div>
+        <div class="metric-sub">Премиум подписки</div>
       </div>
-      <div class="metric-card purple">
+      <div class="metric-card">
         <div class="metric-header">
-          <span class="metric-label">Заработано Stars</span>
-          <span class="metric-icon">⭐️</span>
+          <span class="metric-label">Доход Telegram Stars</span>
+          <span>⭐️</span>
         </div>
-        <div class="metric-val" id="statStars">--</div>
-        <div class="metric-sub">Telegram Stars доход</div>
+        <div class="metric-val" id="statStars" style="color:#34d399;">--</div>
+        <div class="metric-sub">Оплачено звездами</div>
       </div>
     </div>
 
-    <!-- Вкладки -->
+    <!-- Navigation Tabs -->
     <nav class="tabs-bar">
-      <button class="tab-btn active" onclick="switchTab('vips')">👑 Управление VIP</button>
-      <button class="tab-btn" onclick="switchTab('rewards')">🎁 Награды и Бонусы</button>
-      <button class="tab-btn" onclick="switchTab('payments')">🧾 Чеки и Платежи <span id="badgePendingCount" style="display:none; background: #ef4444; color: white; padding: 2px 7px; border-radius: 12px; font-size: 11px; margin-left: 5px;">0</span></button>
-      <button class="tab-btn" onclick="switchTab('broadcast')">📢 Рассылка (Broadcast)</button>
-      <button class="tab-btn" onclick="switchTab('users')">👥 Все пользователи</button>
-      <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки и Реквизиты</button>
+      <button class="tab-btn active" onclick="switchTab('rewards')">⚡ Управление пользователем (-100%..+100% & VIP)</button>
+      <button class="tab-btn" onclick="switchTab('vips')">👑 Раздать / Забрать VIP</button>
+      <button class="tab-btn" onclick="switchTab('users')">👥 База игроков и быстрые кнопки</button>
+      <button class="tab-btn" onclick="switchTab('payments')">🧾 Чеки оплат <span id="badgePendingCount" style="display:none; background:#f43f5e; color:#fff; padding:1px 6px; border-radius:10px; font-size:10px; margin-left:4px;">0</span></button>
+      <button class="tab-btn" onclick="switchTab('broadcast')">📢 Рассылка</button>
+      <button class="tab-btn" onclick="switchTab('settings')">⚙️ Настройки</button>
     </nav>
 
-    <!-- Вкладка 1: Управление VIP -->
-    <div id="tab-vips" class="card-panel">
-      <h2 class="panel-title">✨ Выдача и управление VIP</h2>
+    <!-- TAB 1: GOD MODE / USER CONTROL (-100%..+100%, VIP, CHARACTER, DM) -->
+    <div id="tab-rewards" class="card-panel">
+      <h2 class="panel-title">⚡ Всевластие Создателя: Отношение Лам (-100%..+100%), VIP, Характер и ЛС</h2>
+      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+        Здесь ты можешь сделать так, чтобы Лам <b>люто ненавидела (-100% 🤬)</b> или <b>безумно любила до ужаса (+100% ❤️‍🔥)</b> любого человека, выдать или забрать VIP, принудительно сменить ей характер/язык для этого человека или отправить ему сообщение от лица Лам.
+      </p>
+
+      <!-- Target Selector -->
+      <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 16px; margin-bottom: 18px;">
+        <div class="row-form">
+          <div class="flex-1">
+            <label class="form-label">ID пользователя или @username</label>
+            <input type="text" id="rewardTargetUser" class="form-input" placeholder="Например: @username или 123456789">
+          </div>
+          <button type="button" class="btn-action" onclick="checkRewardTarget()">🔍 Найти профиль</button>
+          <button type="button" class="btn-action btn-gold" onclick="quickGiveVipFromGod(30)">👑 Выдать VIP (30д)</button>
+          <button type="button" class="btn-action btn-danger" onclick="quickRevokeVipFromGod()">❌ Забрать VIP</button>
+        </div>
+
+        <div id="rewardUserCard" style="display: none; margin-top: 14px; padding: 12px 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px;">
+          <div style="font-size: 13.5px; color: #34d399; font-weight: 700;" id="rewardUserName">Пользователь</div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="rewardUserInfo"></div>
+        </div>
+      </div>
+
+      <!-- Attitude Percentage Control (-100% to +100%) -->
+      <div class="attitude-box" style="margin-bottom: 18px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-weight: 800; font-size: 14.5px; color: #fff;">💖 / 🤬 Процент отношения Лам к пользователю (-100% .. +100%)</div>
+            <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">При -100% Лам будет ненавидеть, презирать и огрызаться. При +100% — боготворить и обожать до безумия.</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="attitudeLiveBadge" style="font-size:14px; font-weight:800; padding:5px 12px; border-radius:10px; background:rgba(255,255,255,0.07); color:#34d399;">Не менять</span>
+            <input type="number" id="rewardLove" class="form-input" style="width:95px; text-align:center; font-weight:800;" min="-100" max="100" placeholder="%" oninput="syncAttitudeSliderFromInput(this.value)">
+          </div>
+        </div>
+
+        <input type="range" id="attitudeSlider" class="attitude-slider" min="-100" max="100" value="75" oninput="syncAttitudeInputFromSlider(this.value)">
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <button type="button" class="btn-sm" style="background:rgba(244,63,94,0.2); border-color:rgba(244,63,94,0.45); color:#fda4af;" onclick="setAttitudePreset(-100)">🤬 -100% Лютая ненависть</button>
+          <button type="button" class="btn-sm" style="background:rgba(56,189,248,0.15); border-color:rgba(56,189,248,0.35); color:#7dd3fc;" onclick="setAttitudePreset(-50)">❄️ -50% Холод и обида</button>
+          <button type="button" class="btn-sm" onclick="setAttitudePreset(0)">😐 0% Холодный нейтралитет</button>
+          <button type="button" class="btn-sm" style="color:#34d399;" onclick="setAttitudePreset(75)">💕 +75% Теплая симпатия</button>
+          <button type="button" class="btn-sm" style="background:rgba(236,72,153,0.2); border-color:rgba(236,72,153,0.45); color:#f9a8d4;" onclick="setAttitudePreset(100)">❤️‍🔥 +100% Любовь до ужаса</button>
+          <button type="button" class="btn-sm" onclick="clearAttitudePreset()">Сбросить поле</button>
+        </div>
+      </div>
+
+      <!-- Grid of Controls -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-bottom: 18px;">
+        <!-- VIP -->
+        <div style="background: rgba(0,0,0,0.28); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 13px; color: #fbbf24; margin-bottom: 8px;">👑 Выдать / Забрать VIP</div>
+          <select id="rewardVipDays" class="form-input">
+            <option value="">Не менять VIP</option>
+            <option value="1">⚡ Выдать на 1 день</option>
+            <option value="3">🍓 Выдать на 3 дня</option>
+            <option value="7">🎒 Выдать на 7 дней</option>
+            <option value="30">⭐️ Выдать на 30 дней (Месяц)</option>
+            <option value="90">💎 Выдать на 90 дней</option>
+            <option value="-1">👑 Выдать НАВСЕГДА (Forever VIP)</option>
+            <option value="-999">❌ ЗАБРАТЬ (Аннулировать VIP)</option>
+          </select>
+        </div>
+
+        <!-- Character Override -->
+        <div style="background: rgba(0,0,0,0.28); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 13px; color: #c084fc; margin-bottom: 8px;">🎭 Принудительный характер Лам</div>
+          <select id="rewardPersonality" class="form-input">
+            <option value="">Не менять характер</option>
+            <option value="tender">🌸 Нежная Вайфу</option>
+            <option value="tsundere">⚡ Цундере Лам</option>
+            <option value="yandere">🔥 Одержимая Яндере</option>
+            <option value="bold">😈 Дерзкая Госпожа</option>
+            <option value="sensei">🎓 Строгая Сенсей</option>
+            <option value="mysterious">🌙 Загадочная Гот-Лам</option>
+          </select>
+        </div>
+
+        <!-- Language Override -->
+        <div style="background: rgba(0,0,0,0.28); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 13px; color: #38bdf8; margin-bottom: 8px;">🌐 Язык Лам для пользователя</div>
+          <select id="rewardLang" class="form-input">
+            <option value="">Не менять язык</option>
+            <option value="ru">🇷🇺 Русский</option>
+            <option value="en">🇬🇧 English (Английский)</option>
+            <option value="jp">🇯🇵 日本語 (Японский)</option>
+          </select>
+        </div>
+
+        <!-- Custom Title & Bolts -->
+        <div style="background: rgba(0,0,0,0.28); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 13px; color: #34d399; margin-bottom: 8px;">🏷 Особый титул и ⚡ Молнии</div>
+          <input type="text" id="rewardTitle" class="form-input" placeholder="Титул (или reset)" style="margin-bottom:8px;">
+          <input type="number" id="rewardBolts" class="form-input" placeholder="Добавить молний (напр. 500 или -200)">
+        </div>
+      </div>
+
+      <!-- Direct Message from Lam -->
+      <div style="background: rgba(0,0,0,0.28); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px; margin-bottom: 16px;">
+        <div style="font-weight: 700; font-size: 13px; color: #f472b6; margin-bottom: 6px;">💬 Написать пользователю личное сообщение от лица Лам (необязательно)</div>
+        <input type="text" id="rewardDmText" class="form-input" placeholder="Напиши текст, и бот तुरंत отправит его этому человеку в ЛС от имени Лам...">
+      </div>
+
+      <!-- Checkboxes -->
+      <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom: 18px;">
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="rewardResetEnergy" style="width: 16px; height: 16px; accent-color: var(--neon-emerald);" checked>
+          <span>🔋 Сбросить дневной лимит запросов</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="rewardClearMemory" style="width: 16px; height: 16px; accent-color: var(--neon-emerald);" checked>
+          <span>🧠 Очистить старую память диалога (чтобы новое отношение/язык сработали мгновенно)</span>
+        </label>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+          <input type="checkbox" id="rewardSilent" style="width: 16px; height: 16px; accent-color: var(--neon-emerald);">
+          <span>🔇 Тихий режим (не присылать системное уведомление об изменениях)</span>
+        </label>
+      </div>
+
+      <button type="button" class="btn-action" style="width: 100%; padding: 14px; font-size: 14.5px;" onclick="submitReward()">
+        ⚡ Применить все изменения к пользователю
+      </button>
+    </div>
+
+    <!-- TAB 2: VIP MANAGEMENT -->
+    <div id="tab-vips" class="card-panel" style="display: none;">
+      <h2 class="panel-title">👑 Быстрая выдача и снятие VIP-подписки</h2>
       <form id="giveVipForm" onsubmit="handleGiveVip(event)" class="row-form">
         <div class="flex-1">
-          <label class="form-label">Telegram ID или @username (никнейм)</label>
-          <input type="text" id="vipUserId" class="form-input" placeholder="Например: @durov или 123456789" required>
+          <label class="form-label">Telegram ID или @username</label>
+          <input type="text" id="vipUserId" class="form-input" placeholder="@username или 123456789" required>
         </div>
-        <div style="min-width: 190px;">
-          <label class="form-label">Тариф / Срок</label>
+        <div style="min-width: 200px;">
+          <label class="form-label">Срок VIP</label>
           <select id="vipDays" class="form-input">
-            <option value="1">⚡ 1 день (Импульс)</option>
-            <option value="3">🍓 3 дня (Уикенд с Лам)</option>
-            <option value="7">🎒 7 дней (Неделя зачетов)</option>
+            <option value="1">⚡ 1 день</option>
+            <option value="3">🍓 3 дня</option>
+            <option value="7">🎒 7 дней</option>
             <option value="30" selected>⭐️ 30 дней (Месяц)</option>
-            <option value="90">💎 90 дней (Квартал / Семестр)</option>
+            <option value="90">💎 90 дней</option>
             <option value="-1">👑 Навсегда (Forever VIP)</option>
           </select>
         </div>
-        <button type="submit" class="btn-action">👑 Выдать VIP</button>
-        <button type="button" class="btn-action" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5;" onclick="handleTakeVipFromInput()">❌ Снять VIP</button>
+        <button type="submit" class="btn-action btn-gold">👑 Выдать VIP</button>
+        <button type="button" class="btn-action btn-danger" onclick="handleTakeVipFromInput()">❌ Забрать VIP</button>
       </form>
-      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center;">
-        <span style="font-size:12px; color:var(--text-secondary);">Быстрый выбор:</span>
-        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='1'">1 день</button>
-        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='3'">3 дня</button>
-        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='7'">7 дней</button>
-        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='30'">30 дней</button>
-        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='90'">90 дней</button>
-        <button type="button" class="btn-sm" onclick="document.getElementById('vipDays').value='-1'">👑 Навсегда</button>
-      </div>
 
-      <h2 class="panel-title" style="margin-top: 28px;">📋 Список активных VIP-пользователей</h2>
+      <h2 class="panel-title" style="margin-top: 24px;">📋 Список активных VIP-пользователей</h2>
       <div class="table-responsive">
         <table>
           <thead>
@@ -622,114 +666,48 @@
               <th>User ID</th>
               <th>Имя / Username</th>
               <th>Статус</th>
-              <th>Срок окончания</th>
-              <th>Оплачено Stars</th>
-              <th>Действия</th>
+              <th>Срок</th>
+              <th>Источник</th>
+              <th>Управление</th>
             </tr>
           </thead>
           <tbody id="vipsTableBody">
-            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка VIP пользователей...</td></tr>
+            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Загрузка...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Вкладка 2: Награды, Искорки, Любовь, Титулы -->
-    <div id="tab-rewards" class="card-panel" style="display: none;">
-      <h2 class="panel-title">🎁 Королевские Награды и Бонусы</h2>
-      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
-        Одари любого пользователя искорками (молниями), максимальной любовью Лам (100%), особым титулом в профиле и сбрось дневной лимит энергии. Пользователь получит красивое королевское уведомление прямо в Telegram!
-      </p>
+    <!-- TAB 3: USERS TABLE WITH 1-CLICK GOD CONTROLS -->
+    <div id="tab-users" class="card-panel" style="display: none;">
+      <h2 class="panel-title">👥 База пользователей и мгновенное управление в 1 клик</h2>
 
-      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 18px; margin-bottom: 20px;">
-        <div style="display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
-          <div class="flex-1" style="min-width: 240px;">
-            <label class="form-label">Получатель (ID или @username)</label>
-            <input type="text" id="rewardTargetUser" class="form-input" placeholder="Например: @durov или 123456789" required>
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px; margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: 1fr 150px 1.4fr auto; gap: 10px; align-items: end;">
+          <div>
+            <label class="form-label">Пользователь (@username или ID)</label>
+            <input type="text" id="modUserTarget" class="form-input" placeholder="@username или ID">
           </div>
-          <button type="button" class="btn-sm" style="height: 44px; padding: 0 16px;" onclick="checkRewardTarget()">🔍 Найти и проверить</button>
-        </div>
-
-        <!-- Карточка найденного пользователя -->
-        <div id="rewardUserCard" style="display: none; margin-top: 14px; padding: 12px 16px; background: rgba(0, 255, 136, 0.06); border: 1px solid rgba(0, 255, 136, 0.25); border-radius: 12px;">
-          <div style="font-size: 13px; color: var(--neon-emerald); font-weight: 700;" id="rewardUserName">Пользователь</div>
-          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="rewardUserInfo">ID: -- | VIP: -- | Молнии: -- | Любовь: --%</div>
-        </div>
-      </div>
-
-      <!-- Сетка наград -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
-        <!-- 1. VIP статус -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
-          <div style="font-weight: 800; font-size: 14px; color: var(--neon-gold); margin-bottom: 10px;">👑 VIP-статус</div>
-          <select id="rewardVipDays" class="form-input">
-            <option value="">Не менять VIP</option>
-            <option value="1">⚡ 1 день (Импульс)</option>
-            <option value="3">🍓 3 дня (Уикенд с Лам)</option>
-            <option value="7">🎒 7 дней (Неделя зачетов)</option>
-            <option value="30">⭐️ 30 дней (Месяц)</option>
-            <option value="90">💎 90 дней (Квартал)</option>
-            <option value="-1">👑 Навсегда (Forever VIP)</option>
-            <option value="-999">❌ Аннулировать VIP</option>
-          </select>
-        </div>
-
-        <!-- 2. Искорки / Молнии -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
-          <div style="font-weight: 800; font-size: 14px; color: var(--neon-cyan); margin-bottom: 10px;">⚡ Искорки (Молнии)</div>
-          <input type="number" id="rewardBolts" class="form-input" placeholder="Количество молний (например: 500)">
-          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='100'">+100 ⚡</button>
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='500'">+500 ⚡</button>
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='1000'">+1000 ⚡</button>
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardBolts').value='5000'">+5000 ⚡</button>
+          <div>
+            <label class="form-label">Модерация</label>
+            <select id="modActionType" class="form-input">
+              <option value="warn">⚠️ Варн (+1)</option>
+              <option value="unwarn">✅ Снять варн</option>
+              <option value="ban">⛔ Бан</option>
+              <option value="unban">🔓 Разбан</option>
+            </select>
           </div>
-        </div>
-
-        <!-- 3. Любовь Лам -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
-          <div style="font-weight: 800; font-size: 14px; color: #f472b6; margin-bottom: 10px;">💖 Связь с Лам</div>
-          <select id="rewardLove" class="form-input">
-            <option value="">Не менять</option>
-            <option value="100">🍓 100% (Максимальная любовь)</option>
-            <option value="90">💚 90% (Очень высокая)</option>
-            <option value="75">✨ 75% (Базовая)</option>
-            <option value="50">⚡ 50% (Легкая обида)</option>
-          </select>
-        </div>
-
-        <!-- 4. Особый титул в профиле -->
-        <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px;">
-          <div style="font-weight: 800; font-size: 14px; color: #c084fc; margin-bottom: 10px;">🏷 Особый титул в профиле</div>
-          <input type="text" id="rewardTitle" class="form-input" placeholder="Например: 👑 Любимчик Создателя">
-          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='👑 Любимчик Создателя'">👑 Любимчик</button>
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='⚡ Они-Император'">⚡ Император</button>
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='💎 Топ-Спонсор'">💎 Спонсор</button>
-            <button type="button" class="btn-sm" onclick="document.getElementById('rewardTitle').value='reset'">Сбросить</button>
+          <div>
+            <label class="form-label">Причина</label>
+            <input type="text" id="modReason" class="form-input" placeholder="Причина">
           </div>
+          <button class="btn-action" onclick="executeFastModeration()">Применить</button>
         </div>
       </div>
 
-      <div style="margin-bottom: 20px;">
-        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: var(--text-primary);">
-          <input type="checkbox" id="rewardResetEnergy" style="width: 18px; height: 18px; accent-color: var(--neon-emerald);" checked>
-          <span>🔋 Полная перезарядка энергии (сбросить дневной лимит использования)</span>
-        </label>
+      <div class="form-group" style="max-width: 340px; margin-bottom: 14px;">
+        <input type="text" id="searchUser" class="form-input" placeholder="🔍 Поиск по имени, @username или ID..." oninput="filterUsersTable()">
       </div>
-
-      <button type="button" class="btn-action" style="width: 100%; padding: 14px; font-size: 15px;" onclick="submitReward()">🎁 Отправить королевский подарок в Telegram</button>
-    </div>
-
-    <!-- Вкладка: Чеки и Платежи (Карты/СБП) -->
-    <div id="tab-payments" class="card-panel" style="display: none;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 class="panel-title" style="margin-bottom:0;">🧾 Заявки на оплату по картам / СБП</h2>
-        <button class="btn-sm" onclick="loadPaymentsData()">🔄 Обновить чеки</button>
-      </div>
-      <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
-        Когда пользователи переводят деньги по номеру карты/СБП и присылают чек в бота, они появляются здесь с фото чека. Одобряйте заявку в 1 клик!
-      </p>
 
       <div class="table-responsive">
         <table>
@@ -737,135 +715,92 @@
             <tr>
               <th>ID</th>
               <th>Пользователь</th>
-              <th>Тариф</th>
-              <th>Сумма</th>
-              <th>Чек</th>
+              <th>Сообщений</th>
+              <th>Отношение Лам</th>
+              <th>VIP</th>
               <th>Статус</th>
-              <th>Действия</th>
+              <th>Быстрые действия (1 клик)</th>
             </tr>
           </thead>
-          <tbody id="paymentsTableBody">
-            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 24px;">Загрузка заявок...</td></tr>
+          <tbody id="usersTableBody">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Загрузка...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Вкладка 2: Рассылка (Broadcast) -->
-    <div id="tab-broadcast" class="card-panel" style="display: none;">
-      <h2 class="panel-title">📢 Массовая рассылка всем пользователям</h2>
-      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
-        Сообщение будет отправлено каждому пользователю, который хоть раз запускал бота. Поддерживается форматирование Telegram HTML (&lt;b&gt;, &lt;i&gt;, &lt;code&gt;, ссылки).
-      </p>
-
-      <div class="template-chips">
-        <span class="chip" onclick="applyTemplate('promo')">🎁 Скидка на VIP</span>
-        <span class="chip" onclick="applyTemplate('feature')">✨ Новая возможность</span>
-        <span class="chip" onclick="applyTemplate('morning')">☀️ Утренний привет от Лам</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Текст сообщения</label>
-        <textarea id="broadcastText" class="form-input" placeholder="Привет, Дарлинг! ✨ У меня для тебя классная новость..."></textarea>
-      </div>
-
-      <button type="button" class="btn-action" onclick="handleSendBroadcast()">🚀 Запустить рассылку</button>
-      <div id="broadcastResult" style="margin-top: 14px; font-size: 13px; color: var(--neon-emerald); display: none;"></div>
-    </div>
-
-    <!-- Вкладка 3: База пользователей и Модерация -->
-    <div id="tab-users" class="card-panel" style="display: none;">
-      <h2 class="panel-title">👥 Пользователи и Модерация</h2>
-
-      <!-- Quick Moderation Card -->
-      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 16px; margin-bottom: 20px;">
-        <h3 style="font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 10px 0; display:flex; align-items:center; gap:8px;">
-          🛡️ Быстрая модерация по @username или ID
-        </h3>
-        <div style="display: grid; grid-template-columns: 1fr 150px 1.5fr auto; gap: 10px; align-items: end;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Пользователь (@username или ID)</label>
-            <input type="text" id="modUserTarget" class="form-input" placeholder="@username или 12345678">
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Действие</label>
-            <select id="modActionType" class="form-input">
-              <option value="warn">⚠️ Варн (+1)</option>
-              <option value="unwarn">✅ Снять варн (-1)</option>
-              <option value="ban">⛔ Забанить</option>
-              <option value="unban">🔓 Разбанить</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Причина</label>
-            <input type="text" id="modReason" class="form-input" placeholder="Спам / Фейк чек / Оскорбления">
-          </div>
-          <button class="btn-action" onclick="executeFastModeration()" style="height: 42px;">Применить</button>
-        </div>
-        <p style="font-size: 11px; color: var(--text-muted); margin: 8px 0 0 0;">
-          📌 <b>Правило модерации:</b> 3 предупреждения приводят к автоматическому перманентному бану бота!
-        </p>
-      </div>
-
-      <div class="form-group" style="max-width: 320px; margin-bottom: 16px;">
-        <input type="text" id="searchUser" class="form-input" placeholder="🔍 Поиск по ID или имени..." oninput="filterUsersTable()">
+    <!-- TAB 4: PAYMENTS -->
+    <div id="tab-payments" class="card-panel" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h2 class="panel-title" style="margin-bottom:0;">🧾 Чеки оплат на проверку</h2>
+        <button class="btn-sm" onclick="loadPaymentsData()">🔄 Обновить</button>
       </div>
       <div class="table-responsive">
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Имя / Контакт</th>
-              <th>Запросов</th>
-              <th>Любовь</th>
-              <th>VIP</th>
-              <th>Варны / Статус</th>
-              <th>Действие</th>
+              <th>Заявка</th>
+              <th>Пользователь</th>
+              <th>Тариф</th>
+              <th>Сумма</th>
+              <th>Скриншот</th>
+              <th>Статус</th>
+              <th>Решение</th>
             </tr>
           </thead>
-          <tbody id="usersTableBody">
-            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Загрузка базы...</td></tr>
+          <tbody id="paymentsTableBody">
+            <tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding: 20px;">Загрузка...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Вкладка 4: Настройки бота -->
+    <!-- TAB 5: BROADCAST -->
+    <div id="tab-broadcast" class="card-panel" style="display: none;">
+      <h2 class="panel-title">📢 Массовая рассылка всем пользователям</h2>
+      <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+        <button class="btn-sm" onclick="applyTemplate('promo')">🎁 Промо VIP</button>
+        <button class="btn-sm" onclick="applyTemplate('feature')">✨ 6 Характеров и 3 Языка</button>
+        <button class="btn-sm" onclick="applyTemplate('morning')">☀️ Привет от Лам</button>
+      </div>
+      <div class="form-group">
+        <textarea id="broadcastText" class="form-input" placeholder="Текст рассылки (поддерживается HTML)..."></textarea>
+      </div>
+      <button type="button" class="btn-action" onclick="handleSendBroadcast()">🚀 Отправить всем</button>
+      <div id="broadcastResult" style="margin-top: 12px; font-size: 13px; color: #34d399; display: none;"></div>
+    </div>
+
+    <!-- TAB 6: SETTINGS -->
     <div id="tab-settings" class="card-panel" style="display: none;">
-      <h2 class="panel-title">⚙️ Глобальные настройки системы</h2>
-      <div class="row-form">
+      <h2 class="panel-title">⚙️ Глобальные настройки и реквизиты</h2>
+      <div class="row-form" style="margin-bottom: 24px;">
         <div class="flex-1">
-          <label class="form-label">Бесплатный лимит энергии в день</label>
+          <label class="form-label">Бесплатный дневной лимит энергии</label>
           <input type="number" id="settingFreeLimit" class="form-input" min="5" max="500" value="30">
-          <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Сколько бесплатных запросов получают обычные пользователи каждые 24 часа.</p>
         </div>
         <button class="btn-action" onclick="saveSettings()">💾 Сохранить лимит</button>
       </div>
 
-      <h2 class="panel-title" style="margin-top: 28px;">💳 Реквизиты для оплаты (Карта MasterCard)</h2>
-      <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">
-        Номер карты, который бот и WebApp показывают пользователям при оплате: <b>5302 0009 7083 9639</b>. Никаких лишних личных данных пользователям не передаётся.
-      </p>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
-        <div class="form-group">
+      <h2 class="panel-title">💳 Реквизиты карты для приёма оплат</h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div>
           <label class="form-label">Платежная система / Банк</label>
-          <input type="text" id="reqBankName" class="form-input" placeholder="MasterCard">
+          <input type="text" id="reqBankName" class="form-input" value="MasterCard">
         </div>
-        <div class="form-group">
+        <div>
           <label class="form-label">Номер карты</label>
-          <input type="text" id="reqCardNumber" class="form-input" placeholder="5302 0009 7083 9639">
+          <input type="text" id="reqCardNumber" class="form-input" value="5302 0009 7083 9639">
         </div>
       </div>
-      <button class="btn-action" onclick="saveRequisites()">💾 Сохранить реквизиты</button>
+      <button class="btn-action" onclick="saveRequisites()">💾 Сохранить карту</button>
 
-      <h2 class="panel-title" style="margin-top: 24px;">🔧 Быстрые действия</h2>
-      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        <button class="btn-action btn-danger" onclick="handleResetAllLimits()">⚡ Сбросить дневные лимиты всем</button>
+      <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border-subtle);">
+        <button class="btn-action btn-danger" onclick="handleResetAllLimits()">⚡ Сбросить дневные лимиты всем пользователям</button>
       </div>
     </div>
   </div>
 
-  <div id="toast" class="toast-msg">✨ Сохранено!</div>
+  <div id="toast" class="toast-msg">✨ Выполнено!</div>
 
   <script>
     const API_BASE = window.location.origin;
@@ -874,12 +809,12 @@
     function showToast(text) {
       const t = document.getElementById("toast");
       t.innerText = text;
-      t.style.display = "flex";
-      setTimeout(() => { t.style.display = "none"; }, 3000);
+      t.style.display = "block";
+      clearTimeout(window.__admToast);
+      window.__admToast = setTimeout(() => { t.style.display = "none"; }, 3200);
     }
 
     function getToken() {
-      // Поддерживаем токен из URL параметра ?token=... или из localStorage
       const urlParams = new URLSearchParams(window.location.search);
       const urlToken = urlParams.get("token");
       if (urlToken) {
@@ -893,10 +828,8 @@
       const token = getToken();
       const headers = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-
       const opts = { method, headers };
       if (body) opts.body = JSON.stringify(body);
-
       const res = await fetch(`${API_BASE}${path}`, opts);
       if (res.status === 401) {
         localStorage.removeItem("akilum_token");
@@ -906,19 +839,13 @@
       return res.json();
     }
 
-    // Telegram WebApp инициализация
     const tg = window.Telegram?.WebApp;
     if (tg) {
-      try {
-        tg.ready();
-        tg.expand();
-      } catch (e) {}
+      try { tg.ready(); tg.expand(); } catch (e) {}
     }
 
     async function checkAuth() {
-      // 1. Попытка автоматического входа через Telegram WebApp
-      const tg = window.Telegram?.WebApp;
-      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      if (tg?.initDataUnsafe?.user) {
         try {
           const tgUser = tg.initDataUnsafe.user;
           const authRes = await fetch(`${API_BASE}/api/admin/tg-auth`, {
@@ -931,26 +858,20 @@
             }),
           });
           const authData = await authRes.json();
-          if (authData && authData.ok && authData.token) {
+          if (authData?.ok && authData.token) {
             localStorage.setItem("akilum_token", authData.token);
             showDashboard();
             loadDashboardData();
             return;
           }
-        } catch (tgErr) {
-          console.warn("Telegram WebApp auto-auth error:", tgErr);
-        }
+        } catch (e) {}
       }
 
-      // 2. Проверка токена из URL параметра или localStorage
       const token = getToken();
-      if (!token) {
-        showLogin();
-        return;
-      }
+      if (!token) return showLogin();
       try {
         const res = await apiRequest("/api/admin/check-auth");
-        if (res && res.ok) {
+        if (res?.ok) {
           showDashboard();
           loadDashboardData();
         } else {
@@ -965,7 +886,6 @@
       document.getElementById("loginSection").style.display = "block";
       document.getElementById("dashSection").style.display = "none";
     }
-
     function showDashboard() {
       document.getElementById("loginSection").style.display = "none";
       document.getElementById("dashSection").style.display = "block";
@@ -973,15 +893,14 @@
 
     async function handleLogin(e) {
       e.preventDefault();
-      const user = document.getElementById("loginUser").value.trim();
-      const pass = document.getElementById("loginPass").value.trim();
+      const username = document.getElementById("loginUser").value.trim();
+      const password = document.getElementById("loginPass").value.trim();
       const errEl = document.getElementById("loginError");
-
       try {
         const res = await fetch(`${API_BASE}/api/admin/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: user, password: pass })
+          body: JSON.stringify({ username, password })
         });
         const data = await res.json();
         if (data.ok && data.token) {
@@ -994,7 +913,7 @@
           errEl.style.display = "block";
         }
       } catch (err) {
-        errEl.innerText = "Ошибка соединения с сервером";
+        errEl.innerText = "Ошибка соединения";
         errEl.style.display = "block";
       }
     }
@@ -1006,22 +925,68 @@
 
     function switchTab(tabName) {
       document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
-      if (window.event && window.event.target && window.event.target.classList.contains("tab-btn")) {
-        window.event.target.classList.add("active");
-      } else {
-        const activeBtn = document.querySelector(`.tab-btn[onclick*="'${tabName}'"]`);
-        if (activeBtn) activeBtn.classList.add("active");
-      }
+      const activeBtn = document.querySelector(`.tab-btn[onclick*="'${tabName}'"]`);
+      if (activeBtn) activeBtn.classList.add("active");
 
-      document.getElementById("tab-vips").style.display = tabName === "vips" ? "block" : "none";
-      document.getElementById("tab-rewards").style.display = tabName === "rewards" ? "block" : "none";
-      document.getElementById("tab-payments").style.display = tabName === "payments" ? "block" : "none";
-      document.getElementById("tab-broadcast").style.display = tabName === "broadcast" ? "block" : "none";
-      document.getElementById("tab-users").style.display = tabName === "users" ? "block" : "none";
-      document.getElementById("tab-settings").style.display = tabName === "settings" ? "block" : "none";
+      ["rewards", "vips", "users", "payments", "broadcast", "settings"].forEach(t => {
+        const el = document.getElementById("tab-" + t);
+        if (el) el.style.display = t === tabName ? "block" : "none";
+      });
 
       if (tabName === "payments") loadPaymentsData();
       if (tabName === "settings") loadRequisitesData();
+      if (tabName === "users") loadUsersTable();
+      if (tabName === "vips") loadVipsTable();
+    }
+
+    // Attitude Slider Helpers (-100% .. +100%)
+    function updateAttitudeBadge(val) {
+      const badge = document.getElementById("attitudeLiveBadge");
+      if (val === "" || val === null || val === undefined) {
+        badge.innerText = "Не менять";
+        badge.style.color = "#94a3b8";
+        return;
+      }
+      const n = Math.max(-100, Math.min(100, parseInt(val, 10) || 0));
+      if (n <= -50) {
+        badge.innerText = `🤬 ${n}% Лютая ненависть`;
+        badge.style.color = "#f43f5e";
+      } else if (n < 0) {
+        badge.innerText = `❄️ ${n}% Холод и обида`;
+        badge.style.color = "#38bdf8";
+      } else if (n === 0) {
+        badge.innerText = `😐 0% Равнодушие`;
+        badge.style.color = "#94a3b8";
+      } else if (n >= 95) {
+        badge.innerText = `❤️‍🔥 +${n}% Любовь до ужаса`;
+        badge.style.color = "#ec4899";
+      } else {
+        badge.innerText = `💕 +${n}% Симпатия`;
+        badge.style.color = "#34d399";
+      }
+    }
+
+    function syncAttitudeInputFromSlider(val) {
+      document.getElementById("rewardLove").value = val;
+      updateAttitudeBadge(val);
+    }
+
+    function syncAttitudeSliderFromInput(val) {
+      if (val !== "") {
+        document.getElementById("attitudeSlider").value = Math.max(-100, Math.min(100, parseInt(val, 10) || 0));
+      }
+      updateAttitudeBadge(val);
+    }
+
+    function setAttitudePreset(pct) {
+      document.getElementById("rewardLove").value = pct;
+      document.getElementById("attitudeSlider").value = pct;
+      updateAttitudeBadge(pct);
+    }
+
+    function clearAttitudePreset() {
+      document.getElementById("rewardLove").value = "";
+      updateAttitudeBadge("");
     }
 
     async function loadDashboardData() {
@@ -1040,276 +1005,95 @@
         loadPaymentsData();
         loadUsersTable();
         loadRequisitesData();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    async function loadPaymentsData() {
-      const tbody = document.getElementById("paymentsTableBody");
-      try {
-        const data = await apiRequest("/api/admin/payments");
-        const payments = data?.payments || [];
-
-        const pendingCount = payments.filter(p => p.status === "pending").length;
-        const badge = document.getElementById("badgePendingCount");
-        if (badge) {
-          badge.innerText = pendingCount;
-          badge.style.display = pendingCount > 0 ? "inline-block" : "none";
-        }
-
-        if (payments.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Заявок по чекам пока нет.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = payments.map(p => {
-          let statusHtml = "";
-          let actionsHtml = "";
-          if (p.status === "pending") {
-            statusHtml = `<span style="background: rgba(234, 179, 8, 0.2); color: #facc15; padding: 4px 10px; border-radius: 12px; font-weight: 700; font-size: 12px;">⏳ На проверке</span>`;
-            actionsHtml = `
-              <button class="btn-sm" style="background: rgba(0, 255, 136, 0.2); color: var(--neon-emerald); border-color: rgba(0, 255, 136, 0.4);" onclick="approvePayment('${p.id}')">✅ Одобрить</button>
-              <button class="btn-sm" style="color: #fca5a5" onclick="rejectPayment('${p.id}')">❌ Отклонить</button>
-            `;
-          } else if (p.status === "approved") {
-            statusHtml = `<span class="status-active">✅ Одобрен</span>`;
-            actionsHtml = `<span style="font-size: 11px; color: var(--text-muted);">Выдан</span>`;
-          } else {
-            statusHtml = `<span class="status-expired">❌ Отклонен</span>`;
-            actionsHtml = `<span style="font-size: 11px; color: var(--text-muted);">-</span>`;
-          }
-
-          const photoHtml = p.photoFileId
-            ? `<a href="/api/admin/photo?fileId=${encodeURIComponent(p.photoFileId)}&token=${getToken()}" target="_blank" style="color: var(--neon-cyan); text-decoration: underline; font-weight: 600;">🖼 Чек (фото)</a>`
-            : `<span style="color: var(--text-muted)">Без фото</span>`;
-
-          const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "";
-
-          return `
-            <tr>
-              <td><code style="font-size: 11px;">#${p.id.slice(-6)}</code><br><span style="font-size: 10px; color: var(--text-muted);">${dateStr}</span></td>
-              <td><b>${p.name || "Пользователь"}</b><br><span style="font-size: 11px; color: var(--text-muted);"><code>${p.userId}</code> ${p.username ? `@${p.username}` : ""}</span></td>
-              <td><b>${p.planTitle || "VIP"}</b></td>
-              <td><span style="color: var(--neon-gold); font-weight: 700;">${p.amount} ${p.currency || "RUB"}</span></td>
-              <td>${photoHtml}</td>
-              <td>${statusHtml}</td>
-              <td>${actionsHtml}</td>
-            </tr>
-          `;
-        }).join("");
-      } catch (e) {
-        console.error("loadPaymentsData error:", e);
-      }
-    }
-
-    async function approvePayment(orderId) {
-      if (!confirm("Подтвердить платёж и выдать VIP пользователю?")) return;
-      try {
-        const res = await apiRequest("/api/admin/approve-payment", "POST", { orderId });
-        if (res.ok) {
-          showToast("✅ Платёж подтвержден! VIP выдан пользователю.");
-          loadPaymentsData();
-          loadVipsTable();
-          loadDashboardData();
-        } else {
-          alert(res.error || "Ошибка подтверждения");
-        }
-      } catch (e) {
-        alert("Ошибка сервера при одобрении платежа");
-      }
-    }
-
-    async function rejectPayment(orderId) {
-      if (!confirm("Отклонить чек? Пользователь получит уведомление об ошибке оплаты.")) return;
-      try {
-        const res = await apiRequest("/api/admin/reject-payment", "POST", { orderId });
-        if (res.ok) {
-          showToast("❌ Чек отклонен.");
-          loadPaymentsData();
-        } else {
-          alert(res.error || "Ошибка отклонения");
-        }
-      } catch (e) {
-        alert("Ошибка сервера при отклонении");
-      }
-    }
-
-    async function loadRequisitesData() {
-      try {
-        const res = await apiRequest("/api/admin/requisites");
-        if (res.ok && res.requisites) {
-          const r = res.requisites;
-          if (document.getElementById("reqBankName")) document.getElementById("reqBankName").value = r.bankName || "";
-          if (document.getElementById("reqCardNumber")) document.getElementById("reqCardNumber").value = r.cardNumber || "";
-        }
       } catch (e) {}
     }
 
-    async function saveRequisites() {
-      const bankName = document.getElementById("reqBankName")?.value.trim() || "MasterCard";
-      const cardNumber = document.getElementById("reqCardNumber")?.value.trim() || "5302 0009 7083 9639";
-
+    // Quick VIP actions directly from God Mode tab
+    async function quickGiveVipFromGod(days) {
+      const userId = document.getElementById("rewardTargetUser").value.trim();
+      if (!userId) return showToast("Введите @username или ID пользователя!");
       try {
-        const res = await apiRequest("/api/admin/requisites", "POST", {
-          requisites: { bankName, cardNumber }
+        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
+        if (res.ok) {
+          showToast(`👑 VIP выдан пользователю ${userId}!`);
+          checkRewardTarget();
+          loadDashboardData();
+        } else {
+          showToast(res.error || "Ошибка выдачи VIP");
+        }
+      } catch (e) { showToast("Ошибка сети"); }
+    }
+
+    async function quickRevokeVipFromGod() {
+      const userId = document.getElementById("rewardTargetUser").value.trim();
+      if (!userId) return showToast("Введите @username или ID пользователя!");
+      try {
+        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
+        if (res.ok) {
+          showToast(`❌ VIP аннулирован у ${userId}!`);
+          checkRewardTarget();
+          loadDashboardData();
+        } else {
+          showToast(res.error || "Ошибка снятия VIP");
+        }
+      } catch (e) { showToast("Ошибка сети"); }
+    }
+
+    // Instant 1-click Love/Hate setter from Users Table
+    async function quickSetUserLove(userId, loveLevel) {
+      try {
+        const res = await apiRequest("/api/admin/give-reward", "POST", {
+          userId,
+          loveLevel,
+          clearMemory: true,
         });
         if (res.ok) {
-          showToast("💳 Номер карты успешно сохранён!");
+          showToast(loveLevel < 0 ? `🤬 Установлена ненависть (${loveLevel}%) для ${userId}` : `❤️‍🔥 Установлена любовь (+${loveLevel}%) для ${userId}`);
+          loadUsersTable();
+        } else {
+          showToast(res.error || "Ошибка");
         }
       } catch (e) {
-        alert("Ошибка сохранения реквизитов");
+        showToast("Ошибка сети");
       }
     }
 
-    async function loadVipsTable() {
-      const tbody = document.getElementById("vipsTableBody");
-      try {
-        const data = await apiRequest("/api/admin/vips");
-        if (!data || !data.vips || data.vips.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Активных VIP пока нет. Выдайте первый VIP через форму выше!</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = data.vips.map(v => {
-          let statusBadge = "";
-          let expireText = "";
-          if (v.permanent) {
-            statusBadge = `<span class="status-forever">👑 Навсегда</span>`;
-            expireText = "Бессрочно";
-          } else if (v.expiresAt && v.expiresAt > Date.now()) {
-            statusBadge = `<span class="status-active">Активен</span>`;
-            expireText = new Date(v.expiresAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
-          } else {
-            statusBadge = `<span class="status-expired">Истёк</span>`;
-            expireText = "Срок вышел";
-          }
-
-          const name = v.name || v.username || "Дарлинг";
-          const stars = v.starsPaid ? `${v.starsPaid} ⭐️` : "Подарок Создателя";
-
-          return `
-            <tr>
-              <td><code>${v.userId}</code></td>
-              <td><b>${name}</b> ${v.username ? `<span style="color: var(--text-muted)">(@${v.username})</span>` : ""}</td>
-              <td>${statusBadge}</td>
-              <td>${expireText}</td>
-              <td>${stars}</td>
-              <td>
-                <button class="btn-sm" onclick="quickExtendVip('${v.userId}', 30)">+30 дней</button>
-                <button class="btn-sm" style="color: #fca5a5" onclick="quickTakeVip('${v.userId}')">Снять</button>
-              </td>
-            </tr>
-          `;
-        }).join("");
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--neon-red);">Ошибка загрузки данных VIP</td></tr>`;
-      }
-    }
-
-    async function handleGiveVip(e) {
-      e.preventDefault();
-      const userId = document.getElementById("vipUserId").value.trim();
-      const days = parseInt(document.getElementById("vipDays").value);
-      if (!userId) return;
-
-      try {
-        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
-        if (res.ok) {
-          const nameLabel = res.name ? `${res.name} (${res.targetId})` : userId;
-          showToast(`👑 VIP успешно выдан пользователю ${nameLabel}!`);
-          document.getElementById("vipUserId").value = "";
-          loadDashboardData();
-        } else {
-          alert(res.error || "Ошибка выдачи VIP");
-        }
-      } catch (err) {
-        alert("Ошибка сети при выдаче VIP");
-      }
-    }
-
-    async function handleTakeVipFromInput() {
-      const userId = document.getElementById("vipUserId").value.trim();
-      if (!userId) {
-        alert("Введите Telegram ID или @username пользователя для снятия VIP!");
-        return;
-      }
-      if (!confirm(`Вы точно хотите снять VIP-статус у пользователя «${userId}»?`)) return;
-
-      try {
-        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
-        if (res.ok) {
-          showToast(`❌ VIP статус успешно аннулирован у ${userId}`);
-          document.getElementById("vipUserId").value = "";
-          loadDashboardData();
-        } else {
-          alert(res.error || "Ошибка снятия VIP");
-        }
-      } catch (err) {
-        alert("Ошибка сети при снятии VIP");
-      }
-    }
-
-    async function quickExtendVip(userId, days) {
-      try {
-        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
-        if (res.ok) {
-          showToast(`👑 VIP продлён на +${days} дней!`);
-          loadDashboardData();
-        }
-      } catch (e) { alert("Ошибка продления"); }
-    }
-
-    async function quickTakeVip(userId) {
-      if (!confirm(`Вы уверены, что хотите снять VIP статус у пользователя ${userId}?`)) return;
-      try {
-        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
-        if (res.ok) {
-          showToast(`❌ VIP статус снят.`);
-          loadDashboardData();
-        }
-      } catch (e) { alert("Ошибка снятия VIP"); }
-    }
-
-    // Поиск и проверка пользователя для вкладки Наград
     async function checkRewardTarget() {
       const userQuery = document.getElementById("rewardTargetUser").value.trim();
-      if (!userQuery) {
-        alert("Введите ID или @username пользователя для проверки!");
-        return;
-      }
+      if (!userQuery) return showToast("Введите ID или @username!");
       try {
         const res = await apiRequest(`/api/admin/find-user?query=${encodeURIComponent(userQuery)}`);
         if (res.ok && res.user) {
           const u = res.user;
           document.getElementById("rewardUserCard").style.display = "block";
-          document.getElementById("rewardUserName").innerHTML = `<b>${u.name}</b> ${u.username ? `(@${u.username})` : ""}`;
-          const vipStr = u.isVip ? "👑 Активен" : "Обычный";
-          const titleStr = u.customTitle ? ` | Титул: «${u.customTitle}»` : "";
-          document.getElementById("rewardUserInfo").innerText = `ID: ${u.userId} | VIP: ${vipStr} | Молнии: ${u.bolts} ⚡ | Любовь: ${u.loveLevel}%${titleStr}`;
-          showToast(`✅ Пользователь ${u.name} найден!`);
+          document.getElementById("rewardUserName").innerHTML = `<b>${u.name}</b> ${u.username ? `(@${u.username})` : ""} — <code>${u.userId}</code>`;
+          const vipStr = u.isVip ? "👑 Активен" : "Нет";
+          document.getElementById("rewardUserInfo").innerText = `VIP: ${vipStr} | Отношение Лам: ${u.loveLevel}% | Молнии: ${u.bolts} ⚡${u.customTitle ? ` | Титул: ${u.customTitle}` : ""}`;
+          setAttitudePreset(u.loveLevel);
+          showToast(`✅ Профиль ${u.name} загружен`);
         } else {
-          alert(res.error || "Пользователь не найден в базе данных");
+          showToast(res.error || "Пользователь ещё не писал боту (но можно задать по @username заранее!)");
           document.getElementById("rewardUserCard").style.display = "none";
         }
       } catch (e) {
-        alert("Пользователь не найден");
-        document.getElementById("rewardUserCard").style.display = "none";
+        showToast("Ошибка поиска профиля");
       }
     }
 
-    // Отправка подарков и бонусов
     async function submitReward() {
       const userId = document.getElementById("rewardTargetUser").value.trim();
-      if (!userId) {
-        alert("Укажите ID или @username пользователя!");
-        return;
-      }
+      if (!userId) return showToast("Укажите ID или @username получателя!");
+
       const vipDays = document.getElementById("rewardVipDays").value;
       const bolts = document.getElementById("rewardBolts").value;
       const loveLevel = document.getElementById("rewardLove").value;
       const customTitle = document.getElementById("rewardTitle").value;
+      const personalityKey = document.getElementById("rewardPersonality").value;
+      const langKey = document.getElementById("rewardLang").value;
+      const dmText = document.getElementById("rewardDmText").value.trim();
       const resetLimits = document.getElementById("rewardResetEnergy").checked;
+      const clearMemory = document.getElementById("rewardClearMemory").checked;
+      const silent = document.getElementById("rewardSilent").checked;
 
       try {
         const res = await apiRequest("/api/admin/give-reward", "POST", {
@@ -1318,17 +1102,23 @@
           bolts,
           loveLevel,
           customTitle: customTitle !== "" ? customTitle : undefined,
+          personalityKey: personalityKey || undefined,
+          langKey: langKey || undefined,
+          dmText: dmText || undefined,
           resetLimits,
+          clearMemory,
+          silent,
         });
         if (res.ok) {
-          const perks = (res.perksAwarded || []).join(", ") || "Бонусы обновлены";
-          showToast(`🎁 Награды успешно выданы!\n${perks}`);
+          const perks = (res.perksAwarded || []).join(" • ") || "Настройки применены";
+          showToast(`⚡ Выполнено: ${perks}`);
+          document.getElementById("rewardDmText").value = "";
           loadDashboardData();
         } else {
-          alert(res.error || "Ошибка выдачи наград");
+          showToast(res.error || "Ошибка применения");
         }
       } catch (e) {
-        alert("Ошибка сети при выдаче наград");
+        showToast("Ошибка сети");
       }
     }
 
@@ -1336,7 +1126,100 @@
       document.getElementById("rewardTargetUser").value = targetIdentifier;
       switchTab("rewards");
       checkRewardTarget();
-      window.scrollTo({ top: 300, behavior: "smooth" });
+      window.scrollTo({ top: 180, behavior: "smooth" });
+    }
+
+    async function loadVipsTable() {
+      const tbody = document.getElementById("vipsTableBody");
+      try {
+        const data = await apiRequest("/api/admin/vips");
+        if (!data?.vips?.length) {
+          tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Активных VIP пока нет</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.vips.map(v => {
+          let statusBadge = v.permanent
+            ? `<span class="status-forever">👑 Навсегда</span>`
+            : (v.expiresAt > Date.now() ? `<span class="status-active">Активен</span>` : `<span class="status-expired">Истёк</span>`);
+          let expireText = v.permanent
+            ? "Бессрочно"
+            : (v.expiresAt ? new Date(v.expiresAt).toLocaleDateString("ru-RU") : "-");
+          const name = v.name || v.username || "Дарлинг";
+          const stars = v.starsPaid ? `${v.starsPaid} ⭐️` : "Выдан Создателем";
+
+          return `
+            <tr>
+              <td><code>${v.userId}</code></td>
+              <td><b>${name}</b> ${v.username ? `<span style="color:var(--text-muted)">(@${v.username})</span>` : ""}</td>
+              <td>${statusBadge}</td>
+              <td>${expireText}</td>
+              <td>${stars}</td>
+              <td>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn-sm" onclick="quickExtendVip('${v.userId}', 30)">+30 дн.</button>
+                  <button class="btn-sm" style="color:#fda4af;" onclick="quickTakeVip('${v.userId}')">❌ Забрать VIP</button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {}
+    }
+
+    async function handleGiveVip(e) {
+      e.preventDefault();
+      const userId = document.getElementById("vipUserId").value.trim();
+      const days = parseInt(document.getElementById("vipDays").value, 10);
+      if (!userId) return;
+      try {
+        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
+        if (res.ok) {
+          showToast(`👑 VIP выдан: ${userId}`);
+          document.getElementById("vipUserId").value = "";
+          loadDashboardData();
+        } else {
+          showToast(res.error || "Ошибка выдачи VIP");
+        }
+      } catch (err) {
+        showToast("Ошибка сети");
+      }
+    }
+
+    async function handleTakeVipFromInput() {
+      const userId = document.getElementById("vipUserId").value.trim();
+      if (!userId) return showToast("Введите ID или @username для снятия VIP");
+      try {
+        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
+        if (res.ok) {
+          showToast(`❌ VIP снят у ${userId}`);
+          document.getElementById("vipUserId").value = "";
+          loadDashboardData();
+        } else {
+          showToast(res.error || "Ошибка снятия VIP");
+        }
+      } catch (err) {
+        showToast("Ошибка сети");
+      }
+    }
+
+    async function quickExtendVip(userId, days) {
+      try {
+        const res = await apiRequest("/api/admin/give-vip", "POST", { userId, days });
+        if (res.ok) {
+          showToast(`👑 VIP выдан (${days === -1 ? 'Навсегда' : '+' + days + ' дн.'})`);
+          loadDashboardData();
+        }
+      } catch (e) { showToast("Ошибка"); }
+    }
+
+    async function quickTakeVip(userId) {
+      try {
+        const res = await apiRequest("/api/admin/take-vip", "POST", { userId });
+        if (res.ok) {
+          showToast(`❌ VIP снят у ${userId}`);
+          loadDashboardData();
+        }
+      } catch (e) { showToast("Ошибка снятия VIP"); }
     }
 
     async function loadUsersTable() {
@@ -1345,9 +1228,7 @@
         const data = await apiRequest("/api/admin/users");
         allUsersData = data.users || [];
         renderUsersTable(allUsersData);
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Ошибка загрузки пользователей</td></tr>`;
-      }
+      } catch (e) {}
     }
 
     function renderUsersTable(users) {
@@ -1357,43 +1238,41 @@
         return;
       }
 
-      tbody.innerHTML = users.slice(0, 50).map(u => {
+      tbody.innerHTML = users.slice(0, 60).map(u => {
         const vipBadge = u.isVip ? `<span class="status-active">VIP 👑</span>` : `<span style="color: var(--text-muted)">Нет</span>`;
         const targetHandle = u.username ? `@${u.username}` : u.userId;
-        const takeBtn = u.isVip ? `<button class="btn-sm" style="color: #fca5a5" onclick="quickTakeVip('${u.userId}')">Снять VIP</button>` : "";
 
-        let statusBadge = `<span style="color:var(--text-muted); font-size:11px;">0/3</span>`;
+        const loveVal = typeof u.loveLevel === 'number' ? u.loveLevel : 75;
+        let loveBadge = `<span style="color:#34d399; font-weight:700;">+${loveVal}%</span>`;
+        if (loveVal <= -50) loveBadge = `<span style="color:#f43f5e; font-weight:800;">🤬 ${loveVal}%</span>`;
+        else if (loveVal < 0) loveBadge = `<span style="color:#38bdf8; font-weight:700;">❄️ ${loveVal}%</span>`;
+        else if (loveVal >= 95) loveBadge = `<span style="color:#ec4899; font-weight:800;">❤️‍🔥 +${loveVal}%</span>`;
+
+        let statusBadge = `<span style="color:var(--text-muted); font-size:11px;">ОК</span>`;
         if (u.isBanned) {
-          statusBadge = `<span style="background:rgba(239,68,68,0.25); color:#f87171; font-weight:800; padding:2px 8px; border-radius:10px; font-size:11px;">⛔ БАН</span>`;
+          statusBadge = `<span class="status-expired">⛔ БАН</span>`;
         } else if (u.warns > 0) {
-          statusBadge = `<span style="background:rgba(245,158,11,0.25); color:#fbbf24; font-weight:700; padding:2px 8px; border-radius:10px; font-size:11px;">⚠️ ${u.warns}/3</span>`;
+          statusBadge = `<span style="color:#fbbf24; font-weight:700; font-size:11px;">⚠️ ${u.warns}/3</span>`;
         }
 
-        let modBtns = "";
-        if (u.isBanned) {
-          modBtns = `<button class="btn-sm" style="background:rgba(34,197,94,0.2); color:#4ade80;" onclick="handleUnbanUser('${targetHandle}')">🔓 Разбанить</button>`;
-        } else {
-          modBtns = `
-            <button class="btn-sm" style="background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);" onclick="handleWarnUser('${targetHandle}')">⚠️ Варн</button>
-            <button class="btn-sm" style="color:#f87171;" onclick="handleBanUser('${targetHandle}')">⛔ Бан</button>
-            ${u.warns > 0 ? `<button class="btn-sm" style="color:#94a3b8;" onclick="handleUnwarnUser('${targetHandle}')">Снять варн</button>` : ""}
-          `;
-        }
+        const vipBtn = u.isVip
+          ? `<button class="btn-sm" style="color:#fda4af;" onclick="quickTakeVip('${u.userId}')">❌ Забрать VIP</button>`
+          : `<button class="btn-sm" style="color:#fbbf24;" onclick="quickExtendVip('${u.userId}', 30)">👑 +VIP</button>`;
 
         return `
           <tr>
             <td><code>${u.userId}</code></td>
-            <td><b>${u.name || "Пользователь"}</b> ${u.username ? `(@${u.username})` : ""}</td>
+            <td><b>${u.name || "Пользователь"}</b> ${u.username ? `<span style="color:var(--text-muted)">(@${u.username})</span>` : ""}</td>
             <td>${u.count || 0}</td>
-            <td>${u.loveLevel || 75}%</td>
+            <td>${loveBadge}</td>
             <td>${vipBadge}</td>
             <td>${statusBadge}</td>
             <td>
-              <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                <button class="btn-sm" onclick="setVipInput('${targetHandle}')">👑 VIP</button>
-                <button class="btn-sm" style="background: rgba(192, 132, 252, 0.2); color: #c084fc; border-color: rgba(192, 132, 252, 0.4);" onclick="openRewardForUser('${targetHandle}')">🎁 Наградить</button>
-                ${takeBtn}
-                ${modBtns}
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                ${vipBtn}
+                <button class="btn-sm" style="color:#fda4af;" title="Лам будет люто ненавидеть (-100%)" onclick="quickSetUserLove('${targetHandle}', -100)">🤬 -100%</button>
+                <button class="btn-sm" style="color:#f9a8d4;" title="Лам будет безумно любить (+100%)" onclick="quickSetUserLove('${targetHandle}', 100)">❤️‍🔥 +100%</button>
+                <button class="btn-sm" style="color:#c084fc;" onclick="openRewardForUser('${targetHandle}')">⚡ Управление</button>
               </div>
             </td>
           </tr>
@@ -1401,191 +1280,172 @@
       }).join("");
     }
 
-    async function executeFastModeration() {
-      const identifier = document.getElementById("modUserTarget").value.trim();
-      const action = document.getElementById("modActionType").value;
-      const reason = document.getElementById("modReason").value.trim() || "Нарушение правил";
-
-      if (!identifier) {
-        alert("Укажите @username или ID пользователя!");
-        return;
-      }
-
-      try {
-        if (action === "warn") {
-          const res = await apiRequest("/api/admin/warn-user", "POST", { identifier, reason });
-          if (res.ok) {
-            showToast(`⚠️ Варн выдан! Всего варнов: ${res.count}/3${res.isBanned ? ' (АВТОБАН!)' : ''}`);
-            loadUsersTable();
-          } else {
-            alert(res.error || "Ошибка выдачи варна");
-          }
-        } else if (action === "unwarn") {
-          const res = await apiRequest("/api/admin/unwarn-user", "POST", { identifier });
-          if (res.ok) {
-            showToast(`✅ Варн снят! Осталось: ${res.count}/3`);
-            loadUsersTable();
-          } else {
-            alert(res.error || "Ошибка снятия варна");
-          }
-        } else if (action === "ban") {
-          if (!confirm(`Точно заблокировать ${identifier}?`)) return;
-          const res = await apiRequest("/api/admin/ban-user", "POST", { identifier, reason });
-          if (res.ok) {
-            showToast(`⛔ Пользователь заблокирован!`);
-            loadUsersTable();
-          } else {
-            alert(res.error || "Ошибка блокировки");
-          }
-        } else if (action === "unban") {
-          const res = await apiRequest("/api/admin/unban-user", "POST", { identifier });
-          if (res.ok) {
-            showToast(`🔓 Пользователь разблокирован!`);
-            loadUsersTable();
-          } else {
-            alert(res.error || "Ошибка разблокировки");
-          }
-        }
-      } catch (e) {
-        alert("Ошибка выполнения действия модерации");
-      }
-    }
-
-    async function handleWarnUser(targetHandle) {
-      const reason = prompt(`Причина предупреждения для ${targetHandle}:`, "Нарушение правил сообщества");
-      if (reason === null) return;
-      try {
-        const res = await apiRequest("/api/admin/warn-user", "POST", { identifier: targetHandle, reason });
-        if (res.ok) {
-          showToast(`⚠️ Варн выдан! Всего варнов: ${res.count}/3${res.isBanned ? ' (АВТОБАН!)' : ''}`);
-          loadUsersTable();
-        } else {
-          alert(res.error || "Ошибка");
-        }
-      } catch (e) {
-        alert("Ошибка сети");
-      }
-    }
-
-    async function handleUnwarnUser(targetHandle) {
-      try {
-        const res = await apiRequest("/api/admin/unwarn-user", "POST", { identifier: targetHandle });
-        if (res.ok) {
-          showToast(`✅ Варн снят! Осталось: ${res.count}/3`);
-          loadUsersTable();
-        } else {
-          alert(res.error || "Ошибка");
-        }
-      } catch (e) {
-        alert("Ошибка сети");
-      }
-    }
-
-    async function handleBanUser(targetHandle) {
-      const reason = prompt(`Причина блокировки для ${targetHandle}:`, "Решение администратора");
-      if (reason === null) return;
-      try {
-        const res = await apiRequest("/api/admin/ban-user", "POST", { identifier: targetHandle, reason });
-        if (res.ok) {
-          showToast(`⛔ Пользователь заблокирован!`);
-          loadUsersTable();
-        } else {
-          alert(res.error || "Ошибка");
-        }
-      } catch (e) {
-        alert("Ошибка сети");
-      }
-    }
-
-    async function handleUnbanUser(targetHandle) {
-      if (!confirm(`Разблокировать пользователя ${targetHandle}?`)) return;
-      try {
-        const res = await apiRequest("/api/admin/unban-user", "POST", { identifier: targetHandle });
-        if (res.ok) {
-          showToast(`🔓 Пользователь разблокирован!`);
-          loadUsersTable();
-        } else {
-          alert(res.error || "Ошибка");
-        }
-      } catch (e) {
-        alert("Ошибка сети");
-      }
-    }
-
-    function setVipInput(targetHandle) {
-      document.getElementById("vipUserId").value = targetHandle;
-      switchTab('vips');
-      window.scrollTo({ top: 300, behavior: "smooth" });
-    }
-
     function filterUsersTable() {
       const q = document.getElementById("searchUser").value.toLowerCase().trim();
-      if (!q) {
-        renderUsersTable(allUsersData);
-        return;
-      }
-      const filtered = allUsersData.filter(u => 
-        String(u.userId).includes(q) || 
+      if (!q) return renderUsersTable(allUsersData);
+      const filtered = allUsersData.filter(u =>
+        String(u.userId).includes(q) ||
         (u.name && u.name.toLowerCase().includes(q)) ||
         (u.username && u.username.toLowerCase().includes(q))
       );
       renderUsersTable(filtered);
     }
 
+    async function executeFastModeration() {
+      const identifier = document.getElementById("modUserTarget").value.trim();
+      const action = document.getElementById("modActionType").value;
+      const reason = document.getElementById("modReason").value.trim() || "Решение Создателя";
+      if (!identifier) return showToast("Укажите @username или ID!");
+
+      try {
+        const endpointMap = {
+          warn: "/api/admin/warn-user",
+          unwarn: "/api/admin/unwarn-user",
+          ban: "/api/admin/ban-user",
+          unban: "/api/admin/unban-user"
+        };
+        const res = await apiRequest(endpointMap[action], "POST", { identifier, reason });
+        if (res.ok) {
+          showToast("✅ Действие модерации выполнено!");
+          loadUsersTable();
+        } else {
+          showToast(res.error || "Ошибка");
+        }
+      } catch (e) {
+        showToast("Ошибка сети");
+      }
+    }
+
+    async function loadPaymentsData() {
+      const tbody = document.getElementById("paymentsTableBody");
+      try {
+        const data = await apiRequest("/api/admin/payments");
+        const payments = data?.payments || [];
+        const pendingCount = payments.filter(p => p.status === "pending").length;
+        const badge = document.getElementById("badgePendingCount");
+        if (badge) {
+          badge.innerText = pendingCount;
+          badge.style.display = pendingCount > 0 ? "inline-block" : "none";
+        }
+        if (!payments.length) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Заявок пока нет</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = payments.map(p => {
+          let statusHtml = `<span class="status-expired">Отклонен</span>`;
+          let actionsHtml = `-`;
+          if (p.status === "pending") {
+            statusHtml = `<span style="color:#fbbf24; font-weight:700;">⏳ Ожидает</span>`;
+            actionsHtml = `
+              <button class="btn-sm" style="color:#34d399;" onclick="approvePayment('${p.id}')">✅ Выдать VIP</button>
+              <button class="btn-sm" style="color:#fda4af;" onclick="rejectPayment('${p.id}')">❌ Отказать</button>
+            `;
+          } else if (p.status === "approved") {
+            statusHtml = `<span class="status-active">✅ Одобрен</span>`;
+            actionsHtml = `Выдан`;
+          }
+          const photoHtml = p.photoFileId
+            ? `<a href="/api/admin/photo?fileId=${encodeURIComponent(p.photoFileId)}&token=${getToken()}" target="_blank" style="color:#38bdf8; font-weight:600;">🖼 Открыть чек</a>`
+            : `Без фото`;
+
+          return `
+            <tr>
+              <td><code>#${p.id.slice(-6)}</code></td>
+              <td><b>${p.name || "Пользователь"}</b><br><code>${p.userId}</code></td>
+              <td>${p.planTitle || "VIP"}</td>
+              <td><b style="color:#fbbf24;">${p.amount}</b></td>
+              <td>${photoHtml}</td>
+              <td>${statusHtml}</td>
+              <td>${actionsHtml}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {}
+    }
+
+    async function approvePayment(orderId) {
+      try {
+        const res = await apiRequest("/api/admin/approve-payment", "POST", { orderId });
+        if (res.ok) {
+          showToast("✅ Платёж одобрен, VIP выдан!");
+          loadPaymentsData();
+          loadDashboardData();
+        }
+      } catch (e) { showToast("Ошибка"); }
+    }
+
+    async function rejectPayment(orderId) {
+      try {
+        const res = await apiRequest("/api/admin/reject-payment", "POST", { orderId });
+        if (res.ok) {
+          showToast("❌ Заявка отклонена");
+          loadPaymentsData();
+        }
+      } catch (e) { showToast("Ошибка"); }
+    }
+
+    async function loadRequisitesData() {
+      try {
+        const res = await apiRequest("/api/admin/requisites");
+        if (res.ok && res.requisites) {
+          document.getElementById("reqBankName").value = res.requisites.bankName || "MasterCard";
+          document.getElementById("reqCardNumber").value = res.requisites.cardNumber || "5302 0009 7083 9639";
+        }
+      } catch (e) {}
+    }
+
+    async function saveRequisites() {
+      const bankName = document.getElementById("reqBankName").value.trim() || "MasterCard";
+      const cardNumber = document.getElementById("reqCardNumber").value.trim() || "5302 0009 7083 9639";
+      try {
+        const res = await apiRequest("/api/admin/requisites", "POST", { requisites: { bankName, cardNumber } });
+        if (res.ok) showToast("💳 Реквизиты сохранены!");
+      } catch (e) { showToast("Ошибка"); }
+    }
+
     function applyTemplate(type) {
       const area = document.getElementById("broadcastText");
       if (type === "promo") {
-        area.value = "⚡ <b>ГОРЯЧАЯ АКЦИЯ ОТ ЛАМ!</b> 💚👑\n\nТолько сегодня вечный VIP-статус и бесконечная энергия со скидкой 20%! Напиши команду /vip прямо сейчас и забери свою золотую корону 💕";
+        area.value = "👑 <b>VIP ПРЕМИУМ — ПОЛНЫЙ ДОСТУП К ЛАМ!</b> ⚡\n\nОткрой все 6 эксклюзивных характеров (Цундере, Яндере, Дерзкая Госпожа, Сенсей, Гот-Лам), 3 языка (RU / EN / JP) и безлимитное общение 24/7! Нажми /vip 💕";
       } else if (type === "feature") {
-        area.value = "✨ <b>ОБНОВЛЕНИЕ ОНИ-ПРИНЦЕССЫ!</b> ⚡\n\nДарлинг, я научилась рисовать ультра-красивые арты и генерировать картинки в HD! Напиши мне <code>/art они-принцесса в неоновом городе</code> и оцени мой шедевр 🎨💕";
+        area.value = "🎭 <b>6 ХАРАКТЕРОВ И 3 ЯЗЫКА В @akilum_bot!</b> ✨\n\nДарлинг, теперь ты можешь менять мой характер и язык общения (Русский, English, 日本語) прямо в меню /characters! Попробуй прямо сейчас 💕";
       } else if (type === "morning") {
-        area.value = "☀️ <b>Доброе утро, Дарлинг!</b> 💕\n\nНадеюсь, ты выспался? Я уже зарядила свои они-рожки на 100 000 Вольт и готова помогать тебе с учёбой, кодом и любыми задачами! Как твоё настроение сегодня? ✨";
+        area.value = "☀️ <b>Привет, Дарлинг!</b> 💕\n\nЯ на связи 24/7 и готова общаться, решать любые задачи и писать код! Напиши мне в чат ⚡";
       }
     }
 
     async function handleSendBroadcast() {
       const text = document.getElementById("broadcastText").value.trim();
-      if (!text) return alert("Введите текст сообщения для рассылки!");
-      if (!confirm("Вы уверены, что хотите запустить рассылку по ВСЕМ пользователям бота?")) return;
-
+      if (!text) return showToast("Введите текст рассылки!");
       const resEl = document.getElementById("broadcastResult");
       resEl.style.display = "block";
-      resEl.innerText = "⏳ Рассылка выполняется... Пожалуйста, не закрывайте страницу.";
-
+      resEl.innerText = "⏳ Выполняется рассылка...";
       try {
         const res = await apiRequest("/api/admin/broadcast", "POST", { text });
         if (res.ok) {
-          resEl.innerText = `✅ Рассылка завершена! Доставлено: ${res.sent} из ${res.total} (ошибок: ${res.failed}).`;
-          showToast("Рассылка успешно выполнена!");
-        } else {
-          resEl.innerText = "Ошибка рассылки: " + (res.error || "Неизвестная ошибка");
+          resEl.innerText = `✅ Доставлено: ${res.sent} из ${res.total}`;
+          showToast("Рассылка завершена!");
         }
-      } catch (err) {
-        resEl.innerText = "Ошибка соединения при рассылке";
+      } catch (e) {
+        resEl.innerText = "Ошибка рассылки";
       }
     }
 
     async function saveSettings() {
-      const freeLimit = parseInt(document.getElementById("settingFreeLimit").value);
+      const dailyFreeLimit = parseInt(document.getElementById("settingFreeLimit").value, 10);
       try {
-        const res = await apiRequest("/api/admin/settings", "POST", { dailyFreeLimit: freeLimit });
-        if (res.ok) {
-          showToast("⚙️ Настройки сохранены!");
-        }
-      } catch (e) { alert("Ошибка сохранения настроек"); }
+        const res = await apiRequest("/api/admin/settings", "POST", { dailyFreeLimit });
+        if (res.ok) showToast("⚙️ Лимит сохранён!");
+      } catch (e) {}
     }
 
     async function handleResetAllLimits() {
-      if (!confirm("Сбросить ежедневную энергию всем пользователям?")) return;
       try {
         const res = await apiRequest("/api/admin/reset-limits", "POST");
-        if (res.ok) {
-          showToast("⚡ Все лимиты энергии сброшены!");
-        }
-      } catch (e) { alert("Ошибка сброса"); }
+        if (res.ok) showToast("⚡ Все дневные лимиты сброшены!");
+      } catch (e) {}
     }
 
-    // Инициализация при загрузке
     checkAuth();
   </script>
 </body>

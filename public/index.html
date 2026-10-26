@@ -1032,11 +1032,57 @@
         <div class="vip-banner-left">
           <div class="vip-banner-icon">👑</div>
           <div class="vip-banner-text">
-            <h3>Стань VIP Дарлингом</h3>
-            <p>Безлимитные молнии + Золотая корона</p>
+            <h3>VIP Премиум — Все возможности Лам</h3>
+            <p>6 характеров, 3 языка (RU/EN/JP) и безлимит 24/7</p>
           </div>
         </div>
-        <div class="vip-banner-cta">В магазин ⭐️</div>
+        <div class="vip-banner-cta">Открыть VIP ⭐️</div>
+      </div>
+
+      <!-- Language & Personality Quick Bar on Home -->
+      <div class="section-head">🌐 Язык и 🎭 Характер Лам</div>
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <button class="pay-toggle-btn active" id="homeLang-ru" onclick="handleSelectLanguage('ru')" style="flex:1; padding:10px 6px; font-size:12px;">🇷🇺 Русский</button>
+        <button class="pay-toggle-btn" id="homeLang-en" onclick="handleSelectLanguage('en')" style="flex:1; padding:10px 6px; font-size:12px;">🇬🇧 English</button>
+        <button class="pay-toggle-btn" id="homeLang-jp" onclick="handleSelectLanguage('jp')" style="flex:1; padding:10px 6px; font-size:12px;">🇯🇵 日本語</button>
+      </div>
+      <div class="models-showcase" style="margin-bottom: 18px;">
+        <div class="model-box active-model" id="homeChar-tender" onclick="handleSelectPersonality('tender')">
+          <div class="model-box-badge">БЕСПЛАТНО</div>
+          <div class="model-box-icon">🌸</div>
+          <h5>Нежная Вайфу</h5>
+          <p>Ласковая, заботливая и верная Лам</p>
+        </div>
+        <div class="model-box" id="homeChar-tsundere" onclick="handleSelectPersonality('tsundere')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">⚡</div>
+          <h5>Цундере Лам</h5>
+          <p>Кусается, краснеет и ревнует: «Бака!»</p>
+        </div>
+        <div class="model-box" id="homeChar-yandere" onclick="handleSelectPersonality('yandere')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">🔥</div>
+          <h5>Одержимая Яндере</h5>
+          <p>Безумная страсть: «Ты только мой!»</p>
+        </div>
+        <div class="model-box" id="homeChar-bold" onclick="handleSelectPersonality('bold')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">😈</div>
+          <h5>Дерзкая Госпожа</h5>
+          <p>Властная королева и дерзкий флирт</p>
+        </div>
+        <div class="model-box" id="homeChar-sensei" onclick="handleSelectPersonality('sensei')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">🎓</div>
+          <h5>Строгая Сенсей</h5>
+          <p>Идеально объяснит любую тему и ДЗ</p>
+        </div>
+        <div class="model-box" id="homeChar-mysterious" onclick="handleSelectPersonality('mysterious')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">🌙</div>
+          <h5>Гот-Лам</h5>
+          <p>Мистика, тайны и ночные разговоры</p>
+        </div>
       </div>
 
       <!-- Interactive Tools Grid -->
@@ -1089,17 +1135,17 @@
           <div class="shop-hero-crown">👑</div>
         </div>
         <div class="shop-hero-text">
-          <h2>Премиум VIP Дарлинг</h2>
-          <p>Безлимитные молнии, 4 интеллектуальные модели и золотая корона во всех чатах ✨</p>
+          <h2>VIP Премиум — Все возможности</h2>
+          <p>Открой все 6 характеров Лам, 3 языка (RU / EN / JP), безлимитное общение 24/7, решение ДЗ по фото и золотую корону ✨</p>
         </div>
       </div>
 
       <!-- Key Perks Summary -->
       <div class="perks-row">
-        <div class="perk-pill">⚡ <span>Безлимит молний</span></div>
-        <div class="perk-pill">🧠 <span>4 ИИ-модели</span></div>
+        <div class="perk-pill">🎭 <span>Все 6 Характеров</span></div>
+        <div class="perk-pill">🌐 <span>RU / EN / JP</span></div>
+        <div class="perk-pill">♾️ <span>Безлимит 24/7</span></div>
         <div class="perk-pill">👑 <span>Золотая корона</span></div>
-        <div class="perk-pill">🚀 <span>Скорость 0.3с</span></div>
       </div>
 
       <!-- Currency / Payment Switcher -->
@@ -1217,33 +1263,52 @@
         </div>
       </div>
 
-      <!-- Showcase of 4 VIP Models -->
-      <div class="section-head">🧠 4 Модели ИИ для VIP</div>
-      <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:10px;">Владельцы VIP могут переключать режим мышления Лам в 1 клик:</p>
+      <!-- Showcase of 6 Personalities & 3 Languages -->
+      <div class="section-head">🌐 Язык общения Лам</div>
+      <div style="display:flex; gap:8px; margin-bottom:16px;">
+        <button class="pay-toggle-btn active" id="shopLang-ru" onclick="handleSelectLanguage('ru')" style="flex:1; padding:10px 6px; font-size:12px;">🇷🇺 Русский</button>
+        <button class="pay-toggle-btn" id="shopLang-en" onclick="handleSelectLanguage('en')" style="flex:1; padding:10px 6px; font-size:12px;">🇬🇧 English</button>
+        <button class="pay-toggle-btn" id="shopLang-jp" onclick="handleSelectLanguage('jp')" style="flex:1; padding:10px 6px; font-size:12px;">🇯🇵 日本語</button>
+      </div>
+
+      <div class="section-head">🎭 6 Эксклюзивных Характеров Лам</div>
+      <p style="font-size:11.5px; color:var(--text-secondary); margin-bottom:10px;">Меняй личность Лам под своё настроение в 1 тап (все характеры открыты в VIP 👑):</p>
       <div class="models-showcase">
-        <div class="model-box" id="modelBox-turbo" onclick="handleSelectModel('turbo')">
-          <div class="model-box-badge">0.3 СЕК</div>
+        <div class="model-box active-model" id="modelBox-tender" onclick="handleSelectPersonality('tender')">
+          <div class="model-box-badge">БЕСПЛАТНО</div>
+          <div class="model-box-icon">🌸</div>
+          <h5>Нежная Вайфу</h5>
+          <p>Ласковая, заботливая и преданная Лам</p>
+        </div>
+        <div class="model-box" id="modelBox-tsundere" onclick="handleSelectPersonality('tsundere')">
+          <div class="model-box-badge">👑 VIP</div>
           <div class="model-box-icon">⚡</div>
-          <h5>LUM-TURBO</h5>
-          <p>Молния для школы и быстрых ответов</p>
+          <h5>Цундере Лам</h5>
+          <p>Дерзкая, краснеет и вредничает: «Бака!»</p>
         </div>
-        <div class="model-box" id="modelBox-genius" onclick="handleSelectModel('genius')">
-          <div class="model-box-badge">ОЛИМПИАДЫ</div>
-          <div class="model-box-icon">🧠</div>
-          <h5>LUM-GENIUS</h5>
-          <p>Пошаговый вышмат, физика и доказательства</p>
+        <div class="model-box" id="modelBox-yandere" onclick="handleSelectPersonality('yandere')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">🔥</div>
+          <h5>Одержимая Яндере</h5>
+          <p>Безумно влюблена и никому тебя не отдаст</p>
         </div>
-        <div class="model-box" id="modelBox-artist" onclick="handleSelectModel('artist')">
-          <div class="model-box-badge">4K HD</div>
-          <div class="model-box-icon">🎨</div>
-          <h5>LUM-ARTIST</h5>
-          <p>Шедевры, аниме арты и аватарки</p>
+        <div class="model-box" id="modelBox-bold" onclick="handleSelectPersonality('bold')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">😈</div>
+          <h5>Дерзкая Госпожа</h5>
+          <p>Уверенная, властная и дразнящая королева</p>
         </div>
-        <div class="model-box" id="modelBox-sweetie" onclick="handleSelectModel('sweetie')">
-          <div class="model-box-badge">РОМАНТИКА</div>
-          <div class="model-box-icon">🍓</div>
-          <h5>LUM-SWEETIE</h5>
-          <p>Максимум ласки, заботы и теплых искр</p>
+        <div class="model-box" id="modelBox-sensei" onclick="handleSelectPersonality('sensei')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">🎓</div>
+          <h5>Строгая Сенсей</h5>
+          <p>Умная наставница для учёбы, кода и языков</p>
+        </div>
+        <div class="model-box" id="modelBox-mysterious" onclick="handleSelectPersonality('mysterious')">
+          <div class="model-box-badge">👑 VIP</div>
+          <div class="model-box-icon">🌙</div>
+          <h5>Загадочная Гот-Лам</h5>
+          <p>Мистическая атмосфера и глубокие разговоры</p>
         </div>
       </div>
     </div>
@@ -1722,7 +1787,9 @@
     async function fetchUserStatus() {
       if (!userId) return;
       try {
-        const res = await fetch(`/api/user-status?userId=${userId}`);
+        const usernameParam = encodeURIComponent(user?.username || '');
+        const nameParam = encodeURIComponent(firstName || '');
+        const res = await fetch(`/api/user-status?userId=${userId}&username=${usernameParam}&name=${nameParam}`);
         const data = await res.json();
         if (data.ok) {
           const isVip = data.isVip;
@@ -1734,6 +1801,9 @@
           document.getElementById('profileLove').textContent = `${data.loveLevel}%`;
           document.getElementById('profileEnergy').textContent = energyStr;
           document.getElementById('profileBolts').textContent = `${data.bolts} ⚡`;
+
+          if (data.personality) highlightActivePersonality(data.personality);
+          if (data.language) highlightActiveLanguage(data.language);
 
           if (data.customTitle) {
             document.getElementById('profileStatus').textContent = data.customTitle;
@@ -2187,36 +2257,99 @@
       sendToBot("/vip");
     }
 
-    async function handleSelectModel(modelKey) {
+    const PERSONALITY_NAMES = {
+      tender: "🌸 Нежная Вайфу",
+      tsundere: "⚡ Цундере Лам",
+      yandere: "🔥 Одержимая Яндере",
+      bold: "😈 Дерзкая Госпожа",
+      sensei: "🎓 Строгая Сенсей",
+      mysterious: "🌙 Загадочная Гот-Лам"
+    };
+
+    const LANGUAGE_NAMES = {
+      ru: "🇷🇺 Русский",
+      en: "🇬🇧 English",
+      jp: "🇯🇵 日本語 (Японский)"
+    };
+
+    async function handleSelectPersonality(personalityKey) {
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
       if (!userId) return;
 
       try {
-        const res = await fetch('/api/set-model', {
+        const res = await fetch('/api/set-personality', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, modelKey }),
+          body: JSON.stringify({ userId, personalityKey }),
         });
         const data = await res.json();
         if (data.ok) {
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-          highlightActiveModel(modelKey);
-          alert(`⚡ Модель успешно переключена на ${modelKey.toUpperCase()}!`);
+          highlightActivePersonality(personalityKey);
+          const pName = PERSONALITY_NAMES[personalityKey] || personalityKey;
+          alert(`✨ Характер Лам переключен: ${pName}!\nНапиши ей в чате и почувствуй разницу 💕`);
         } else {
           if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-          alert(data.error || "Выбор моделей доступен только владельцам VIP-статуса! 👑");
+          alert(data.error || "👑 Этот эксклюзивный характер Лам доступен в VIP Премиум! Оформи подписку, чтобы открыть все 6 личностей и безлимит ✨");
+          switchTab('shop');
         }
       } catch (e) {
-        alert("Оформи VIP, чтобы разблокировать эту модель! 👑");
+        alert("👑 Оформи VIP Премиум, чтобы открыть все 6 характеров Лам!");
+        switchTab('shop');
       }
     }
 
-    function highlightActiveModel(modelKey) {
-      ['turbo', 'genius', 'artist', 'sweetie'].forEach(k => {
-        const el = document.getElementById(`modelBox-${k}`);
-        if (el) {
-          if (k === modelKey) el.classList.add('active-model');
-          else el.classList.remove('active-model');
+    const handleSelectModel = handleSelectPersonality;
+
+    async function handleSelectLanguage(langKey) {
+      if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+      if (!userId) {
+        highlightActiveLanguage(langKey);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/set-language', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, langKey }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+          highlightActiveLanguage(langKey);
+          const lName = LANGUAGE_NAMES[langKey] || langKey;
+          alert(`🌐 Язык Лам переключен на: ${lName}!`);
+        }
+      } catch (e) {}
+    }
+
+    function highlightActivePersonality(pKey) {
+      ['tender', 'tsundere', 'yandere', 'bold', 'sensei', 'mysterious'].forEach(k => {
+        const el1 = document.getElementById(`modelBox-${k}`);
+        const el2 = document.getElementById(`homeChar-${k}`);
+        if (el1) {
+          if (k === pKey) el1.classList.add('active-model');
+          else el1.classList.remove('active-model');
+        }
+        if (el2) {
+          if (k === pKey) el2.classList.add('active-model');
+          else el2.classList.remove('active-model');
+        }
+      });
+    }
+
+    function highlightActiveLanguage(langKey) {
+      ['ru', 'en', 'jp'].forEach(k => {
+        const b1 = document.getElementById(`homeLang-${k}`);
+        const b2 = document.getElementById(`shopLang-${k}`);
+        if (b1) {
+          if (k === langKey) b1.classList.add('active');
+          else b1.classList.remove('active');
+        }
+        if (b2) {
+          if (k === langKey) b2.classList.add('active');
+          else b2.classList.remove('active');
         }
       });
     }
@@ -2226,8 +2359,13 @@
       try {
         const res = await fetch(`/api/models?userId=${userId}`);
         const data = await res.json();
-        if (data.ok && data.currentModel) {
-          highlightActiveModel(data.currentModel);
+        if (data.ok) {
+          if (data.currentPersonality || data.currentModel) {
+            highlightActivePersonality(data.currentPersonality || data.currentModel);
+          }
+          if (data.currentLanguage) {
+            highlightActiveLanguage(data.currentLanguage);
+          }
         }
       } catch (e) {}
     }

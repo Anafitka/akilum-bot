@@ -69,8 +69,14 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
     addSuperAdmin,
     VIP_PLANS,
     AI_MODELS,
+    PERSONALITIES,
+    LANGUAGES,
     getUserModel,
     setUserModel,
+    getUserPersonality,
+    setUserPersonality,
+    getUserLanguage,
+    setUserLanguage,
     resolveTargetUser,
     giveUserBolts,
     giveUserLove,
@@ -249,9 +255,12 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         }
 
         const target = resolveTargetUser ? await resolveTargetUser(userId) : null;
-        const targetId = target ? target.userId : String(userId).replace(/[^\d]/g, "");
+        const cleanFallback = String(userId).trim().startsWith("@")
+          ? `@${String(userId).trim().replace(/^@/, "").toLowerCase()}`
+          : String(userId).replace(/[^\d]/g, "");
+        const targetId = target ? target.userId : cleanFallback;
         const targetName = target ? target.name : "Дарлинг";
-        const targetUsername = target ? target.username : "";
+        const targetUsername = target ? target.username : String(userId).replace(/^@/, "");
 
         if (!targetId) {
           res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
@@ -260,19 +269,21 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
         }
 
         if (setUserVip) {
-          const numDays = parseInt(days) || 30;
+          const parsedDays = parseInt(days, 10);
+          const numDays = !isNaN(parsedDays) ? parsedDays : 30;
           setUserVip(targetId, numDays, stars || 0, targetName, targetUsername);
 
-          // Оповещаем пользователя в Telegram
-          if (bot) {
-            const daysText = numDays === -1 ? "Навсегда (Forever 👑)" : `${numDays} дней`;
+          // Оповещаем пользователя в Telegram (если известен его числовой ID)
+          if (bot && /^\d+$/.test(String(targetId))) {
+            const daysText = numDays <= 0 ? "Навсегда (Forever 👑)" : `${numDays} дней`;
             bot.api.sendMessage(
               Number(targetId),
               `✧ ─── ･ ｡ﾟ☆: *. 👑 .* :☆ﾟ. ─── ✧\n` +
               `🎉 <b>СЮРПРИЗ ОТ СОЗДАТЕЛЯ БОТА!</b> 👑⭐️✨\n\n` +
               `Тебе лично выдан статус <b>VIP Дарлинга</b> на <b>${daysText}</b>!\n\n` +
-              `• Полный безлимит на задачи, код и арт-генерацию ⚡\n` +
-              `• Доступ ко всем 4 VIP-моделям нейросетей (/model) 🧠\n` +
+              `• Все 6 уникальных характеров Лам (/character) 🎭\n` +
+              `• Общение на 3 языках: Русский, English, 日本語 (/lang) 🌐\n` +
+              `• Полный безлимит на общение, задачи, код и арты ⚡\n` +
               `• Золотая корона в твоём профиле (/love) и во всех беседах 👑\n` +
               `• Высший приоритет от они-принцессы Лам! 💕`,
               { parse_mode: "HTML" }
@@ -922,20 +933,28 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
-    // API: Статус пользователя (VIP, энергия, любовь)
+    // API: Статус пользователя (VIP, энергия, любовь, характер, язык)
     if (pathname === "/api/user-status") {
       const userId = parsedUrl.searchParams.get("userId");
-      const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
-      const usage = (getUserDailyUsage && userId) ? getUserDailyUsage(userId) : 0;
-      const maxEnergy = (botSettings && botSettings.dailyFreeLimit) || DAILY_FREE_LIMIT || 30;
-      const remainingEnergy = Math.max(0, maxEnergy - usage);
+      const userName = parsedUrl.searchParams.get("name") || "";
+      const username = parsedUrl.searchParams.get("username") || "";
 
       let stats = { count: 1, loveLevel: 75, bolts: 0 };
       if (recordInteraction && userId) {
         try {
-          stats = recordInteraction(userId);
+          const meta = {};
+          if (userName) meta.name = userName;
+          if (username) meta.username = username.replace(/^@/, "");
+          stats = recordInteraction(userId, Object.keys(meta).length > 0 ? meta : undefined);
         } catch (e) {}
       }
+
+      const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
+      const usage = (getUserDailyUsage && userId) ? getUserDailyUsage(userId) : 0;
+      const maxEnergy = (botSettings && botSettings.dailyFreeLimit) || DAILY_FREE_LIMIT || 30;
+      const remainingEnergy = Math.max(0, maxEnergy - usage);
+      const personality = (getUserPersonality && userId) ? (isVip ? getUserPersonality(userId) : "tender") : "tender";
+      const language = (getUserLanguage && userId) ? getUserLanguage(userId) : "ru";
 
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(
@@ -949,6 +968,10 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
           bolts: stats.bolts || 0,
           count: stats.count || 1,
           customTitle: stats.customTitle || "",
+          personality,
+          language,
+          personalities: PERSONALITIES || {},
+          languages: LANGUAGES || {},
         })
       );
       return;
@@ -1294,13 +1317,102 @@ function startWebAppServer(port = Number(process.env.PORT) || 3000, context = {}
       return;
     }
 
-    // API: Список доступных нейро-моделей
-    if (pathname === "/api/models") {
+    // API: Список доступных характеров, языков и моделей
+    if (pathname === "/api/models" || pathname === "/api/personalities") {
       const userId = parsedUrl.searchParams.get("userId");
       const currentModel = (getUserModel && userId) ? getUserModel(userId) : "turbo";
       const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
+      const currentPersonality = (getUserPersonality && userId) ? (isVip ? getUserPersonality(userId) : "tender") : "tender";
+      const currentLanguage = (getUserLanguage && userId) ? getUserLanguage(userId) : "ru";
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ ok: true, models: AI_MODELS || {}, currentModel, isVip }));
+      res.end(JSON.stringify({
+        ok: true,
+        models: AI_MODELS || {},
+        personalities: PERSONALITIES || {},
+        languages: LANGUAGES || {},
+        currentModel,
+        currentPersonality,
+        currentLanguage,
+        isVip,
+      }));
+      return;
+    }
+
+    // API: Переключение характера Лам из Mini App
+    if (pathname === "/api/set-personality" && req.method === "POST") {
+      try {
+        const body = await parseJsonBody(req);
+        const { userId, personalityKey } = body;
+        if (!userId || !personalityKey) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "userId and personalityKey are required" }));
+          return;
+        }
+        const p = PERSONALITIES ? PERSONALITIES[personalityKey] : null;
+        if (!p) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Характер не найден" }));
+          return;
+        }
+        const isVip = (isUserVip && userId) ? isUserVip(userId) : false;
+        if (p.vipOnly && !isVip) {
+          res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({
+            ok: false,
+            vipRequired: true,
+            error: `🔒 Характер «${p.emoji} ${p.name}» доступен только в VIP Премиум! Оформи VIP ниже и открой все 6 личностей Лам! 👑`,
+          }));
+          return;
+        }
+        if (setUserPersonality) setUserPersonality(userId, personalityKey);
+        if (bot && /^\d+$/.test(String(userId))) {
+          bot.api.sendMessage(
+            Number(userId),
+            `${p.emoji} <b>Характер Лам изменён в приложении: ${p.name}!</b> ✨\n<i>«${p.tagline}»</i> 💕`,
+            { parse_mode: "HTML" }
+          ).catch(() => {});
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, currentPersonality: personalityKey, personality: p }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
+      return;
+    }
+
+    // API: Переключение языка Лам из Mini App (RU / EN / JP)
+    if (pathname === "/api/set-language" && req.method === "POST") {
+      try {
+        const body = await parseJsonBody(req);
+        const { userId, langKey } = body;
+        if (!userId || !langKey) {
+          res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "userId and langKey are required" }));
+          return;
+        }
+        const l = LANGUAGES ? LANGUAGES[langKey] : null;
+        if (!l) {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ ok: false, error: "Язык не найден" }));
+          return;
+        }
+        if (setUserLanguage) setUserLanguage(userId, langKey);
+        if (bot && /^\d+$/.test(String(userId))) {
+          const msg =
+            langKey === "en"
+              ? `🇬🇧 <b>Language switched to English!</b> ✨\n<i>"From now on I'll speak English with you, Darling! 💕"</i>`
+              : langKey === "jp"
+              ? `🇯🇵 <b>言語を日本語に変更しました！(Включён Японский язык!)</b> ✨\n<i>「これからは日本語でおしゃべりしようね、ダーリン！💕」</i>`
+              : `🇷🇺 <b>Язык переключён на Русский!</b> ✨\n<i>«Снова общаемся на родном языке, мой Дарлинг! 💕»</i>`;
+          bot.api.sendMessage(Number(userId), msg, { parse_mode: "HTML" }).catch(() => {});
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: true, currentLanguage: langKey, language: l }));
+      } catch (err) {
+        res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ ok: false, error: err.message }));
+      }
       return;
     }
 
